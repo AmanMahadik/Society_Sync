@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Vibration, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, Vibration, Platform, Image } from 'react-native';
 import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint } from '../../lib/data-manager';
@@ -196,7 +196,11 @@ export const HomeScreen: React.FC = () => {
         {/* 2. WELCOME HEADER */}
         <View style={styles.welcomeRow}>
           <View style={styles.headerBranding}>
-            <IconButton icon="home-city" iconColor="#00D4AA" size={28} style={{ margin: 0 }} />
+            <Image 
+              source={require('../../../assets/images/logo.png')} 
+              style={styles.headerLogo} 
+              resizeMode="contain"
+            />
             <View>
               <Text variant="headlineSmall" style={[styles.welcomeText, { color: '#FFFFFF' }]}>
                 Namaste, {profile?.full_name?.split(' ')[0]}
@@ -449,7 +453,14 @@ const styles = StyleSheet.create({
   headerBranding: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderColor: '#00D4AA',
+    borderWidth: 1,
   },
   roleBadgeContainer: {
     flexDirection: 'row',

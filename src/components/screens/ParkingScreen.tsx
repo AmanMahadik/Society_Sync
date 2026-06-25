@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, Image } from 'react-native';
 import { Text, Card, Button, TextInput, IconButton, Portal, Modal, useTheme, Snackbar, SegmentedButtons, List } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ParkingRequest, ParkingTimeSlot, ParkingStatus } from '../../lib/data-manager';
@@ -131,6 +131,17 @@ export const ParkingScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.screenHeader}>
+        <Image 
+          source={require('../../../assets/images/logo.png')} 
+          style={[styles.screenHeaderLogo, { borderColor: '#3B82F6' }]} 
+          resizeMode="contain"
+        />
+        <Text variant="titleLarge" style={styles.screenHeaderTitle}>
+          SocietySync Parking
+        </Text>
+      </View>
+
       {/* Date Switcher Navigation */}
       <View style={[styles.dateBar, { backgroundColor: theme.colors.surfaceVariant }]}>
         <IconButton icon="chevron-left" size={24} onPress={() => shiftDate(-1)} />
@@ -438,6 +449,24 @@ export const ParkingScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  screenHeaderLogo: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  screenHeaderTitle: {
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   dateBar: {
     flexDirection: 'row',

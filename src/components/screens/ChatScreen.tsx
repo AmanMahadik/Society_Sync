@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Text, Card, TextInput, IconButton, Button, Avatar, useTheme, Chip, SegmentedButtons, Portal, Modal, ProgressBar, Snackbar, Divider } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ChatMessage, ChatThread, Poll, PollOption } from '../../lib/data-manager';
@@ -211,11 +211,20 @@ export const ChatScreen: React.FC = () => {
   if (!activeThread) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>🏛️ Society Council Room</Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.outline, textAlign: 'center' }}>
-            Structured, thread-based channels to replace chaotic WhatsApp groups
-          </Text>
+        <View style={styles.screenHeader}>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={[styles.screenHeaderLogo, { borderColor: '#8B5CF6' }]} 
+            resizeMode="contain"
+          />
+          <View>
+            <Text variant="titleLarge" style={styles.screenHeaderTitle}>
+              SocietySync Council
+            </Text>
+            <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 10.5 }}>
+              Structured, thread-based channels replacing WhatsApp chaos
+            </Text>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -697,6 +706,24 @@ export const ChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  screenHeaderLogo: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  screenHeaderTitle: {
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   header: {
     padding: 16,

@@ -41,20 +41,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
         <View style={styles.logoWrapper}>
-          {/* Central Glowing Hexagon */}
-          <View style={styles.logoCenterHex}>
-            <IconButton 
-              icon="hexagon-multiple" 
-              iconColor="#00D4AA" 
-              size={40} 
-              style={{ margin: 0 }} 
-            />
-          </View>
-          {/* Orbiting Connected Nodes */}
-          <View style={[styles.logoNode, styles.nodeTL]} />
-          <View style={[styles.logoNode, styles.nodeTR]} />
-          <View style={[styles.logoNode, styles.nodeBL]} />
-          <View style={[styles.logoNode, styles.nodeBR]} />
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={styles.brandLogo} 
+            resizeMode="contain"
+          />
         </View>
         <Text variant="headlineMedium" style={styles.appName}>SocietySync</Text>
         <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>
@@ -225,48 +216,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  logoCenterHex: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: '#1E1E1E',
+  brandLogo: {
+    width: 86,
+    height: 86,
+    borderRadius: 18,
     borderColor: '#00D4AA',
-    borderWidth: 2.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#00D4AA',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  logoNode: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#00D4AA',
-    position: 'absolute',
-    shadowColor: '#00D4AA',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  nodeTL: {
-    top: 6,
-    left: 6,
-  },
-  nodeTR: {
-    top: 6,
-    right: 6,
-  },
-  nodeBL: {
-    bottom: 6,
-    left: 6,
-  },
-  nodeBR: {
-    bottom: 6,
-    right: 6,
+    borderWidth: 1.5,
   },
   appName: {
     fontWeight: 'bold',
