@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, Image, Linking } from 'react-native';
 import { Text, Card, Button, Avatar, useTheme, List, Divider, Switch, Snackbar, IconButton, Chip, TextInput } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Profile, UserRole, SocietySettings, Complaint } from '../../lib/data-manager';
@@ -193,6 +193,26 @@ export const ProfileScreen: React.FC = () => {
         return { icon: 'shield-account', color: '#06B6D4', text: 'Security Guard' };
       default:
         return { icon: 'account-circle', color: '#888888', text: 'Resident' };
+    }
+  };
+
+  const handleContactUs = async () => {
+    const email = 'societysync5@gmail.com';
+    const subject = encodeURIComponent('SocietySync Support Request');
+    const body = encodeURIComponent(`Namaste Support Team,\n\nI am facing the following issue in my flat:\nFlat: Wing ${profile?.wing || ''}-${profile?.flat_number || ''}\nName: ${profile?.full_name || ''}\nPhone: ${profile?.phone || ''}\n\n[Describe your issue here]\n`);
+    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+    
+    try {
+      const supported = await Linking.canOpenURL(mailtoUrl);
+      if (supported) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        showToast('Please email us at: ' + email);
+      }
+    } catch (error) {
+      Linking.openURL(mailtoUrl).catch(() => {
+        showToast('Please email us at: ' + email);
+      });
     }
   };
 
@@ -525,6 +545,32 @@ export const ProfileScreen: React.FC = () => {
               </View>
               <Switch value={isMock} onValueChange={toggleMockMode} />
             </View>
+          </Card.Content>
+        </Card>
+
+        {/* 3.5. SUPPORT & FEEDBACK */}
+        <Card style={[styles.settingsCard, { borderColor: '#06B6D4', borderWidth: 1 }]}>
+          <Card.Content style={{ gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <IconButton icon="help-circle-outline" iconColor="#06B6D4" size={24} style={{ margin: 0 }} />
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: '#FFFFFF' }}>Need Help or Facing Issues?</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 11.5 }}>
+                  Report bugs, billing errors, or request feature upgrades directly.
+                </Text>
+              </View>
+            </View>
+            <Button 
+              mode="contained" 
+              buttonColor="#06B6D4" 
+              textColor="#0F0F0F"
+              icon="email-outline"
+              onPress={handleContactUs}
+              style={{ borderRadius: 8 }}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Contact Support Desk
+            </Button>
           </Card.Content>
         </Card>
 
