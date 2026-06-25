@@ -2,6 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import { dataManager, Profile, UserRole } from './data-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
+
+// Complete the OAuth session redirect in WebBrowser on native platforms
+if (Platform.OS !== 'web') {
+  WebBrowser.maybeCompleteAuthSession();
+}
 
 interface AuthContextType {
   user: any | null;
@@ -10,6 +18,7 @@ interface AuthContextType {
   isMock: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any | null }>;
   signUp: (email: string, password: string, fullName: string, role: UserRole, wing: string, flatNumber: string, phone: string) => Promise<{ error: any | null }>;
+  signInWithGoogle: () => Promise<{ error: any | null }>;
   signInAsMock: (role: 'admin' | 'owner' | 'renter' | 'pending' | 'guard') => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -194,6 +203,98 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogle = async () => {
+    setLoading(true);
+    try {
+      if (isMock) {
+        // In Mock/Demo mode, simulate Google Sign-in for societysync5@gmail.com
+        const profiles = await dataManager.getAllProfiles();
+        let matched = profiles.find(p => p.email === 'societysync5@gmail.com');
+        if (!matched) {
+          matched = {
+            id: 'mock-google-admin',
+            email: 'societysync5@gmail.com',
+            full_name: 'SocietySync Admin (Google)',
+            role: 'admin',
+            wing: 'Admin',
+            flat_number: 'Admin',
+            phone: '+919999999999',
+            society_name: 'SocietySync Co-Op Housing',
+            status: 'approved',
+            google_picture_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'
+          };
+          await dataManager.registerProfile(matched);
+        }
+        await AsyncStorage.setItem('sync_logged_mock_user_id', matched.id);
+        setUser({ id: matched.id, email: matched.email });
+        setProfile(matched);
+        setLoading(false);
+        return { error: null };
+      } else {
+        // Production Supabase Google OAuth Flow
+        const redirectUrl = Linking.createURL('/');
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUrl,
+            skipBrowserRedirect: Platform.OS !== 'web',
+          },
+        });
+
+        if (error) throw error;
+
+        // On mobile native, we must open the WebBrowser session manually
+        if (Platform.OS !== 'web' && data?.url) {
+          const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+          
+          if (result.type === 'success' && result.url) {
+            // Parse tokens from the redirect URL hash/query parameters
+            const urlString = result.url;
+            const params: { [key: string]: string } = {};
+            
+            // Extract hash params
+            const hashIndex = urlString.indexOf('#');
+            if (hashIndex !== -1) {
+              const hash = urlString.substring(hashIndex + 1);
+              hash.split('&').forEach(pair => {
+                const [key, val] = pair.split('=');
+                if (key && val) params[key] = decodeURIComponent(val);
+              });
+            }
+            
+            // Extract query params
+            const queryIndex = urlString.indexOf('?');
+            if (queryIndex !== -1) {
+              const query = urlString.substring(queryIndex + 1);
+              query.split('&').forEach(pair => {
+                const [key, val] = pair.split('=');
+                if (key && val) params[key] = decodeURIComponent(val);
+              });
+            }
+
+            const { access_token, refresh_token } = params;
+            
+            if (access_token && refresh_token) {
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token,
+                refresh_token,
+              });
+              if (sessionError) throw sessionError;
+            }
+          }
+        }
+        
+        // For Web, Supabase handles redirection automatically, so the page will reload 
+        // and the onAuthStateChange listener in useEffect will pick up the new session.
+        setLoading(false);
+        return { error: null };
+      }
+    } catch (e: any) {
+      setLoading(false);
+      return { error: e.message || e };
+    }
+  };
+
   const signInAsMock = async (role: 'admin' | 'owner' | 'renter' | 'pending' | 'guard') => {
     setLoading(true);
     // Force mock mode
@@ -242,6 +343,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isMock,
       signIn,
       signUp,
+      signInWithGoogle,
       signInAsMock,
       signOut,
       refreshProfile,

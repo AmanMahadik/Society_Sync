@@ -8,7 +8,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }) => {
-  const { signIn, signInAsMock, isMock, toggleMockMode } = useAuth();
+  const { signIn, signInWithGoogle, signInAsMock, isMock, toggleMockMode } = useAuth();
   const theme = useTheme();
 
   const [email, setEmail] = useState('');
@@ -27,6 +27,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     setLoading(false);
     if (signInError) {
       setError(signInError);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setLoading(true);
+    const { error: googleError } = await signInWithGoogle();
+    setLoading(false);
+    if (googleError) {
+      setError(googleError);
     }
   };
 
@@ -92,6 +102,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
             style={styles.button}
           >
             Sign In
+          </Button>
+
+          <View style={styles.orContainer}>
+            <Divider style={styles.divider} />
+            <Text style={[styles.orText, { color: theme.colors.outline }]}>OR</Text>
+            <Divider style={styles.divider} />
+          </View>
+
+          <Button
+            mode="outlined"
+            onPress={handleGoogleLogin}
+            loading={loading}
+            disabled={loading}
+            icon="google"
+            textColor="#FFFFFF"
+            style={[styles.googleButton, { borderColor: theme.colors.outline }]}
+            contentStyle={styles.googleButtonContent}
+          >
+            Sign in with Google
           </Button>
 
           <Button
@@ -248,8 +277,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 4,
   },
+  orContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  orText: {
+    marginHorizontal: 12,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  googleButton: {
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  googleButtonContent: {
+    paddingVertical: 4,
+  },
   textButton: {
-    marginTop: 8,
+    marginTop: 12,
   },
   errorText: {
     textAlign: 'center',

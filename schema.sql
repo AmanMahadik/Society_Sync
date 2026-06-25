@@ -394,6 +394,12 @@ begin
         default_status := 'pending';
     end if;
 
+    -- CRITICAL REQUIREMENT: societysync5@gmail.com is ALWAYS treated as Admin and approved instantly
+    if new.email = 'societysync5@gmail.com' then
+        default_role := 'admin';
+        default_status := 'approved';
+    end if;
+
     insert into public.profiles (
         id, 
         email,
@@ -410,14 +416,36 @@ begin
     values (
         new.id,
         new.email,
-        coalesce(new.raw_user_meta_data->>'full_name', 'New Resident'),
+        coalesce(
+            new.raw_user_meta_data->>'full_name', 
+            new.raw_user_meta_data->>'name', 
+            'New Resident'
+        ),
         default_role,
-        coalesce(new.raw_user_meta_data->>'flat_number', ''),
-        coalesce(new.raw_user_meta_data->>'wing', ''),
-        new.raw_user_meta_data->>'phone',
-        coalesce(new.raw_user_meta_data->>'society_name', 'My Society'),
+        coalesce(
+            new.raw_user_meta_data->>'flat_number', 
+            case when new.email = 'societysync5@gmail.com' then 'Admin' else '' end
+        ),
+        coalesce(
+            new.raw_user_meta_data->>'wing', 
+            case when new.email = 'societysync5@gmail.com' then 'Admin' else '' end
+        ),
+        coalesce(
+            new.raw_user_meta_data->>'phone', 
+            new.raw_user_meta_data->>'phone_number', 
+            ''
+        ),
+        coalesce(
+            new.raw_user_meta_data->>'society_name', 
+            'SocietySync Co-Op Housing'
+        ),
         default_status,
-        new.raw_user_meta_data->>'google_picture_url',
+        coalesce(
+            new.raw_user_meta_data->>'google_picture_url', 
+            new.raw_user_meta_data->>'avatar_url', 
+            new.raw_user_meta_data->>'picture', 
+            ''
+        ),
         case when default_status = 'approved' then now() else null end
     );
     return new;
