@@ -275,6 +275,7 @@ class DataManager {
   }
 
   private async initializeMockData() {
+    if (typeof window === 'undefined') return; // Bypass on server-side pre-rendering
     if (!this.useMock) return;
     try {
       const keys = ['profiles', 'events', 'transactions', 'dues', 'complaints', 'threads', 'messages', 'polls', 'poll_options', 'settings'];
@@ -301,11 +302,26 @@ class DataManager {
   }
 
   private async getMockItems<T>(key: string): Promise<T[]> {
+    if (typeof window === 'undefined') {
+      // Return static demo data directly for server-side pre-rendering
+      if (key === 'profiles') return INITIAL_DEMO_PROFILES as any;
+      if (key === 'events') return INITIAL_DEMO_EVENTS as any;
+      if (key === 'transactions') return INITIAL_DEMO_TXS as any;
+      if (key === 'dues') return INITIAL_DEMO_DUES as any;
+      if (key === 'complaints') return INITIAL_DEMO_COMPLAINTS as any;
+      if (key === 'threads') return INITIAL_DEMO_THREADS as any;
+      if (key === 'messages') return INITIAL_DEMO_MESSAGES as any;
+      if (key === 'polls') return INITIAL_DEMO_POLLS as any;
+      if (key === 'poll_options') return INITIAL_DEMO_POLL_OPTIONS as any;
+      if (key === 'settings') return INITIAL_DEMO_SETTINGS as any;
+      return [];
+    }
     const data = await AsyncStorage.getItem(`sync_mock_v2_${key}`);
     return data ? JSON.parse(data) : [];
   }
 
   private async saveMockItems<T>(key: string, items: T[]): Promise<void> {
+    if (typeof window === 'undefined') return;
     await AsyncStorage.setItem(`sync_mock_v2_${key}`, JSON.stringify(items));
     this.triggerListener(key, items);
   }
