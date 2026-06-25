@@ -16,5 +16,17 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/app/explore.tsx",
+    "src/components/animated-icon.tsx",
+    "src/components/animated-icon.web.tsx",
+    "src/components/app-tabs.tsx",
+    "src/components/app-tabs.web.tsx",
+    "src/components/ui/collapsible.tsx",
+    "src/components/web-badge.tsx",
+    "src/components/hint-row.tsx",
+    "src/hooks/use-theme.ts"
   ]
 }
