@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Animated } from 'react-native';
 import { ActivityIndicator, BottomNavigation, Text, useTheme, MD3DarkTheme } from 'react-native-paper';
 import { useAuth } from '../lib/auth-context';
 import { LoginScreen } from '../components/auth/LoginScreen';
@@ -54,6 +54,28 @@ const AppRouterController: React.FC = () => {
 
   // Bottom Tab Navigation State
   const [index, setIndex] = useState(0);
+
+  // Premium logo breathing/pulsing fade-in/out animation value
+  const fadeAnim = React.useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 0.35,
+            duration: 1200,
+            useNativeDriver: true,
+          })
+        ])
+      ).start();
+    }
+  }, [loading]);
 
   // Dynamically set routes based on user role to redirect them to the correct dashboard and screens
   const routes = React.useMemo(() => {
@@ -113,11 +135,29 @@ const AppRouterController: React.FC = () => {
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.primary, marginTop: 12, fontWeight: 'bold' }}>
+        <Animated.Image
+          source={require('../../assets/images/logo.png')}
+          style={[
+            styles.loadingLogo,
+            {
+              opacity: fadeAnim,
+              transform: [
+                {
+                  scale: fadeAnim.interpolate({
+                    inputRange: [0.35, 1],
+                    outputRange: [0.94, 1.06],
+                  }),
+                },
+              ],
+            },
+          ]}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginBottom: 16 }} />
+        <Text style={{ color: theme.colors.primary, fontSize: 20, fontWeight: 'bold', letterSpacing: 1 }}>
           SocietySync
         </Text>
-        <Text style={[styles.loadingText, { color: theme.colors.outline, marginTop: 4 }]}>
+        <Text style={[styles.loadingText, { color: theme.colors.outline, marginTop: 6 }]}>
           Connecting to Digital Council...
         </Text>
       </View>
@@ -183,6 +223,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingLogo: {
+    width: 110,
+    height: 110,
+    borderRadius: 22,
+    marginBottom: 28,
   },
   loadingText: {
     fontSize: 13,
