@@ -102,21 +102,32 @@ export const HomeScreen: React.FC = () => {
   const handleRaiseSOS = async () => {
     if (!user) return;
     setSubmitting(true);
+    
+    // Fallback for admin or guard profiles that may not have standard residential wings/flats
+    let userWing = profile?.wing || '';
+    let userFlat = profile?.flat_number || '';
+    if (!userWing || userWing.trim() === '') {
+      userWing = profile?.role === 'admin' ? 'HQ' : (profile?.role === 'guard' ? 'Gate' : 'Gen');
+    }
+    if (!userFlat || userFlat.trim() === '') {
+      userFlat = profile?.role === 'admin' ? 'Admin' : (profile?.role === 'guard' ? 'Guard' : 'Office');
+    }
+
     let desc = sosDescription;
     if (!desc) {
-      if (selectedType === 'water_low') desc = 'Wing ' + profile?.wing + ' Water Level Low - Please check tank!';
+      if (selectedType === 'water_low') desc = 'Wing ' + userWing + ' Water Level Low - Please check tank!';
       else if (selectedType === 'motor_off') desc = 'E Wing water pressure low. Motor needs to be manually turned ON.';
-      else if (selectedType === 'electricity') desc = 'Power cut / Phase failure reported in Wing ' + profile?.wing;
+      else if (selectedType === 'electricity') desc = 'Power cut / Phase failure reported in Wing ' + userWing;
       else if (selectedType === 'security') desc = 'Security alert / Unauthorized parking or intruder reported!';
-      else desc = 'Emergency service requested at Flat ' + profile?.wing + '-' + profile?.flat_number;
+      else desc = 'Emergency service requested at Flat ' + userWing + '-' + userFlat;
     }
 
     try {
       await dataManager.raiseComplaint(
         user.id,
         selectedType,
-        profile?.wing || '',
-        profile?.flat_number || '',
+        userWing,
+        userFlat,
         desc
       );
       setSosModalVisible(false);
@@ -136,7 +147,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleResolve = async (complaintId: string) => {
-    await dataManager.resolveComplaint(complaintId);
+    if (!user) return;
+    await dataManager.resolveComplaint(complaintId, user.id);
     loadAllData();
   };
 

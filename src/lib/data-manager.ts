@@ -722,7 +722,7 @@ class DataManager {
     }
   }
 
-  async resolveComplaint(complaintId: string): Promise<void> {
+  async resolveComplaint(complaintId: string, resolverId?: string): Promise<void> {
     const { data, error } = await supabase
       .from('complaints')
       .update({ status: 'resolved', resolved_at: new Date().toISOString() })
@@ -732,11 +732,38 @@ class DataManager {
     if (error) throw error;
 
     if (data) {
+      // 1. Notify the resident who raised the SOS
       await this.createNotification(
         data.user_id,
         `✅ SOS Resolved`,
-        `Your SOS crisis regarding ${data.type.replace('_', ' ').toUpperCase()} has been marked as RESOLVED by the Council.`
+        `Your SOS crisis regarding ${data.type.replace('_', ' ').toUpperCase()} has been marked as RESOLVED.`
       );
+
+      // 2. If the resolver is a Guard, send feedback (notification) as solved to all Admins
+      if (resolverId) {
+        try {
+          const resolverProfile = await this.getProfile(resolverId);
+          if (resolverProfile && resolverProfile.role === 'guard') {
+            // Find all admins
+            const { data: admins } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('role', 'admin');
+            
+            if (admins) {
+              for (const admin of admins) {
+                await this.createNotification(
+                  admin.id,
+                  `🛡️ SOS Solved by Guard: Wing ${data.wing}`,
+                  `Security Guard ${resolverProfile.full_name} has resolved the ${data.type.replace('_', ' ').toUpperCase()} crisis at Flat ${data.wing}-${data.flat_number}.`
+                );
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to notify admins of guard resolution:', err);
+        }
+      }
     }
   }
 
