@@ -191,7 +191,7 @@ export const ProfileScreen: React.FC = () => {
       case 'admin':
         return { icon: 'shield-crown', color: '#FFD700', text: 'Society Admin (Secretary)' };
       case 'owner':
-        return { icon: 'home-key', color: '#00D4AA', text: 'Property Owner' };
+        return { icon: 'home-lock', color: '#00D4AA', text: 'Property Owner' };
       case 'renter':
         return { icon: 'home-account', color: '#3B82F6', text: 'Tenant / Resident' };
       case 'guard':

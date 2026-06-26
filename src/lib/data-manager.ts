@@ -562,7 +562,7 @@ class DataManager {
   async getParkingBookings(date: string): Promise<ParkingRequest[]> {
     const { data, error } = await supabase
       .from('parking_requests')
-      .select('*, user:profiles(full_name, flat_number, wing), slot:parking_slots(slot_number)')
+      .select('*, user:profiles!parking_requests_user_id_fkey(full_name, flat_number, wing), slot:parking_slots(slot_number)')
       .eq('date', date);
     if (error) throw error;
     
@@ -653,7 +653,7 @@ class DataManager {
   async getComplaints(): Promise<Complaint[]> {
     const { data, error } = await supabase
       .from('complaints')
-      .select('*, user:profiles(full_name)')
+      .select('*, user:profiles!complaints_user_id_fkey(full_name)')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map((item: any) => ({
