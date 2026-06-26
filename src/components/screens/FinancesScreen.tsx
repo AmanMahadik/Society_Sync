@@ -240,9 +240,26 @@ export const FinancesScreen: React.FC = () => {
                     <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
                       {event.name}
                     </Text>
-                    <Chip style={{ height: 24, justifyContent: 'center' }}>
-                      {event.event_date ? new Date(event.event_date).toLocaleDateString([], { year: 'numeric', month: 'short' }) : 'Ongoing'}
-                    </Chip>
+                    <View 
+                      style={{ 
+                        backgroundColor: theme.colors.secondaryContainer, 
+                        paddingHorizontal: 10, 
+                        paddingVertical: 2, 
+                        borderRadius: 12,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Text 
+                        style={{ 
+                          fontSize: 10, 
+                          fontWeight: 'bold', 
+                          color: theme.colors.onSecondaryContainer 
+                        }}
+                      >
+                        {event.event_date ? new Date(event.event_date).toLocaleDateString([], { year: 'numeric', month: 'short' }) : 'Ongoing'}
+                      </Text>
+                    </View>
                   </View>
                   <Text variant="bodySmall" style={{ color: theme.colors.outline, marginVertical: 4 }}>
                     {event.description || 'No description provided.'}
