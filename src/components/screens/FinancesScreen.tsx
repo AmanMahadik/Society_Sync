@@ -1522,25 +1522,25 @@ export const FinancesScreen: React.FC = () => {
                         </Button>
                       )}
                       {(profile?.role === 'admin' || profile?.role === 'owner') && (
-                        <>
-                          <Button 
-                            mode="text" 
-                            icon="pencil" 
-                            labelStyle={{ fontSize: 11 }}
-                            onPress={() => handleEditTransactionClick(tx)}
-                          >
-                            Edit
-                          </Button>
-                          <Button 
-                            mode="text" 
-                            icon="delete" 
-                            textColor={theme.colors.error}
-                            labelStyle={{ fontSize: 11 }}
-                            onPress={() => handleDeleteTransactionClick(tx.id)}
-                          >
-                            Delete
-                          </Button>
-                        </>
+                        <Button 
+                          mode="text" 
+                          icon="pencil" 
+                          labelStyle={{ fontSize: 11 }}
+                          onPress={() => handleEditTransactionClick(tx)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {(profile?.role === 'admin' || profile?.role === 'owner') && (
+                        <Button 
+                          mode="text" 
+                          icon="delete" 
+                          textColor={theme.colors.error}
+                          labelStyle={{ fontSize: 11 }}
+                          onPress={() => handleDeleteTransactionClick(tx.id)}
+                        >
+                          Delete
+                        </Button>
                       )}
                     </Card.Actions>
                   )}
@@ -1659,24 +1659,24 @@ export const FinancesScreen: React.FC = () => {
                     {due.status !== 'paid' && (
                       <Card.Actions style={styles.dueActions}>
                         {(profile?.role === 'admin' || profile?.role === 'owner') && (
-                          <>
-                            <Button 
-                              mode="text" 
-                              icon="bell-ring" 
-                              onPress={() => handleSendReminder(due.wing, due.flat_number, outstanding)}
-                              labelStyle={{ fontSize: 11 }}
-                            >
-                              Send Reminder
-                            </Button>
-                            <Button 
-                              mode="contained-tonal" 
-                              icon="cash" 
-                              onPress={() => handleMarkPaid(due.id, due.wing, due.flat_number)}
-                              labelStyle={{ fontSize: 11 }}
-                            >
-                              Clear Dues
-                            </Button>
-                          </>
+                          <Button 
+                            mode="text" 
+                            icon="bell-ring" 
+                            onPress={() => handleSendReminder(due.wing, due.flat_number, outstanding)}
+                            labelStyle={{ fontSize: 11 }}
+                          >
+                            Send Reminder
+                          </Button>
+                        )}
+                        {(profile?.role === 'admin' || profile?.role === 'owner') && (
+                          <Button 
+                            mode="contained-tonal" 
+                            icon="cash" 
+                            onPress={() => handleMarkPaid(due.id, due.wing, due.flat_number)}
+                            labelStyle={{ fontSize: 11 }}
+                          >
+                            Clear Dues
+                          </Button>
                         )}
                         {!isMyFlat && profile?.role === 'owner' && (
                           <Button 
