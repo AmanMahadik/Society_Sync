@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocietySync - Digital Council Portal</title>
+    <!-- Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00D4AA;          /* Emerald Green */
+            --primary-glow: rgba(0, 212, 170, 0.15);
+            --secondary: #FFD700;        /* Finance Gold */
+            --secondary-glow: rgba(255, 215, 0, 0.15);
+            --background: #09090B;       /* Deep Jet Black */
+            --surface: #18181B;          /* Sleek Dark Surface */
+            --surface-hover: #27272A;    /* Lighter hover surface */
+            --text-main: #FFFFFF;        /* Crisp White */
+            --text-muted: #A1A1AA;       /* Cool Gray */
+            --border: #27272A;           /* Border lines */
+            --error: #FF3B30;            /* SOS Red */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .brand-text {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        /* --- NAVIGATION --- */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background-color: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 5%;
+            z-index: 1000;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+        }
+
+        .nav-logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            border: 1px solid var(--primary);
+        }
+
+        .brand-text {
+            font-size: 22px;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-text span {
+            color: var(--primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary);
+        }
+
+        .nav-cta {
+            background-color: var(--primary);
+            color: #000;
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        /* --- HERO SECTION --- */
+        header {
+            padding: 160px 5% 100px 5%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: "";
+            position: absolute;
+            top: -200px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            z-index: -1;
+        }
+
+        .hero-badge {
+            background-color: var(--primary-glow);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            margin-bottom: 24px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .hero-title {
+            font-size: 56px;
+            line-height: 1.15;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        .hero-title span {
+            color: var(--primary);
+            background: linear-gradient(to right, #00D4AA, #00FFCC);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 40px;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 60px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #000;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 212, 170, 0.25);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-main);
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            background-color: rgba(255, 255, 255, 0.02);
+            transform: translateY(-2px);
+        }
+
+        .hero-preview {
+            width: 100%;
+            max-width: 900px;
+            position: relative;
+        }
+
+        .hero-showcase-img {
+            width: 100%;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            background-color: var(--surface);
+        }
+
+        /* --- SECTIONS COMMON --- */
+        section {
+            padding: 90px 5%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-tag {
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .section-title {
+            font-size: 38px;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 15px;
+        }
+
+        /* --- FEATURES GRID --- */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 35px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon-box {
+            width: 54px;
+            height: 54px;
+            border-radius: 12px;
+            background-color: var(--primary-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .feature-icon-box i {
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        .feature-card.gold-card .feature-icon-box {
+            background-color: var(--secondary-glow);
+        }
+
+        .feature-card.gold-card .feature-icon-box i {
+            color: var(--secondary);
+        }
+
+        .feature-card.red-card .feature-icon-box {
+            background-color: rgba(255, 59, 48, 0.1);
+        }
+
+        .feature-card.red-card .feature-icon-box i {
+            color: var(--error);
+        }
+
+        .feature-title {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        .feature-desc {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* --- HELP CENTER & FAQS --- */
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+        }
+
+        .faq-item:hover {
+            border-color: var(--primary);
+        }
+
+        .faq-header {
+            padding: 22px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .faq-question {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .faq-icon {
+            font-size: 18px;
+            color: var(--text-muted);
+            transition: transform 0.3s ease;
+        }
+
+        .faq-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background-color: rgba(255,255,255,0.01);
+        }
+
+        .faq-content {
+            padding: 0 28px 24px 28px;
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+            color: var(--primary);
+        }
+
+        .faq-item.active .faq-body {
+            max-height: 500px; /* arbitrary height to slide down */
+        }
+
+        /* --- LEGAL / DOCS --- */
+        .doc-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .doc-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .doc-tab-btn {
+            background-color: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .doc-tab-btn.active, .doc-tab-btn:hover {
+            color: #000;
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .doc-content-panel {
+            display: none;
+        }
+
+        .doc-content-panel.active {
+            display: block;
+        }
+
+        .doc-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .doc-section-title {
+            font-size: 16px;
+            color: var(--primary);
+            margin: 20px 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .doc-text {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        /* --- SUPPORT CONTACT FORM --- */
+        .contact-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 45px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            background-color: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+            width: 100%;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-submit-btn {
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 28px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: opacity 0.2s ease;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .form-submit-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            background-color: #050507;
+            border-top: 1px solid var(--border);
+            padding: 60px 5% 30px 5%;
+            text-align: center;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .footer-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid var(--primary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 35px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .social-icons a {
+            color: var(--text-muted);
+            font-size: 16px;
+            transition: color 0.2s ease;
+        }
+
+        .social-icons a:hover {
+            color: var(--primary);
+        }
+
+        /* --- RESPONSIVENESS --- */
+        @media (max-width: 768px) {
+            .nav-links, .nav-cta {
+                display: none;
+            }
+
+            .hero-title {
+                font-size: 38px;
+            }
+
+            .hero-subtitle {
+                font-size: 15px;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .doc-container {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION BAR -->
+    <nav>
+        <a href="#" class="nav-brand">
+            <img src="logo.png" alt="SocietySync Logo" class="nav-logo" onerror="this.src='https://images.unsplash.com/photo-1545235617-9465d2a55698?w=100'">
+            <span class="brand-text">Society<span>Sync</span></span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#help-center">Help Center</a></li>
+            <li><a href="#faqs">FAQs</a></li>
+            <li><a href="#legal">Privacy & Terms</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+        <a href="#contact" class="nav-cta">Register Flat</a>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <header>
+        <div class="hero-badge"><i class="fa-solid fa-shield-halved"></i> Digital Council Platform</div>
+        <h1 class="hero-title">Connecting Residents & Councils <span>Seamlessly</span></h1>
+        <p class="hero-subtitle">Reconcile ledger accounts, upload vendor bills, book visitor parking, and resolve SOS security crisis alerts in real-time.</p>
+        <div class="hero-ctas">
+            <a href="#contact" class="btn-primary"><i class="fa-solid fa-mobile-screen-button"></i> Register Flat</a>
+            <a href="#features" class="btn-secondary">Explore Features <i class="fa-solid fa-arrow-right"></i></a>
+        </div>
+        <div class="hero-preview">
+            <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200" alt="SocietySync Dashboard Mockup" class="hero-showcase-img">
+        </div>
+    </header>
+
+    <!-- FEATURES SECTION -->
+    <section id="features">
+        <div class="section-header">
+            <span class="section-tag">Explore Scope</span>
+            <h2 class="section-title">Core Operating Systems</h2>
+            <p class="section-desc">Five connected modules that automate security gates, legal ledgers, democratic polling, and asset maintenance.</p>
+        </div>
+        <div class="features-grid">
+            <!-- Feature 1 -->
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-car"></i>
+                </div>
+                <h3 class="feature-title">Smart Visitor Parking</h3>
+                <p class="feature-desc">Residents book designated visitor parking slots (V1-V10) instantly. Gate entry requests are logged, and availability updates in real-time upon security desk approvals.</p>
+            </div>
+            <!-- Feature 2 -->
+            <div class="feature-card gold-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <h3 class="feature-title">Festival Ledger Sheets</h3>
+                <p class="feature-desc">Complete transparent accounting for community festivals. Committee members record contributions and vendor bills, upload receipts using device image pickers, and export high-fidelity PDF report ledgers.</p>
+            </div>
+            <!-- Feature 3 -->
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                </div>
+                <h3 class="feature-title">Maintenance Ledgers</h3>
+                <p class="feature-desc">Monthly society maintenance is calculated and recorded. Supports delinquent leaderboards, automatic late-fee calculations (2%), and push notification payment reminders.</p>
+            </div>
+            <!-- Feature 4 -->
+            <div class="feature-card red-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 class="feature-title">Emergency SOS Crisis Alarms</h3>
+                <p class="feature-desc">Trigger instant high-priority alarms for water, electricity, or security crises. Guards are alerted in real-time, and resolving an SOS pushes feedback notifications to all administrators.</p>
+            </div>
+            <!-- Feature 5 -->
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-comments"></i>
+                </div>
+                <h3 class="feature-title">Council Chat & Polling</h3>
+                <p class="feature-desc">Engage in categorized debates (Infrastructure, Budget, Events). Create democratic voting polls with expiration thresholds and pinned alerts to make decisions together.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- HELP CENTER -->
+    <section id="help-center" style="background-color: rgba(255,255,255,0.01); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+        <div class="section-header">
+            <span class="section-tag">Help Desk</span>
+            <h2 class="section-title">Council Help Center</h2>
+            <p class="section-desc">Step-by-step guides to help residents, owners, and council administrators navigate their digital accounts.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3 class="feature-title" style="color: var(--primary); margin-bottom: 16px;"><i class="fa-solid fa-user-shield"></i> Resident Registration</h3>
+                <p class="feature-desc">Complete your flat details (Wing, Flat Number, Phone) and upload your profile picture. All registrations enter a <b>Pending Review</b> queue and must be approved by the Society Administrator before accessing portal modules.</p>
+            </div>
+            <div class="feature-card">
+                <h3 class="feature-title" style="color: var(--primary); margin-bottom: 16px;"><i class="fa-solid fa-file-invoice-dollar"></i> Paying Dues</h3>
+                <p class="feature-desc">Go to the Maintenance Dues tab to view outstanding payments. Overdue invoices automatically calculate a 2% interest penalty after the due date. Click <b>Pay Dues Online</b> to proceed through the integrated secure gateway.</p>
+            </div>
+            <div class="feature-card">
+                <h3 class="feature-title" style="color: var(--primary); margin-bottom: 16px;"><i class="fa-solid fa-square-poll-vertical"></i> Voting in Council</h3>
+                <p class="feature-desc">Admins and owners can publish voting polls in any chat thread. All registered society members can cast one vote per poll. Results are updated in real-time, and polls freeze automatically once their expiration date passes.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQs ACCORDION -->
+    <section id="faqs">
+        <div class="section-header">
+            <span class="section-tag">FAQ</span>
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <p class="section-desc">Quick answers to common inquiries regarding parking rules, SOS protocols, and financial audits.</p>
+        </div>
+        <div class="faq-container">
+            <!-- FAQ 1 -->
+            <div class="faq-item">
+                <div class="faq-header">
+                    <div class="faq-question">Who can approve visitor parking requests?</div>
+                    <div class="faq-icon"><i class="fa-solid fa-chevron-down"></i></div>
+                </div>
+                <div class="faq-body">
+                    <div class="faq-content">
+                        Only administrators (Society Secretary/Management Committee) have access to approve or reject visitor parking requests. When a resident submits a parking request, a push notification is sent to the administrators who review the booking and assign the slot.
+                    </div>
+                </div>
+            </div>
+            <!-- FAQ 2 -->
+            <div class="faq-item">
+                <div class="faq-header">
+                    <div class="faq-question">What happens when I trigger an SOS alert?</div>
+                    <div class="faq-icon"><i class="fa-solid fa-chevron-down"></i></div>
+                </div>
+                <div class="faq-body">
+                    <div class="faq-content">
+                        Triggering an SOS sends an emergency alert notification to all security guards and society administrators. The alert flashes at the gate guard terminal. Once a guard acknowledges and resolves the issue, they log feedback that notifies the management committee that the crisis has been resolved.
+                    </div>
+                </div>
+            </div>
+            <!-- FAQ 3 -->
+            <div class="faq-item">
+                <div class="faq-header">
+                    <div class="faq-question">How do I export a festival financial report?</div>
+                    <div class="faq-icon"><i class="fa-solid fa-chevron-down"></i></div>
+                </div>
+                <div class="faq-body">
+                    <div class="faq-content">
+                        Go to the Finances screen, select the active festival event, and click the PDF icon. The application compiles all recorded contributions and expense invoices, formats them into a premium multi-page ledger statement matching our design specifications, and opens the sharing/download sheet on your device.
+                    </div>
+                </div>
+            </div>
+            <!-- FAQ 4 -->
+            <div class="faq-item">
+                <div class="faq-header">
+                    <div class="faq-question">Is my financial data secure?</div>
+                    <div class="faq-icon"><i class="fa-solid fa-chevron-down"></i></div>
+                </div>
+                <div class="faq-body">
+                    <div class="faq-content">
+                        Yes. All data and transaction ledgers are stored in a secured Supabase PostgreSQL database. Access is controlled using Row Level Security (RLS) policies, ensuring only authenticated and approved residents can read ledgers, and only authorized committee members can modify transaction registers.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LEGAL (PRIVACY & TERMS) -->
+    <section id="legal">
+        <div class="section-header">
+            <span class="section-tag">Legals</span>
+            <h2 class="section-title">Privacy Policy & Terms</h2>
+            <p class="section-desc">Our commitment to protecting resident records, communication privacy, and financial transparency.</p>
+        </div>
+        <div class="faq-container">
+            <div class="doc-tabs">
+                <button class="doc-tab-btn active" onclick="switchDoc('privacy')">Privacy Policy</button>
+                <button class="doc-tab-btn" onclick="switchDoc('terms')">Terms & Conditions</button>
+            </div>
+            <div class="doc-container">
+                <!-- Privacy Policy Content -->
+                <div id="privacy-panel" class="doc-content-panel active">
+                    <h3 class="doc-title">Privacy Policy</h3>
+                    <p class="doc-text">Effective Date: June 26, 2026</p>
+                    <p class="doc-text">SocietySync is committed to protecting the privacy and personal information of residents, owners, tenants, and security staff of housing societies using our application.</p>
+                    
+                    <h4 class="doc-section-title">1. Information We Collect</h4>
+                    <p class="doc-text">We collect information directly provided by you during registration and profile completion, including: your full name, email address, phone number, wing, flat number, vehicle license number, and profile image. If you upload transaction proofs, we store the receipt image files securely.</p>
+                    
+                    <h4 class="doc-section-title">2. Use of Information</h4>
+                    <p class="doc-text">We use your information solely to provide core society features, including: gating portal access for approved residents, recording flat-wise maintenance dues, booking visitor parking slots, sending push notification reminders, and managing emergency SOS communications.</p>
+                    
+                    <h4 class="doc-section-title">3. Data Security</h4>
+                    <p class="doc-text">All communications, chat messages, ledger entries, and personal records are stored in databases protected by Row Level Security (RLS) policies. Your data is never shared with, sold to, or distributed to third-party marketing companies.</p>
+                </div>
+                
+                <!-- Terms & Conditions Content -->
+                <div id="terms-panel" class="doc-content-panel">
+                    <h3 class="doc-title">Terms & Conditions</h3>
+                    <p class="doc-text">Effective Date: June 26, 2026</p>
+                    <p class="doc-text">By registering an account and accessing the SocietySync portal, you agree to comply with and be bound by the following terms of service.</p>
+                    
+                    <h4 class="doc-section-title">1. Registration and Account Security</h4>
+                    <p class="doc-text">You must provide accurate and complete information during registration. You are solely responsible for maintaining the security of your account credentials. Sharing accounts with unapproved non-residents is strictly prohibited.</p>
+                    
+                    <h4 class="doc-section-title">2. Use of SOS and Community Features</h4>
+                    <p class="doc-text">The emergency SOS alert system is designed strictly for urgent security, water, or electrical crises. Abusing or spamming the SOS system for trivial matters may result in the suspension of portal privileges by the Society Secretary.</p>
+                    
+                    <h4 class="doc-section-title">3. Financial Ledger Integrity</h4>
+                    <p class="doc-text">All contributions and vendor expenses uploaded to the Festival Ledger must represent real, verified cash or bank transactions supported by a valid bill receipt. The society management committee reserves the right to audit and remove any fraudulent or unverified ledger entries.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTACT FORM -->
+    <section id="contact">
+        <div class="section-header">
+            <span class="section-tag">Support Desk</span>
+            <h2 class="section-title">Contact & Support</h2>
+            <p class="section-desc">Submit a support request to the society secretary or report an issue with your resident portal account.</p>
+        </div>
+        <div class="contact-container">
+            <form id="support-form" onsubmit="handleFormSubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" class="form-control" placeholder="e.g. Amit Patel" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="flat">Flat (e.g. B-302)</label>
+                        <input type="text" id="flat" class="form-control" placeholder="e.g. B-302" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="e.g. amit@gmail.com" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="message">Your Message or Support Request</label>
+                    <textarea id="message" class="form-control" placeholder="Describe your inquiry in detail..." required></textarea>
+                </div>
+                <button type="submit" class="form-submit-btn"><i class="fa-solid fa-paper-plane"></i> Send Message</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-brand">
+            <img src="logo.png" alt="SocietySync Logo" class="footer-logo" onerror="this.src='https://images.unsplash.com/photo-1545235617-9465d2a55698?w=100'">
+            <span class="brand-text">Society<span>Sync</span></span>
+        </div>
+        <div class="footer-links">
+            <a href="#features">Features</a>
+            <a href="#help-center">Help Center</a>
+            <a href="#faqs">FAQs</a>
+            <a href="#legal">Privacy Policy</a>
+            <a href="#legal">Terms of Service</a>
+            <a href="#contact">Support</a>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 SocietySync Co-Operative Housing Council. All rights reserved.</span>
+            <div class="social-icons">
+                <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                <a href="#"><i class="fa-brands fa-github"></i></a>
+                <a href="#"><i class="fa-brands fa-linkedin"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE SCRIPTS -->
+    <script>
+        // FAQ Accordion Toggle
+        const faqHeaders = document.querySelectorAll('.faq-header');
+        faqHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const parent = header.parentElement;
+                const isActive = parent.classList.contains('active');
+                
+                // Collapse all other FAQs
+                document.querySelectorAll('.faq-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                if (!isActive) {
+                    parent.classList.add('active');
+                }
+            });
+        });
+
+        // Legal Document Tabs Switcher
+        function switchDoc(docType) {
+            // Update Tab Buttons Active State
+            const buttons = document.querySelectorAll('.doc-tab-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            // Update Panels Active State
+            const panels = document.querySelectorAll('.doc-content-panel');
+            panels.forEach(panel => panel.classList.remove('active'));
+            
+            if (docType === 'privacy') {
+                buttons[0].classList.add('active');
+                document.getElementById('privacy-panel').classList.add('active');
+            } else {
+                buttons[1].classList.add('active');
+                document.getElementById('terms-panel').classList.add('active');
+            }
+        }
+
+        // Contact Form Submission Handler
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const name = document.getElementById('name').value;
+            const flat = document.getElementById('flat').value;
+            alert(`Thank you, ${name} (Flat ${flat})! Your support inquiry has been submitted successfully to the SocietySync Council Desk. We will email you shortly.`);
+            document.getElementById('support-form').reset();
+        }
+    </script>
+</body>
+</html>
