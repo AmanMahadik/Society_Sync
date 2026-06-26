@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, Image, Alert } from 'react-native';
 import { Text, Card, Button, TextInput, SegmentedButtons, IconButton, Portal, Modal, useTheme, Chip, Snackbar, Avatar, List, Divider } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Event, Transaction, MaintenanceDue } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '../../lib/supabase';
 
 export const FinancesScreen: React.FC = () => {
   const { profile, user } = useAuth();
@@ -95,6 +97,108 @@ export const FinancesScreen: React.FC = () => {
       showToast('Failed to create event.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+
+  const handleSelectReceipt = () => {
+    Alert.alert(
+      'Upload Receipt',
+      'Select a receipt image from camera or gallery',
+      [
+        { text: 'Camera', onPress: () => handlePickImage(true) },
+        { text: 'Gallery', onPress: () => handlePickImage(false) },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handlePickImage = async (useCamera: boolean) => {
+    try {
+      let permissionResult;
+      if (useCamera) {
+        permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      } else {
+        permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      }
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Denied', 'Permission is required to access camera or gallery.');
+        return;
+      }
+
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      };
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const pickedUri = result.assets[0].uri;
+        await uploadReceipt(pickedUri);
+      }
+    } catch (e) {
+      console.error('Image picking error', e);
+      Alert.alert('Error', 'Failed to select image.');
+    }
+  };
+
+  const uploadReceipt = async (localUri: string) => {
+    if (!user) return;
+    setUploadingReceipt(true);
+    try {
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      
+      const fileExt = localUri.split('.').pop() || 'jpg';
+      const fileName = `receipt_${Date.now()}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+
+      // Upload to public 'bills' bucket
+      const { error: uploadError } = await supabase.storage
+        .from('bills')
+        .upload(filePath, blob, {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        // Fallback to 'avatars' bucket if 'bills' bucket is not created
+        const { error: fallbackError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, blob, {
+            contentType: `image/${fileExt}`,
+            upsert: true,
+          });
+
+        if (fallbackError) {
+          throw uploadError;
+        } else {
+          // Get Public URL from 'avatars'
+          const { data } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          setTxBillUrl(data.publicUrl);
+          Alert.alert('Success', 'Receipt image uploaded successfully.');
+        }
+      } else {
+        // Get Public URL from 'bills'
+        const { data } = supabase.storage
+          .from('bills')
+          .getPublicUrl(filePath);
+        setTxBillUrl(data.publicUrl);
+        Alert.alert('Success', 'Receipt image uploaded successfully.');
+      }
+    } catch (e: any) {
+      console.error('Receipt upload error', e);
+      Alert.alert('Upload Failed', 'Could not upload receipt image. Please ensure your internet is working.');
+    } finally {
+      setUploadingReceipt(false);
     }
   };
 
@@ -683,6 +787,24 @@ export const FinancesScreen: React.FC = () => {
             mode="outlined"
             style={styles.modalInput}
           />
+
+          <View style={{ marginBottom: 16, alignItems: 'center' }}>
+            <Button
+              mode="contained-tonal"
+              icon="camera"
+              onPress={handleSelectReceipt}
+              loading={uploadingReceipt}
+              disabled={uploadingReceipt}
+              style={{ width: '100%' }}
+            >
+              {uploadingReceipt ? 'Uploading Receipt...' : 'Scan / Upload Receipt Image'}
+            </Button>
+            {txBillUrl ? (
+              <Text variant="bodySmall" style={{ color: '#00D4AA', marginTop: 4, textAlign: 'center', fontWeight: 'bold' }}>
+                ✓ Receipt Image attached successfully
+              </Text>
+            ) : null}
+          </View>
 
           <View style={styles.modalButtons}>
             <Button mode="outlined" onPress={() => setTxModalVisible(false)} style={{ flex: 1 }}>
