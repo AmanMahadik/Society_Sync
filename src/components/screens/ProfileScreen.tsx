@@ -186,6 +186,22 @@ export const ProfileScreen: React.FC = () => {
   const complaintTypeData = getComplaintTypeCounts();
   const complaintStatusData = getComplaintStatusCounts();
 
+  const getContrastColor = (role?: string) => {
+    const isDark = theme.dark;
+    switch (role) {
+      case 'admin':
+        return isDark ? '#FFD700' : '#B45309'; // Gold / Dark Gold
+      case 'owner':
+        return isDark ? '#00D4AA' : '#047857'; // Emerald / Dark Emerald
+      case 'renter':
+        return isDark ? '#3B82F6' : '#1D4ED8'; // Blue / Dark Blue
+      case 'guard':
+        return isDark ? '#06B6D4' : '#0E7490'; // Cyan / Dark Cyan
+      default:
+        return isDark ? '#888888' : '#555555';
+    }
+  };
+
   const getRoleBadge = (role?: string) => {
     switch (role) {
       case 'admin':
@@ -287,14 +303,31 @@ export const ProfileScreen: React.FC = () => {
             
             {(() => {
               const badge = getRoleBadge(profile?.role);
+              const contrastColor = getContrastColor(profile?.role);
               return (
-                <Chip 
-                  icon={badge.icon} 
-                  style={[styles.roleChip, { backgroundColor: badge.color + '15', borderColor: badge.color, borderWidth: 1 }]}
-                  textStyle={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: 11, color: badge.color }}
+                <View 
+                  style={{ 
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: contrastColor + '15', 
+                    borderColor: contrastColor, 
+                    borderWidth: 1,
+                    borderRadius: 16,
+                    paddingHorizontal: 12,
+                    paddingVertical: 4,
+                    marginTop: 8,
+                  }}
                 >
-                  {badge.text}
-                </Chip>
+                  <IconButton 
+                    icon={badge.icon} 
+                    iconColor={contrastColor} 
+                    size={14} 
+                    style={{ margin: 0, padding: 0, width: 16, height: 16 }} 
+                  />
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: contrastColor, textTransform: 'uppercase', marginLeft: 4 }}>
+                    {badge.text}
+                  </Text>
+                </View>
               );
             })()}
 
@@ -325,7 +358,7 @@ export const ProfileScreen: React.FC = () => {
             <Text variant="titleMedium" style={[styles.permissionsTitle, { color: '#06B6D4' }]}>🔑 Role Authorization Matrix</Text>
             <View style={{ gap: 6, marginTop: 8 }}>
               {getRolePermissions().map((perm, idx) => (
-                <Text key={idx} variant="bodySmall" style={{ lineHeight: 18, color: '#E0E0E0' }}>
+                <Text key={idx} variant="bodySmall" style={{ lineHeight: 18, color: theme.colors.onSurface }}>
                   {perm}
                 </Text>
               ))}
@@ -539,15 +572,25 @@ export const ProfileScreen: React.FC = () => {
                       <View style={styles.rosterTags}>
                         {(() => {
                           const badge = getRoleBadge(u.role);
+                          const contrastColor = getContrastColor(u.role);
                           return (
-                            <Chip 
-                              icon={badge.icon} 
-                              style={{ height: 22, justifyContent: 'center', backgroundColor: badge.color + '15', borderColor: badge.color, borderWidth: 0.5 }}
-                              textStyle={{ fontSize: 9, fontWeight: 'bold', color: badge.color }}
-                              compact
+                            <View 
+                              style={{ 
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: contrastColor + '15', 
+                                borderColor: contrastColor, 
+                                borderWidth: 0.5,
+                                borderRadius: 4,
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                alignSelf: 'flex-start',
+                              }}
                             >
-                              {badge.text.split(' ')[0]}
-                            </Chip>
+                              <Text style={{ fontSize: 9, fontWeight: 'bold', color: contrastColor, textTransform: 'uppercase' }}>
+                                {badge.text.split(' ')[0]}
+                              </Text>
+                            </View>
                           );
                         })()}
                       </View>

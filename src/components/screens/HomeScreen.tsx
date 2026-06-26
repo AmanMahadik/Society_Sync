@@ -224,24 +224,44 @@ export const HomeScreen: React.FC = () => {
                   Wing {profile?.wing || '?'}-{profile?.flat_number || '?'} • 
                 </Text>
                 {(() => {
-                  const badge = (() => {
+                  const getContrastColor = (r?: string) => {
+                    const isDark = theme.dark;
+                    switch (r) {
+                      case 'admin': return isDark ? '#FFD700' : '#B45309';
+                      case 'owner': return isDark ? '#00D4AA' : '#047857';
+                      case 'renter': return isDark ? '#3B82F6' : '#1D4ED8';
+                      case 'guard': return isDark ? '#06B6D4' : '#0E7490';
+                      default: return isDark ? '#888888' : '#555555';
+                    }
+                  };
+                  const badgeText = (() => {
                     switch (profile?.role) {
-                      case 'admin': return { icon: 'shield-crown', color: '#FFD700', text: 'Admin' };
-                      case 'owner': return { icon: 'home-lock', color: '#00D4AA', text: 'Owner' };
-                      case 'renter': return { icon: 'home-account', color: '#3B82F6', text: 'Tenant' };
-                      case 'guard': return { icon: 'shield-account', color: '#06B6D4', text: 'Guard' };
-                      default: return { icon: 'account-circle', color: '#888888', text: 'Resident' };
+                      case 'admin': return 'Admin';
+                      case 'owner': return 'Owner';
+                      case 'renter': return 'Tenant';
+                      case 'guard': return 'Guard';
+                      default: return 'Resident';
                     }
                   })();
+                  const contrastColor = getContrastColor(profile?.role);
                   return (
-                    <Chip 
-                      icon={badge.icon} 
-                      style={[styles.miniRoleChip, { backgroundColor: badge.color + '15', borderColor: badge.color, borderWidth: 0.5 }]}
-                      textStyle={{ fontSize: 9, fontWeight: 'bold', color: badge.color, textTransform: 'uppercase' }}
-                      compact
+                    <View 
+                      style={{ 
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: contrastColor + '15', 
+                        borderColor: contrastColor, 
+                        borderWidth: 0.5,
+                        borderRadius: 4,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1.5,
+                        marginLeft: 4,
+                      }}
                     >
-                      {badge.text}
-                    </Chip>
+                      <Text style={{ fontSize: 8, fontWeight: 'bold', color: contrastColor, textTransform: 'uppercase' }}>
+                        {badgeText}
+                      </Text>
+                    </View>
                   );
                 })()}
               </View>

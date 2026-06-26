@@ -182,12 +182,13 @@ export const ChatScreen: React.FC = () => {
   };
 
   const getRoleBadgeColor = (role: string) => {
+    const isDark = theme.dark;
     switch (role) {
-      case 'admin': return '#FFD700'; // Gold
-      case 'owner': return '#00D4AA'; // Emerald Green
-      case 'renter': return '#3B82F6'; // Blue
-      case 'guard': return '#06B6D4';  // Cyan
-      default: return '#888888';
+      case 'admin': return isDark ? '#FFD700' : '#B45309'; // Gold / Dark Gold
+      case 'owner': return isDark ? '#00D4AA' : '#047857'; // Emerald / Dark Emerald
+      case 'renter': return isDark ? '#3B82F6' : '#1D4ED8'; // Blue / Dark Blue
+      case 'guard': return isDark ? '#06B6D4' : '#0E7490';  // Cyan / Dark Cyan
+      default: return isDark ? '#888888' : '#555555';
     }
   };
 
@@ -456,7 +457,11 @@ export const ChatScreen: React.FC = () => {
                           variant="bodySmall" 
                           style={[
                             styles.roleTag, 
-                            { color: getRoleBadgeColor(msg.sender_role || 'renter') }
+                            { 
+                              color: getRoleBadgeColor(msg.sender_role || 'renter'),
+                              borderColor: getRoleBadgeColor(msg.sender_role || 'renter'),
+                              backgroundColor: getRoleBadgeColor(msg.sender_role || 'renter') + '15'
+                            }
                           ]}
                         >
                           {msg.sender_role?.toUpperCase()}

@@ -109,7 +109,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
             loading={loading}
             disabled={loading}
             icon="google"
-            textColor="#FFFFFF"
+            textColor={theme.dark ? '#FFFFFF' : theme.colors.onSurface}
             style={[styles.googleButton, { borderColor: theme.colors.outline }]}
             contentStyle={styles.googleButtonContent}
           >
