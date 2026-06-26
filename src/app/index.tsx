@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, BottomNavigation, PaperProvider, MD3DarkTheme, Text } from 'react-native-paper';
-import { AuthProvider, useAuth } from '../lib/auth-context';
+import { ActivityIndicator, BottomNavigation, Text, useTheme, MD3DarkTheme } from 'react-native-paper';
+import { useAuth } from '../lib/auth-context';
 import { LoginScreen } from '../components/auth/LoginScreen';
 import { RegisterScreen } from '../components/auth/RegisterScreen';
 import { ProfileCompletionScreen } from '../components/auth/ProfileCompletionScreen';
@@ -47,20 +47,58 @@ const premiumDarkTheme = {
 // Main App Router Controller
 const AppRouterController: React.FC = () => {
   const { user, profile, loading } = useAuth();
-  const theme = premiumDarkTheme; // Force premium dark theme across all screens
+  const theme = useTheme();
 
   // Navigation State between Login and Register
   const [isRegistering, setIsRegistering] = useState(false);
 
   // Bottom Tab Navigation State
   const [index, setIndex] = useState(0);
-  const [routes] = useState([
-    { key: 'home', title: 'Home', focusedIcon: 'home-city', unfocusedIcon: 'home-city-outline' },
-    { key: 'finances', title: 'Finances', focusedIcon: 'wallet', unfocusedIcon: 'wallet-outline' },
-    { key: 'parking', title: 'Parking', focusedIcon: 'car', unfocusedIcon: 'car-outline' },
-    { key: 'chat', title: 'Chat', focusedIcon: 'forum', unfocusedIcon: 'forum-outline' },
-    { key: 'profile', title: 'Profile', focusedIcon: 'account-circle', unfocusedIcon: 'account-circle-outline' },
-  ]);
+
+  // Dynamically set routes based on user role to redirect them to the correct dashboard and screens
+  const routes = React.useMemo(() => {
+    const role = profile?.role || 'renter';
+    switch (role) {
+      case 'admin':
+        return [
+          { key: 'home', title: 'Admin Dash', focusedIcon: 'shield-home', unfocusedIcon: 'shield-home-outline' },
+          { key: 'finances', title: 'Finances', focusedIcon: 'wallet', unfocusedIcon: 'wallet-outline' },
+          { key: 'parking', title: 'Parking', focusedIcon: 'car', unfocusedIcon: 'car-outline' },
+          { key: 'chat', title: 'Chat', focusedIcon: 'forum', unfocusedIcon: 'forum-outline' },
+          { key: 'profile', title: 'Admin Profile', focusedIcon: 'account-circle', unfocusedIcon: 'account-circle-outline' },
+        ];
+      case 'guard':
+        return [
+          { key: 'home', title: 'Guard Panel', focusedIcon: 'shield-account', unfocusedIcon: 'shield-account-outline' },
+          { key: 'parking', title: 'Gate Entry', focusedIcon: 'car', unfocusedIcon: 'car' },
+          { key: 'profile', title: 'Profile', focusedIcon: 'account-circle', unfocusedIcon: 'account-circle-outline' },
+        ];
+      case 'owner':
+        return [
+          { key: 'home', title: 'Home', focusedIcon: 'home-city', unfocusedIcon: 'home-city-outline' },
+          { key: 'finances', title: 'Finances', focusedIcon: 'wallet', unfocusedIcon: 'wallet-outline' },
+          { key: 'parking', title: 'Parking', focusedIcon: 'car', unfocusedIcon: 'car-outline' },
+          { key: 'chat', title: 'Chat', focusedIcon: 'forum', unfocusedIcon: 'forum-outline' },
+          { key: 'profile', title: 'Profile', focusedIcon: 'account-circle', unfocusedIcon: 'account-circle-outline' },
+        ];
+      case 'renter':
+      default:
+        return [
+          { key: 'home', title: 'Home', focusedIcon: 'home-city', unfocusedIcon: 'home-city-outline' },
+          { key: 'finances', title: 'My Dues', focusedIcon: 'wallet', unfocusedIcon: 'wallet-outline' },
+          { key: 'parking', title: 'Parking', focusedIcon: 'car', unfocusedIcon: 'car-outline' },
+          { key: 'chat', title: 'Read Chat', focusedIcon: 'forum', unfocusedIcon: 'forum-outline' },
+          { key: 'profile', title: 'Profile', focusedIcon: 'account-circle', unfocusedIcon: 'account-circle-outline' },
+        ];
+    }
+  }, [profile]);
+
+  // Safely adjust index if routes change
+  useEffect(() => {
+    if (index >= routes.length) {
+      setIndex(0);
+    }
+  }, [routes]);
 
   // Scene mapping for tabs
   const renderScene = BottomNavigation.SceneMap({
@@ -106,6 +144,7 @@ const AppRouterController: React.FC = () => {
 
   // Helper to dynamically set active tab color based on brand color system
   const getTabActiveColor = () => {
+    if (!routes[index]) return '#00D4AA';
     switch (routes[index].key) {
       case 'home': return '#00D4AA';     // Emerald Green
       case 'finances': return '#FFD700'; // Gold
@@ -134,15 +173,7 @@ const AppRouterController: React.FC = () => {
 
 // Root App entry point
 export default function AppEntry() {
-  return (
-    <SafeAreaProvider>
-      <PaperProvider theme={premiumDarkTheme}>
-        <AuthProvider>
-          <AppRouterController />
-        </AuthProvider>
-      </PaperProvider>
-    </SafeAreaProvider>
-  );
+  return <AppRouterController />;
 }
 
 const styles = StyleSheet.create({

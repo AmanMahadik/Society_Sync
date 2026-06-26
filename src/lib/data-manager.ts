@@ -23,6 +23,8 @@ export interface Profile {
   created_at?: string;
   approved_at?: string | null;
   notification_token?: string | null;
+  vehicle_number?: string | null;
+  bio?: string | null;
 }
 
 // 2. Events (Festival Ledger)
@@ -256,74 +258,20 @@ const INITIAL_DEMO_SETTINGS: SocietySettings = {
 };
 
 class DataManager {
-  private useMock: boolean = true;
+  private useMock: boolean = false;
   private listeners: { [key: string]: Function[] } = {};
 
   constructor() {
-    this.useMock = !isRealSupabaseConfigured();
-    console.log(`SocietySync running in ${this.useMock ? 'DEMO/OFFLINE' : 'SUPABASE PRODUCTION'} mode.`);
-    this.initializeMockData();
+    this.useMock = false;
+    console.log(`SocietySync running in SUPABASE PRODUCTION mode.`);
   }
 
   setMockMode(mock: boolean) {
-    this.useMock = mock;
-    this.initializeMockData();
+    this.useMock = false;
   }
 
   isMockMode() {
-    return this.useMock;
-  }
-
-  private async initializeMockData() {
-    if (typeof window === 'undefined') return; // Bypass on server-side pre-rendering
-    if (!this.useMock) return;
-    try {
-      const keys = ['profiles', 'events', 'transactions', 'dues', 'complaints', 'threads', 'messages', 'polls', 'poll_options', 'settings'];
-      for (const key of keys) {
-        const data = await AsyncStorage.getItem(`sync_mock_v2_${key}`);
-        if (!data) {
-          let initial: any = [];
-          if (key === 'profiles') initial = INITIAL_DEMO_PROFILES;
-          else if (key === 'events') initial = INITIAL_DEMO_EVENTS;
-          else if (key === 'transactions') initial = INITIAL_DEMO_TXS;
-          else if (key === 'dues') initial = INITIAL_DEMO_DUES;
-          else if (key === 'complaints') initial = INITIAL_DEMO_COMPLAINTS;
-          else if (key === 'threads') initial = INITIAL_DEMO_THREADS;
-          else if (key === 'messages') initial = INITIAL_DEMO_MESSAGES;
-          else if (key === 'polls') initial = INITIAL_DEMO_POLLS;
-          else if (key === 'poll_options') initial = INITIAL_DEMO_POLL_OPTIONS;
-          else if (key === 'settings') initial = INITIAL_DEMO_SETTINGS;
-          await AsyncStorage.setItem(`sync_mock_v2_${key}`, JSON.stringify(initial));
-        }
-      }
-    } catch (e) {
-      console.error('Error initializing mock storage', e);
-    }
-  }
-
-  private async getMockItems<T>(key: string): Promise<T[]> {
-    if (typeof window === 'undefined') {
-      // Return static demo data directly for server-side pre-rendering
-      if (key === 'profiles') return INITIAL_DEMO_PROFILES as any;
-      if (key === 'events') return INITIAL_DEMO_EVENTS as any;
-      if (key === 'transactions') return INITIAL_DEMO_TXS as any;
-      if (key === 'dues') return INITIAL_DEMO_DUES as any;
-      if (key === 'complaints') return INITIAL_DEMO_COMPLAINTS as any;
-      if (key === 'threads') return INITIAL_DEMO_THREADS as any;
-      if (key === 'messages') return INITIAL_DEMO_MESSAGES as any;
-      if (key === 'polls') return INITIAL_DEMO_POLLS as any;
-      if (key === 'poll_options') return INITIAL_DEMO_POLL_OPTIONS as any;
-      if (key === 'settings') return INITIAL_DEMO_SETTINGS as any;
-      return [];
-    }
-    const data = await AsyncStorage.getItem(`sync_mock_v2_${key}`);
-    return data ? JSON.parse(data) : [];
-  }
-
-  private async saveMockItems<T>(key: string, items: T[]): Promise<void> {
-    if (typeof window === 'undefined') return;
-    await AsyncStorage.setItem(`sync_mock_v2_${key}`, JSON.stringify(items));
-    this.triggerListener(key, items);
+    return false;
   }
 
   // Real-time Event simulation subscription
@@ -343,367 +291,268 @@ class DataManager {
     }
   }
 
+  // Real Notification helper
+  async createNotification(userId: string, title: string, body: string, data: any = {}): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          title,
+          body,
+          data: data || {},
+          is_read: false
+        });
+      if (error) console.error('Error inserting notification:', error);
+    } catch (e) {
+      console.error('Notification insert catch:', e);
+    }
+  }
+
   // ==========================================
   // 1. PROFILES / USER MANAGEMENT
   // ==========================================
   async getProfile(userId: string): Promise<Profile | null> {
-    if (this.useMock) {
-      const profiles = await this.getMockItems<Profile>('profiles');
-      return profiles.find(p => p.id === userId) || null;
-    } else {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (error) return null;
-      return data;
-    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (error) return null;
+    return data;
   }
 
   async getAllProfiles(): Promise<Profile[]> {
-    if (this.useMock) {
-      return this.getMockItems<Profile>('profiles');
-    } else {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
   }
 
   async registerProfile(profile: Profile): Promise<void> {
-    if (this.useMock) {
-      const profiles = await this.getMockItems<Profile>('profiles');
-      const isFirst = profiles.length === 0;
-      const newProfile: Profile = {
-        ...profile,
-        role: isFirst ? 'admin' : profile.role,
-        status: isFirst ? 'approved' : profile.status
-      };
-      profiles.push(newProfile);
-      await this.saveMockItems('profiles', profiles);
-    } else {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert(profile);
-      if (error) throw error;
-    }
+    const { error } = await supabase
+      .from('profiles')
+      .upsert(profile);
+    if (error) throw error;
   }
 
   async updateProfileApproval(userId: string, approved: boolean): Promise<void> {
     const status: UserStatus = approved ? 'approved' : 'rejected';
-    if (this.useMock) {
-      const profiles = await this.getMockItems<Profile>('profiles');
-      const updated = profiles.map(p => p.id === userId ? { ...p, status, approved_at: approved ? new Date().toISOString() : null } : p);
-      await this.saveMockItems('profiles', updated);
-    } else {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status, approved_at: approved ? new Date().toISOString() : null })
-        .eq('id', userId);
-      if (error) throw error;
-    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ status, approved_at: approved ? new Date().toISOString() : null })
+      .eq('id', userId);
+    if (error) throw error;
+
+    await this.createNotification(
+      userId,
+      approved ? `🎉 Roster Approved!` : `⚠️ Roster Rejected`,
+      approved 
+        ? `Congratulations! Your resident profile has been APPROVED by the Society Secretary.` 
+        : `Your resident profile registration has been rejected. Please contact the society office.`
+    );
   }
 
   async updateProfileRole(userId: string, role: UserRole): Promise<void> {
-    if (this.useMock) {
-      const profiles = await this.getMockItems<Profile>('profiles');
-      const updated = profiles.map(p => p.id === userId ? { ...p, role } : p);
-      await this.saveMockItems('profiles', updated);
-    } else {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', userId);
-      if (error) throw error;
-    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId);
+    if (error) throw error;
   }
 
-  async updateProfileDetails(userId: string, fullName: string, phone: string, flat: string, wing: string, society: string): Promise<void> {
-    if (this.useMock) {
-      const profiles = await this.getMockItems<Profile>('profiles');
-      const updated = profiles.map(p => 
-        p.id === userId 
-          ? { ...p, full_name: fullName, phone, flat_number: flat, wing, society_name: society } 
-          : p
-      );
-      await this.saveMockItems('profiles', updated);
-    } else {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: fullName, phone, flat_number: flat, wing, society_name: society })
-        .eq('id', userId);
-      if (error) throw error;
-    }
+  async updateProfileDetails(
+    userId: string, 
+    fullName: string, 
+    phone: string, 
+    flat: string, 
+    wing: string, 
+    society: string,
+    vehicleNumber?: string | null,
+    bio?: string | null,
+    avatarUrl?: string | null
+  ): Promise<void> {
+    const updateData: any = { 
+      full_name: fullName, 
+      phone, 
+      flat_number: flat, 
+      wing, 
+      society_name: society 
+    };
+    if (vehicleNumber !== undefined) updateData.vehicle_number = vehicleNumber;
+    if (bio !== undefined) updateData.bio = bio;
+    if (avatarUrl !== undefined) updateData.google_picture_url = avatarUrl;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId);
+    if (error) throw error;
   }
 
   // ==========================================
   // 2. FESTIVAL LEDGER EVENTS
   // ==========================================
   async getEvents(): Promise<Event[]> {
-    if (this.useMock) {
-      const events = await this.getMockItems<Event>('events');
-      const txs = await this.getMockItems<Transaction>('transactions');
-      
-      // Dynamically calculate balances in local mock mode
-      return events.map(event => {
-        const eventTxs = txs.filter(t => t.event_id === event.id);
-        const totalIncome = eventTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-        const totalExpense = eventTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-        return {
-          ...event,
-          total_income: totalIncome,
-          total_expense: totalExpense,
-          balance: totalIncome - totalExpense
-        };
-      });
-    } else {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    }
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('event_date', { ascending: false });
+    if (error) throw error;
+    return data || [];
   }
 
   async createEvent(name: string, description: string, date: string, creatorId: string): Promise<Event> {
-    const newEvent: Event = {
-      id: this.useMock ? `event-${Date.now()}` : undefined as any,
+    const newEvent = {
       name,
       description,
       event_date: date,
-      total_income: 0,
-      total_expense: 0,
-      balance: 0,
-      created_by: creatorId,
-      is_active: true
+      is_active: true,
+      created_by: creatorId
     };
-
-    if (this.useMock) {
-      const events = await this.getMockItems<Event>('events');
-      events.push(newEvent);
-      await this.saveMockItems('events', events);
-      return newEvent;
-    } else {
-      const { data, error } = await supabase
-        .from('events')
-        .insert(newEvent)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
+    const { data, error } = await supabase
+      .from('events')
+      .insert(newEvent)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 
   // ==========================================
   // 3. TRANSACTIONS
   // ==========================================
   async getTransactions(eventId: string): Promise<Transaction[]> {
-    if (this.useMock) {
-      const txs = await this.getMockItems<Transaction>('transactions');
-      const profiles = await this.getMockItems<Profile>('profiles');
-      return txs
-        .filter(t => t.event_id === eventId)
-        .map(t => {
-          const recorder = profiles.find(p => p.id === t.recorded_by);
-          return {
-            ...t,
-            recorded_by_name: recorder?.full_name || 'Admin'
-          };
-        }).sort((a, b) => new Date(b.recorded_at!).getTime() - new Date(a.recorded_at!).getTime());
-    } else {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*, recorder:profiles(full_name)')
-        .eq('event_id', eventId)
-        .order('recorded_at', { ascending: false });
-      if (error) throw error;
-      return (data || []).map((t: any) => ({
-        ...t,
-        recorded_by_name: t.recorder?.full_name
-      }));
-    }
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*, recorder:profiles(full_name)')
+      .eq('event_id', eventId)
+      .order('recorded_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((t: any) => ({
+      ...t,
+      recorded_by_name: t.recorder?.full_name
+    }));
   }
 
   async addTransaction(tx: Omit<Transaction, 'id' | 'recorded_at'>): Promise<Transaction> {
-    const newTx: Transaction = {
+    const newTx = {
       ...tx,
-      id: this.useMock ? `tx-${Date.now()}` : undefined as any,
       recorded_at: new Date().toISOString()
     };
-
-    if (this.useMock) {
-      const txs = await this.getMockItems<Transaction>('transactions');
-      txs.push(newTx);
-      await this.saveMockItems('transactions', txs);
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert(newTx)
+      .select()
+      .single();
+    if (error) throw error;
+    
+    // Update the event table aggregate values
+    const eventTxs = await this.getTransactions(tx.event_id);
+    const totalIncome = eventTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalExpense = eventTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+    await supabase
+      .from('events')
+      .update({ total_income: totalIncome, total_expense: totalExpense })
+      .eq('id', tx.event_id);
       
-      // Trigger event list recalculation
-      const events = await this.getMockItems<Event>('events');
-      this.triggerListener('events', events);
-      
-      return newTx;
-    } else {
-      // Real database insert
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert(newTx)
-        .select()
-        .single();
-      if (error) throw error;
-      
-      // Update the event table aggregate values (Supabase real database recalculation)
-      const eventTxs = await this.getTransactions(tx.event_id);
-      const totalIncome = eventTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
-      const totalExpense = eventTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
-      await supabase
-        .from('events')
-        .update({ total_income: totalIncome, total_expense: totalExpense })
-        .eq('id', tx.event_id);
-        
-      return data;
-    }
+    return data;
   }
 
   // ==========================================
   // 4. MAINTENANCE DUES
   // ==========================================
   async getMaintenanceDues(): Promise<MaintenanceDue[]> {
-    if (this.useMock) {
-      const dues = await this.getMockItems<MaintenanceDue>('dues');
-      const settings = await this.getSocietySettings();
-      const lateFeePercent = settings?.late_fee_percentage || 2.0;
-
-      // Apply dynamic late fee calculations to overdue items in local mode
-      return dues.map(due => {
-        let status = due.status;
-        let interest = due.interest_charged;
-
-        if (status !== 'paid') {
-          const isOverdue = new Date() > new Date(due.due_date);
-          if (isOverdue) {
-            status = 'overdue';
-            // Calculate 2% interest on outstanding amount
-            interest = Number((due.amount * (lateFeePercent / 100)).toFixed(2));
-          } else {
-            status = 'pending';
-            interest = 0;
-          }
-        }
-        return {
-          ...due,
-          status,
-          interest_charged: interest
-        };
-      }).sort((a, b) => {
-        if (a.status === 'paid' && b.status !== 'paid') return 1;
-        if (a.status !== 'paid' && b.status === 'paid') return -1;
-        // Sort highest outstanding dues first (amount + interest - paid_amount)
-        const aOutstanding = a.amount + a.interest_charged - a.paid_amount;
-        const bOutstanding = b.amount + b.interest_charged - b.paid_amount;
-        return bOutstanding - aOutstanding;
-      });
-    } else {
-      const { data, error } = await supabase
-        .from('maintenance_dues')
-        .select('*');
-      if (error) throw error;
+    const { data, error } = await supabase
+      .from('maintenance_dues')
+      .select('*');
+    if (error) throw error;
+    
+    const settings = await this.getSocietySettings();
+    const lateFeePercent = settings?.late_fee_percentage || 2.0;
+    
+    return (data || []).map((due: any) => {
+      let status = due.status;
+      let interest = Number(due.interest_charged);
       
-      // Compute late fees on live DB rows if they are overdue and unpaid
-      const settings = await this.getSocietySettings();
-      const lateFeePercent = settings?.late_fee_percentage || 2.0;
-      
-      return (data || []).map((due: any) => {
-        let status = due.status;
-        let interest = Number(due.interest_charged);
-        
-        if (status !== 'paid') {
-          const isOverdue = new Date() > new Date(due.due_date);
-          if (isOverdue) {
-            status = 'overdue';
-            interest = Number((due.amount * (lateFeePercent / 100)).toFixed(2));
-          }
+      if (status !== 'paid') {
+        const isOverdue = new Date() > new Date(due.due_date);
+        if (isOverdue) {
+          status = 'overdue';
+          interest = Number((due.amount * (lateFeePercent / 100)).toFixed(2));
         }
-        return {
-          ...due,
-          status,
-          interest_charged: interest
-        };
-      }).sort((a, b) => {
-        if (a.status === 'paid' && b.status !== 'paid') return 1;
-        if (a.status !== 'paid' && b.status === 'paid') return -1;
-        const aOut = a.amount + a.interest_charged - a.paid_amount;
-        const bOut = b.amount + b.interest_charged - b.paid_amount;
-        return bOut - aOut;
-      });
-    }
+      }
+      return {
+        ...due,
+        status,
+        interest_charged: interest
+      };
+    }).sort((a, b) => {
+      if (a.status === 'paid' && b.status !== 'paid') return 1;
+      if (a.status !== 'paid' && b.status === 'paid') return -1;
+      const aOut = a.amount + a.interest_charged - a.paid_amount;
+      const bOut = b.amount + b.interest_charged - b.paid_amount;
+      return bOut - aOut;
+    });
   }
 
   async addMaintenanceDue(due: Omit<MaintenanceDue, 'id' | 'interest_charged'>): Promise<MaintenanceDue> {
-    const newDue: MaintenanceDue = {
+    const newDue = {
       ...due,
-      id: this.useMock ? `due-${Date.now()}` : undefined as any,
       interest_charged: 0
     };
+    const { data, error } = await supabase
+      .from('maintenance_dues')
+      .insert(newDue)
+      .select()
+      .single();
+    if (error) throw error;
 
-    if (this.useMock) {
-      const dues = await this.getMockItems<MaintenanceDue>('dues');
-      // Enforce unique composite constraint
-      const exists = dues.some(d => d.wing === due.wing && d.flat_number === due.flat_number && d.month === due.month);
-      if (exists) throw new Error('Dues already exist for this flat and month!');
-      dues.push(newDue);
-      await this.saveMockItems('dues', dues);
-      return newDue;
-    } else {
-      const { data, error } = await supabase
-        .from('maintenance_dues')
-        .insert(newDue)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    // Notify flat owner/renter of new dues
+    try {
+      const { data: residents } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('wing', due.wing)
+        .eq('flat_number', due.flat_number);
+      
+      if (residents) {
+        for (const r of residents) {
+          await this.createNotification(
+            r.id,
+            `💰 Maintenance Dues Recorded`,
+            `New maintenance dues of ₹${due.amount.toLocaleString()} have been set for the month of ${due.month}. Due by ${due.due_date}.`
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Notification trigger error:', err);
     }
+
+    return data;
   }
 
   async markDuesPaid(dueId: string): Promise<void> {
-    if (this.useMock) {
-      const dues = await this.getMockItems<MaintenanceDue>('dues');
-      const updated = dues.map(due => 
-        due.id === dueId 
-          ? { 
-              ...due, 
-              status: 'paid' as any, 
-              paid_amount: due.amount + due.interest_charged, 
-              paid_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            } 
-          : due
-      );
-      await this.saveMockItems('dues', updated);
-    } else {
-      const { data: dueData } = await supabase.from('maintenance_dues').select('*').eq('id', dueId).single();
-      if (dueData) {
-        // Calculate dynamic interest on the fly
-        const settings = await this.getSocietySettings();
-        const lateFeePercent = settings?.late_fee_percentage || 2.0;
-        const isOverdue = new Date() > new Date(dueData.due_date);
-        const interest = isOverdue ? Number((dueData.amount * (lateFeePercent / 100)).toFixed(2)) : 0.00;
+    const { data: dueData } = await supabase.from('maintenance_dues').select('*').eq('id', dueId).single();
+    if (dueData) {
+      const settings = await this.getSocietySettings();
+      const lateFeePercent = settings?.late_fee_percentage || 2.0;
+      const isOverdue = new Date() > new Date(dueData.due_date);
+      const interest = isOverdue ? Number((dueData.amount * (lateFeePercent / 100)).toFixed(2)) : 0.00;
 
-        const { error } = await supabase
-          .from('maintenance_dues')
-          .update({ 
-            status: 'paid', 
-            paid_amount: Number(dueData.amount) + interest, 
-            interest_charged: interest,
-            paid_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', dueId);
-        if (error) throw error;
-      }
+      const { error } = await supabase
+        .from('maintenance_dues')
+        .update({ 
+          status: 'paid', 
+          paid_amount: Number(dueData.amount) + interest, 
+          interest_charged: interest,
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', dueId);
+      if (error) throw error;
     }
   }
 
@@ -711,110 +560,90 @@ class DataManager {
   // 5. SMART PARKING
   // ==========================================
   async getParkingBookings(date: string): Promise<ParkingRequest[]> {
-    if (this.useMock) {
-      const requests = await this.getMockItems<ParkingRequest>('bookings');
-      const profiles = await this.getMockItems<Profile>('profiles');
-      return requests
-        .filter(r => r.date === date)
-        .map(req => {
-          const user = profiles.find(p => p.id === req.user_id);
-          return {
-            ...req,
-            user_name: user?.full_name || 'Resident',
-            user_flat: `${user?.wing || ''}-${user?.flat_number || ''}`
-          };
-        });
-    } else {
-      const { data, error } = await supabase
-        .from('parking_requests')
-        .select('*, user:profiles(full_name, flat_number, wing), slot:parking_slots(slot_number)')
-        .eq('date', date);
-      if (error) throw error;
-      
-      return (data || []).map((item: any) => ({
-        ...item,
-        slot_number: item.slot?.slot_number,
-        user_name: item.user?.full_name,
-        user_flat: `${item.user?.wing || ''}-${item.user?.flat_number || ''}`
-      }));
-    }
+    const { data, error } = await supabase
+      .from('parking_requests')
+      .select('*, user:profiles(full_name, flat_number, wing), slot:parking_slots(slot_number)')
+      .eq('date', date);
+    if (error) throw error;
+    
+    return (data || []).map((item: any) => ({
+      ...item,
+      slot_number: item.slot?.slot_number,
+      user_name: item.user?.full_name,
+      user_flat: `${item.user?.wing || ''}-${item.user?.flat_number || ''}`
+    }));
   }
 
   async requestParkingBooking(user_id: string, slotNum: string, date: string, time_slot: ParkingTimeSlot, vehicle: string, visitor: string): Promise<ParkingRequest> {
-    if (this.useMock) {
-      const bookings = await this.getMockItems<ParkingRequest>('bookings');
-      // Check overlap
-      const isOccupied = bookings.some(b => b.date === date && b.slot_number === slotNum && b.time_slot === time_slot && b.status === 'approved');
-      if (isOccupied) {
-        throw new Error('This slot is already booked/occupied for this time slot!');
-      }
+    const { data: slotData } = await supabase.from('parking_slots').select('id').eq('slot_number', slotNum).single();
+    if (!slotData) throw new Error('Slot does not exist!');
 
-      const newRequest: ParkingRequest = {
-        id: `book-${Date.now()}`,
+    const { data: overlaps } = await supabase
+      .from('parking_requests')
+      .select('id')
+      .eq('date', date)
+      .eq('slot_id', slotData.id)
+      .eq('time_slot', time_slot)
+      .eq('status', 'approved');
+      
+    if (overlaps && overlaps.length > 0) {
+      throw new Error('Slot already booked for this time window!');
+    }
+
+    const { data, error } = await supabase
+      .from('parking_requests')
+      .insert({
         user_id,
-        slot_id: `slot-${slotNum}`,
-        slot_number: slotNum,
+        slot_id: slotData.id,
         date,
         time_slot,
         vehicle_number: vehicle.toUpperCase(),
         visitor_name: visitor,
         status: 'pending'
-      };
+      })
+      .select()
+      .single();
+    if (error) throw error;
 
-      bookings.push(newRequest);
-      await this.saveMockItems('bookings', bookings);
-      return newRequest;
-    } else {
-      // Get slot ID first
-      const { data: slotData } = await supabase.from('parking_slots').select('id').eq('slot_number', slotNum).single();
-      if (!slotData) throw new Error('Slot does not exist!');
-
-      // Check overlap in live db
-      const { data: overlaps } = await supabase
-        .from('parking_requests')
+    // Notify all admins
+    try {
+      const { data: admins } = await supabase
+        .from('profiles')
         .select('id')
-        .eq('date', date)
-        .eq('slot_id', slotData.id)
-        .eq('time_slot', time_slot)
-        .eq('status', 'approved');
-        
-      if (overlaps && overlaps.length > 0) {
-        throw new Error('Slot already booked for this time window!');
+        .eq('role', 'admin');
+      
+      if (admins) {
+        for (const a of admins) {
+          await this.createNotification(
+            a.id,
+            `🚗 Parking Booking Requested`,
+            `Visitor parking request submitted for Slot ${slotNum} on ${date} (${time_slot}) by Flat Host.`
+          );
+        }
       }
-
-      const { data, error } = await supabase
-        .from('parking_requests')
-        .insert({
-          user_id,
-          slot_id: slotData.id,
-          date,
-          time_slot,
-          vehicle_number: vehicle.toUpperCase(),
-          visitor_name: visitor,
-          status: 'pending'
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    } catch (err) {
+      console.error('Notification trigger error:', err);
     }
+
+    return data;
   }
 
   async updateParkingRequestStatus(requestId: string, status: ParkingStatus, adminId: string): Promise<void> {
-    if (this.useMock) {
-      const bookings = await this.getMockItems<ParkingRequest>('bookings');
-      const updated = bookings.map(b => 
-        b.id === requestId 
-          ? { ...b, status, approved_by: adminId, approved_at: new Date().toISOString() } 
-          : b
+    const { data, error } = await supabase
+      .from('parking_requests')
+      .update({ status, approved_by: adminId, approved_at: new Date().toISOString() })
+      .eq('id', requestId)
+      .select('*, slot:parking_slots(slot_number)')
+      .single();
+    if (error) throw error;
+
+    if (data) {
+      const slotNum = data.slot?.slot_number || 'Visitor Slot';
+      await this.createNotification(
+        data.user_id,
+        status === 'approved' ? `✅ Parking Approved` : `❌ Parking Rejected`,
+        `Your visitor parking request for Slot ${slotNum} on ${data.date} (${data.time_slot}) has been ${status.toUpperCase()} by the Admin.`
       );
-      await this.saveMockItems('bookings', updated);
-    } else {
-      const { error } = await supabase
-        .from('parking_requests')
-        .update({ status, approved_by: adminId, approved_at: new Date().toISOString() })
-        .eq('id', requestId);
-      if (error) throw error;
     }
   }
 
@@ -822,27 +651,15 @@ class DataManager {
   // 6. SOS COMPLAINTS
   // ==========================================
   async getComplaints(): Promise<Complaint[]> {
-    if (this.useMock) {
-      const complaints = await this.getMockItems<Complaint>('complaints');
-      const profiles = await this.getMockItems<Profile>('profiles');
-      return complaints.map(c => {
-        const sender = profiles.find(p => p.id === c.user_id);
-        return {
-          ...c,
-          user_name: sender?.full_name || 'Resident'
-        };
-      }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    } else {
-      const { data, error } = await supabase
-        .from('complaints')
-        .select('*, user:profiles(full_name)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []).map((item: any) => ({
-        ...item,
-        user_name: item.user?.full_name
-      }));
-    }
+    const { data, error } = await supabase
+      .from('complaints')
+      .select('*, user:profiles(full_name)')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((item: any) => ({
+      ...item,
+      user_name: item.user?.full_name
+    }));
   }
 
   async raiseComplaint(userId: string, type: 'water_low' | 'motor_off' | 'electricity' | 'security' | 'other', wing: string, flat: string, description: string): Promise<Complaint> {
@@ -857,56 +674,69 @@ class DataManager {
       created_at: new Date().toISOString()
     };
 
-    if (this.useMock) {
-      const complaints = await this.getMockItems<Complaint>('complaints');
-      const fullComplaint = { ...newComplaint, id: `comp-${Date.now()}` } as Complaint;
-      complaints.push(fullComplaint);
-      await this.saveMockItems('complaints', complaints);
-      return fullComplaint;
-    } else {
-      const { data, error } = await supabase
-        .from('complaints')
-        .insert(newComplaint)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    const { data, error } = await supabase
+      .from('complaints')
+      .insert(newComplaint)
+      .select()
+      .single();
+    if (error) throw error;
+
+    // Notify admins and guards
+    try {
+      const { data: staff } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('role', ['admin', 'guard']);
+      
+      if (staff) {
+        for (const s of staff) {
+          await this.createNotification(
+            s.id,
+            `🚨 SOS Crisis Alert: Flat ${wing}-${flat}`,
+            `${type.replace('_', ' ').toUpperCase()} crisis reported! Description: ${description}`
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Notification trigger error:', err);
     }
+
+    return data;
   }
 
   async acknowledgeComplaint(complaintId: string, adminId: string): Promise<void> {
-    if (this.useMock) {
-      const complaints = await this.getMockItems<Complaint>('complaints');
-      const updated = complaints.map(c => 
-        c.id === complaintId 
-          ? { ...c, status: 'acknowledged' as ComplaintStatus, acknowledged_by: adminId, acknowledged_at: new Date().toISOString() } 
-          : c
+    const { data, error } = await supabase
+      .from('complaints')
+      .update({ status: 'acknowledged', acknowledged_by: adminId, acknowledged_at: new Date().toISOString() })
+      .eq('id', complaintId)
+      .select()
+      .single();
+    if (error) throw error;
+
+    if (data) {
+      await this.createNotification(
+        data.user_id,
+        `📢 SOS Acknowledged`,
+        `Your SOS regarding ${data.type.replace('_', ' ').toUpperCase()} has been acknowledged by the Security Desk.`
       );
-      await this.saveMockItems('complaints', updated);
-    } else {
-      const { error } = await supabase
-        .from('complaints')
-        .update({ status: 'acknowledged', acknowledged_by: adminId, acknowledged_at: new Date().toISOString() })
-        .eq('id', complaintId);
-      if (error) throw error;
     }
   }
 
   async resolveComplaint(complaintId: string): Promise<void> {
-    if (this.useMock) {
-      const complaints = await this.getMockItems<Complaint>('complaints');
-      const updated = complaints.map(c => 
-        c.id === complaintId 
-          ? { ...c, status: 'resolved' as ComplaintStatus, resolved_at: new Date().toISOString() } 
-          : c
+    const { data, error } = await supabase
+      .from('complaints')
+      .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+      .eq('id', complaintId)
+      .select()
+      .single();
+    if (error) throw error;
+
+    if (data) {
+      await this.createNotification(
+        data.user_id,
+        `✅ SOS Resolved`,
+        `Your SOS crisis regarding ${data.type.replace('_', ' ').toUpperCase()} has been marked as RESOLVED by the Council.`
       );
-      await this.saveMockItems('complaints', updated);
-    } else {
-      const { error } = await supabase
-        .from('complaints')
-        .update({ status: 'resolved', resolved_at: new Date().toISOString() })
-        .eq('id', complaintId);
-      if (error) throw error;
     }
   }
 
@@ -914,246 +744,127 @@ class DataManager {
   // 7. CHAT & VOTING POLLS
   // ==========================================
   async getChatThreads(): Promise<ChatThread[]> {
-    if (this.useMock) {
-      return this.getMockItems<ChatThread>('threads');
-    } else {
-      const { data, error } = await supabase
-        .from('chat_threads')
-        .select('*')
-        .eq('is_archived', false)
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    }
+    const { data, error } = await supabase
+      .from('chat_threads')
+      .select('*')
+      .eq('is_archived', false)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
   }
 
   async createChatThread(title: string, category: any, creatorId: string): Promise<ChatThread> {
-    const newThread: ChatThread = {
-      id: this.useMock ? `thread-${Date.now()}` : undefined as any,
+    const newThread = {
       title,
       category,
       created_by: creatorId,
       is_archived: false,
       created_at: new Date().toISOString()
     };
-
-    if (this.useMock) {
-      const threads = await this.getMockItems<ChatThread>('threads');
-      threads.push(newThread);
-      await this.saveMockItems('threads', threads);
-      return newThread;
-    } else {
-      const { data, error } = await supabase
-        .from('chat_threads')
-        .insert(newThread)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
+    const { data, error } = await supabase
+      .from('chat_threads')
+      .insert(newThread)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 
   async getChatMessages(threadId: string): Promise<ChatMessage[]> {
-    if (this.useMock) {
-      const messages = await this.getMockItems<ChatMessage>('messages');
-      const profiles = await this.getMockItems<Profile>('profiles');
-      return messages
-        .filter(m => m.thread_id === threadId)
-        .map(m => {
-          const sender = profiles.find(p => p.id === m.user_id);
-          return {
-            ...m,
-            sender_name: sender?.full_name || 'Resident',
-            sender_role: sender?.role || 'renter',
-            sender_flat: sender ? `${sender.wing}-${sender.flat_number}` : '?'
-          };
-        }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    } else {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*, sender:profiles(full_name, role, flat_number, wing)')
-        .eq('thread_id', threadId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return (data || []).map((m: any) => ({
-        ...m,
-        sender_name: m.sender?.full_name,
-        sender_role: m.sender?.role,
-        sender_flat: m.sender ? `${m.sender.wing}-${m.sender.flat_number}` : '?'
-      }));
-    }
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*, sender:profiles(full_name, role, flat_number, wing)')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map((m: any) => ({
+      ...m,
+      sender_name: m.sender?.full_name,
+      sender_role: m.sender?.role,
+      sender_flat: m.sender ? `${m.sender.wing}-${m.sender.flat_number}` : '?'
+    }));
   }
 
   async sendChatMessage(threadId: string, userId: string, content: string): Promise<ChatMessage> {
-    const newMsg: ChatMessage = {
-      id: this.useMock ? `msg-${Date.now()}` : undefined as any,
+    const newMsg = {
       thread_id: threadId,
       user_id: userId,
       content,
       is_pinned: false,
       created_at: new Date().toISOString()
     };
-
-    if (this.useMock) {
-      const messages = await this.getMockItems<ChatMessage>('messages');
-      messages.push(newMsg);
-      await this.saveMockItems('messages', messages);
-      return newMsg;
-    } else {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert(newMsg)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert(newMsg)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 
   async pinMessage(messageId: string, isPinned: boolean): Promise<void> {
-    if (this.useMock) {
-      const messages = await this.getMockItems<ChatMessage>('messages');
-      const updated = messages.map(m => m.id === messageId ? { ...m, is_pinned: isPinned } : m);
-      await this.saveMockItems('messages', updated);
-    } else {
-      const { error } = await supabase
-        .from('chat_messages')
-        .update({ is_pinned: isPinned })
-        .eq('id', messageId);
-      if (error) throw error;
-    }
+    const { error } = await supabase
+      .from('chat_messages')
+      .update({ is_pinned: isPinned })
+      .eq('id', messageId);
+    if (error) throw error;
   }
 
   // ==========================================
   // 8. VOTING POLLS
   // ==========================================
   async getPolls(threadId: string, userId: string): Promise<Poll[]> {
-    if (this.useMock) {
-      const polls = await this.getMockItems<Poll>('polls');
-      const options = await this.getMockItems<PollOption>('poll_options');
-      const votes = await AsyncStorage.getItem('sync_mock_poll_votes');
-      const localVotes = votes ? JSON.parse(votes) : [];
-
-      return polls
-        .filter(p => p.thread_id === threadId)
-        .map(poll => {
-          const pollOptions = options.filter(o => o.poll_id === poll.id);
-          const userHasVoted = localVotes.some((v: any) => v.poll_id === poll.id && v.user_id === userId);
-          return {
-            ...poll,
-            options: pollOptions,
-            hasVoted: userHasVoted
-          };
-        });
-    } else {
-      const { data: pollsData, error: pollsError } = await supabase
-        .from('polls')
-        .select('*')
-        .eq('thread_id', threadId)
-        .order('created_at', { ascending: false });
-        
-      if (pollsError) throw pollsError;
+    const { data: pollsData, error: pollsError } = await supabase
+      .from('polls')
+      .select('*')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: false });
       
-      const results: Poll[] = [];
-      for (const poll of (pollsData || [])) {
-        const { data: opts } = await supabase.from('poll_options').select('*').eq('poll_id', poll.id);
-        const { data: myVote } = await supabase.from('poll_votes').select('id').eq('poll_id', poll.id).eq('user_id', userId);
-        results.push({
-          ...poll,
-          options: opts || [],
-          hasVoted: (myVote && myVote.length > 0)
-        });
-      }
-      return results;
+    if (pollsError) throw pollsError;
+    
+    const results: Poll[] = [];
+    for (const poll of (pollsData || [])) {
+      const { data: opts } = await supabase.from('poll_options').select('*').eq('poll_id', poll.id);
+      const { data: myVote } = await supabase.from('poll_votes').select('id').eq('poll_id', poll.id).eq('user_id', userId);
+      results.push({
+        ...poll,
+        options: opts || [],
+        hasVoted: (myVote && myVote.length > 0)
+      });
     }
+    return results;
   }
 
   async createPoll(threadId: string, title: string, description: string, creatorId: string, optionTexts: string[]): Promise<Poll> {
-    if (this.useMock) {
-      const polls = await this.getMockItems<Poll>('polls');
-      const options = await this.getMockItems<PollOption>('poll_options');
-      
-      const pollId = `poll-${Date.now()}`;
-      const newPoll: Poll = {
-        id: pollId,
-        title,
-        description,
-        thread_id: threadId,
-        created_by: creatorId,
-        status: 'active',
-        created_at: new Date().toISOString()
-      };
+    const { data: poll, error } = await supabase
+      .from('polls')
+      .insert({ thread_id: threadId, title, description, created_by: creatorId })
+      .select()
+      .single();
+    if (error) throw error;
 
-      const newOptions = optionTexts.map((txt, idx) => ({
-        id: `opt-${pollId}-${idx}`,
-        poll_id: pollId,
-        option_text: txt,
-        vote_count: 0
-      }));
+    const optsToInsert = optionTexts.map(txt => ({ poll_id: poll.id, option_text: txt }));
+    const { data: insertedOpts } = await supabase.from('poll_options').insert(optsToInsert).select();
 
-      polls.push(newPoll);
-      options.push(...newOptions);
-
-      await this.saveMockItems('polls', polls);
-      await this.saveMockItems('poll_options', options);
-
-      return {
-        ...newPoll,
-        options: newOptions,
-        hasVoted: false
-      };
-    } else {
-      // Live Supabase inserts
-      const { data: poll, error } = await supabase
-        .from('polls')
-        .insert({ thread_id: threadId, title, description, created_by: creatorId })
-        .select()
-        .single();
-      if (error) throw error;
-
-      const optsToInsert = optionTexts.map(txt => ({ poll_id: poll.id, option_text: txt }));
-      const { data: insertedOpts } = await supabase.from('poll_options').insert(optsToInsert).select();
-
-      return {
-        ...poll,
-        options: insertedOpts || [],
-        hasVoted: false
-      };
-    }
+    return {
+      ...poll,
+      options: insertedOpts || [],
+      hasVoted: false
+    };
   }
 
   async voteInPoll(pollId: string, optionId: string, userId: string): Promise<void> {
-    if (this.useMock) {
-      const votesKey = 'sync_mock_poll_votes';
-      const votesStr = await AsyncStorage.getItem(votesKey);
-      const votes = votesStr ? JSON.parse(votesStr) : [];
+    const { error } = await supabase
+      .from('poll_votes')
+      .insert({ poll_id: pollId, option_id: optionId, user_id: userId });
+    if (error) throw error;
 
-      // Ensure single vote
-      const alreadyVoted = votes.some((v: any) => v.poll_id === pollId && v.user_id === userId);
-      if (alreadyVoted) throw new Error('You have already voted in this poll!');
-
-      votes.push({ poll_id: pollId, option_id: optionId, user_id: userId });
-      await AsyncStorage.setItem(votesKey, JSON.stringify(votes));
-
-      // Increment vote count
-      const options = await this.getMockItems<PollOption>('poll_options');
-      const updated = options.map(o => o.id === optionId ? { ...o, vote_count: o.vote_count + 1 } : o);
-      await this.saveMockItems('poll_options', updated);
-    } else {
-      // Real database atomic transactions
-      const { error } = await supabase
-        .from('poll_votes')
-        .insert({ poll_id: pollId, option_id: optionId, user_id: userId });
-      if (error) throw error;
-
-      // Increment poll option vote tally (managed securely server-side or via atomic increment)
-      const { data: opt } = await supabase.from('poll_options').select('vote_count').eq('id', optionId).single();
-      if (opt) {
-        await supabase
-          .from('poll_options')
-          .update({ vote_count: Number(opt.vote_count) + 1 })
-          .eq('id', optionId);
-      }
+    const { data: opt } = await supabase.from('poll_options').select('vote_count').eq('id', optionId).single();
+    if (opt) {
+      await supabase
+        .from('poll_options')
+        .update({ vote_count: Number(opt.vote_count) + 1 })
+        .eq('id', optionId);
     }
   }
 
@@ -1161,34 +872,22 @@ class DataManager {
   // 9. SOCIETY SETTINGS
   // ==========================================
   async getSocietySettings(): Promise<SocietySettings | null> {
-    if (this.useMock) {
-      const data = await AsyncStorage.getItem('sync_mock_v2_settings');
-      return data ? JSON.parse(data) : INITIAL_DEMO_SETTINGS;
-    } else {
-      const { data, error } = await supabase
-        .from('society_settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-      if (error) return null;
-      return data;
-    }
+    const { data, error } = await supabase
+      .from('society_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+    if (error) return null;
+    return data;
   }
 
   async updateSocietySettings(settings: Omit<SocietySettings, 'id'>): Promise<void> {
-    if (this.useMock) {
-      const current = await this.getSocietySettings();
-      const updated = { ...current, ...settings };
-      await AsyncStorage.setItem('sync_mock_v2_settings', JSON.stringify(updated));
-    } else {
-      // Upsert society settings
-      const current = await this.getSocietySettings();
-      const payload = current ? { id: current.id, ...settings } : settings;
-      const { error } = await supabase
-        .from('society_settings')
-        .upsert(payload);
-      if (error) throw error;
-    }
+    const current = await this.getSocietySettings();
+    const payload = current ? { id: current.id, ...settings } : settings;
+    const { error } = await supabase
+      .from('society_settings')
+      .upsert(payload);
+    if (error) throw error;
   }
 }
 

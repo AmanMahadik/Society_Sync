@@ -3,10 +3,12 @@ import { StyleSheet, View, ScrollView, Image } from 'react-native';
 import { Text, Card, Button, TextInput, IconButton, Portal, Modal, useTheme, Snackbar, SegmentedButtons, List } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ParkingRequest, ParkingTimeSlot, ParkingStatus } from '../../lib/data-manager';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const ParkingScreen: React.FC = () => {
   const { profile, user } = useAuth();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<ParkingTimeSlot>('evening');
@@ -130,14 +132,14 @@ export const ParkingScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       <View style={styles.screenHeader}>
         <Image 
           source={require('../../../assets/images/logo.png')} 
           style={[styles.screenHeaderLogo, { borderColor: '#3B82F6' }]} 
           resizeMode="contain"
         />
-        <Text variant="titleLarge" style={styles.screenHeaderTitle}>
+        <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
           SocietySync Parking
         </Text>
       </View>
@@ -145,7 +147,7 @@ export const ParkingScreen: React.FC = () => {
       {/* Date Switcher Navigation */}
       <View style={[styles.dateBar, { backgroundColor: theme.colors.surfaceVariant }]}>
         <IconButton icon="chevron-left" size={24} onPress={() => shiftDate(-1)} />
-        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#FFFFFF' }}>
+        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
           📅 {new Date(selectedDate).toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' })}
         </Text>
         <IconButton icon="chevron-right" size={24} onPress={() => shiftDate(1)} />
@@ -466,7 +468,6 @@ const styles = StyleSheet.create({
   },
   screenHeaderTitle: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   dateBar: {
     flexDirection: 'row',

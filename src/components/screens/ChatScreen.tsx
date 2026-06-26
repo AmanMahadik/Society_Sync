@@ -3,10 +3,12 @@ import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Image } f
 import { Text, Card, TextInput, IconButton, Button, Avatar, useTheme, Chip, SegmentedButtons, Portal, Modal, ProgressBar, Snackbar, Divider } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ChatMessage, ChatThread, Poll, PollOption } from '../../lib/data-manager';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const ChatScreen: React.FC = () => {
   const { profile, user } = useAuth();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThread, setActiveThread] = useState<ChatThread | null>(null);
@@ -210,15 +212,15 @@ export const ChatScreen: React.FC = () => {
   // ==================== VIEW A: THREAD SELECTOR ====================
   if (!activeThread) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
         <View style={styles.screenHeader}>
           <Image 
             source={require('../../../assets/images/logo.png')} 
             style={[styles.screenHeaderLogo, { borderColor: '#8B5CF6' }]} 
             resizeMode="contain"
           />
-          <View>
-            <Text variant="titleLarge" style={styles.screenHeaderTitle}>
+          <View style={{ flex: 1 }}>
+            <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
               SocietySync Council
             </Text>
             <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 10.5 }}>
@@ -354,7 +356,7 @@ export const ChatScreen: React.FC = () => {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
     >
       {/* Thread Header */}
       <View style={[styles.threadHeader, { backgroundColor: theme.colors.surface }]}>
@@ -723,7 +725,6 @@ const styles = StyleSheet.create({
   },
   screenHeaderTitle: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   header: {
     padding: 16,

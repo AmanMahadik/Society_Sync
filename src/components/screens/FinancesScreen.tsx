@@ -3,10 +3,12 @@ import { StyleSheet, View, ScrollView, Image } from 'react-native';
 import { Text, Card, Button, TextInput, SegmentedButtons, IconButton, Portal, Modal, useTheme, Chip, Snackbar, Avatar, List, Divider } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Event, Transaction, MaintenanceDue } from '../../lib/data-manager';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const FinancesScreen: React.FC = () => {
   const { profile, user } = useAuth();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState('ledger'); // 'ledger' or 'dues'
   const [events, setEvents] = useState<Event[]>([]);
@@ -181,14 +183,14 @@ export const FinancesScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       <View style={styles.screenHeader}>
         <Image 
           source={require('../../../assets/images/logo.png')} 
           style={[styles.screenHeaderLogo, { borderColor: '#FFD700' }]} 
           resizeMode="contain"
         />
-        <Text variant="titleLarge" style={styles.screenHeaderTitle}>
+        <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
           SocietySync Finances
         </Text>
       </View>
@@ -281,16 +283,16 @@ export const FinancesScreen: React.FC = () => {
             <View style={styles.detailsHeader}>
               <IconButton icon="arrow-left" size={24} onPress={() => setSelectedEvent(null)} />
               <View style={{ flex: 1 }}>
-                <Text variant="titleLarge" style={{ fontWeight: 'bold', color: '#FFFFFF' }}>{selectedEvent.name}</Text>
+                <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>{selectedEvent.name}</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Event Details & Ledger Sheet</Text>
               </View>
             </View>
 
             {/* Financial Summary Card */}
-            <Card style={[styles.balanceCard, { backgroundColor: '#1E1E1E', borderColor: '#FFD700', borderWidth: 1.5 }]}>
+            <Card style={[styles.balanceCard, { backgroundColor: theme.colors.elevation.level2, borderColor: '#FFD700', borderWidth: 1.5 }]}>
               <Card.Content style={styles.balanceContent}>
                 <IconButton icon="wallet-outline" iconColor="#FFD700" size={32} style={{ margin: 0 }} />
-                <Text variant="titleMedium" style={{ color: '#FFFFFF', opacity: 0.8 }}>
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurface, opacity: 0.8 }}>
                   Event Net Fund Balance
                 </Text>
                 <Text variant="displaySmall" style={[styles.balanceText, { color: '#FFD700', fontWeight: 'bold' }]}>
@@ -298,10 +300,10 @@ export const FinancesScreen: React.FC = () => {
                 </Text>
                 <View style={styles.statsRowInline}>
                   <Text style={{ color: '#00D4AA', fontSize: 13, fontWeight: 'bold' }}>
-                    Chandaa: <Text style={{ color: '#FFFFFF' }}>{formatCurrency(selectedEvent.total_income)}</Text>
+                    Chandaa: <Text style={{ color: theme.colors.onSurface }}>{formatCurrency(selectedEvent.total_income)}</Text>
                   </Text>
                   <Text style={{ color: '#FF3B30', fontSize: 13, fontWeight: 'bold' }}>
-                    Expense: <Text style={{ color: '#FFFFFF' }}>{formatCurrency(selectedEvent.total_expense)}</Text>
+                    Expense: <Text style={{ color: theme.colors.onSurface }}>{formatCurrency(selectedEvent.total_expense)}</Text>
                   </Text>
                 </View>
               </Card.Content>
@@ -452,11 +454,11 @@ export const FinancesScreen: React.FC = () => {
                               styles.dueRank, 
                               { backgroundColor: statusColor }
                             ]}
-                            labelStyle={{ fontSize: 12, color: due.status === 'overdue' ? '#FFF' : '#0F0F0F', fontWeight: 'bold' }}
+                            labelStyle={{ fontSize: 12, color: theme.colors.onPrimary, fontWeight: 'bold' }}
                           />
                         )}
                         <View>
-                          <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#FFFFFF' }}>
+                          <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
                             Flat {due.wing}-{due.flat_number} {isMyFlat && '(Your Flat)'}
                           </Text>
                           <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
@@ -762,7 +764,6 @@ const styles = StyleSheet.create({
   },
   screenHeaderTitle: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   tabHeader: {
     padding: 12,

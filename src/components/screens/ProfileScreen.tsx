@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image, Linking } from 'react-native';
-import { Text, Card, Button, Avatar, useTheme, List, Divider, Switch, Snackbar, IconButton, Chip, TextInput } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Image, Linking, Alert } from 'react-native';
+import { Text, Card, Button, Avatar, useTheme, List, Divider, Switch, Snackbar, IconButton, Chip, TextInput, Portal, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Profile, UserRole, SocietySettings, Complaint } from '../../lib/data-manager';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const ProfileScreen: React.FC = () => {
-  const { profile, signOut, isMock, toggleMockMode, user } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const theme = useTheme();
+  const router = useRouter();
+  const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -216,30 +221,66 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const handleContactAdmin = async () => {
+    if (settings?.admin_contact) {
+      const telUrl = `tel:${settings.admin_contact}`;
+      try {
+        await Linking.openURL(telUrl);
+      } catch (e) {
+        showToast('Dialing failed. Contact Admin: ' + settings.admin_contact);
+      }
+    } else {
+      showToast('Admin contact number not configured. Contacting support...');
+      handleContactUs();
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       <View style={styles.screenHeader}>
-        <Image 
-          source={require('../../../assets/images/logo.png')} 
-          style={[styles.screenHeaderLogo, { borderColor: '#06B6D4' }]} 
-          resizeMode="contain"
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={[styles.screenHeaderLogo, { borderColor: '#06B6D4' }]} 
+            resizeMode="contain"
+          />
+          <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+            SocietySync Profile
+          </Text>
+        </View>
+        <IconButton 
+          icon="cog" 
+          iconColor="#FFFFFF" 
+          size={24} 
+          onPress={() => router.push('/settings' as any)} 
+          style={{ margin: 0 }}
         />
-        <Text variant="titleLarge" style={styles.screenHeaderTitle}>
-          SocietySync Profile
-        </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* 1. RESIDENT CARD */}
         <Card style={styles.profileCard}>
           <Card.Content style={styles.profileContent}>
-            <Avatar.Text 
-              size={60} 
-              label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
-              style={{ backgroundColor: '#06B6D4', marginBottom: 8 }}
-              color="#0F0F0F"
-            />
-            <Text variant="headlineSmall" style={[styles.profileName, { color: '#FFFFFF' }]}>{profile?.full_name}</Text>
+            {profile?.google_picture_url ? (
+              <Avatar.Image 
+                size={70} 
+                source={{ uri: profile.google_picture_url }} 
+                style={{ marginBottom: 8 }}
+              />
+            ) : (
+              <Avatar.Text 
+                size={70} 
+                label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
+                style={{ backgroundColor: '#06B6D4', marginBottom: 8 }}
+                color="#0F0F0F"
+              />
+            )}
+            <Text variant="headlineSmall" style={[styles.profileName, { color: theme.colors.onSurface }]}>{profile?.full_name}</Text>
+            {profile?.bio ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, fontStyle: 'italic', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 16 }}>
+                "{profile.bio}"
+              </Text>
+            ) : null}
             <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
               Wing {profile?.wing || '?'}-{profile?.flat_number || '?'} • {profile?.society_name || 'My Society'}
             </Text>
@@ -261,8 +302,14 @@ export const ProfileScreen: React.FC = () => {
 
             <View style={styles.detailsRow}>
               <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Phone Number:</Text>
-              <Text variant="bodyMedium" style={{ color: '#FFFFFF' }}>{profile?.phone || 'N/A'}</Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{profile?.phone || 'N/A'}</Text>
             </View>
+            {profile?.vehicle_number ? (
+              <View style={styles.detailsRow}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Vehicle Number:</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontWeight: '500' }}>{profile.vehicle_number}</Text>
+              </View>
+            ) : null}
             <View style={styles.detailsRow}>
               <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Ledger Roster Status:</Text>
               <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
@@ -533,44 +580,90 @@ export const ProfileScreen: React.FC = () => {
           </View>
         )}
 
-        {/* 3. SETTINGS & MODE */}
-        <Card style={styles.settingsCard}>
-          <Card.Content>
-            <View style={styles.settingSwitchRow}>
-              <View style={{ flex: 1 }}>
-                <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>Demo Offline Mode</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-                  Simulate local memory databases instead of live Supabase
-                </Text>
-              </View>
-              <Switch value={isMock} onValueChange={toggleMockMode} />
-            </View>
+
+
+        {/* 3. APP NAVIGATION MENU */}
+        <Card style={styles.menuCard}>
+          <Card.Content style={{ padding: 0 }}>
+            <List.Item
+              title="Edit Profile"
+              description="Update your name, vehicle, wing, flat, and avatar"
+              left={props => <List.Icon {...props} icon="account-edit-outline" color="#00D4AA" />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => router.push('/edit-profile' as any)}
+            />
+            <Divider />
+            <List.Item
+              title="About Us"
+              description="Learn more about SocietySync features & tech stack"
+              left={props => <List.Icon {...props} icon="information-outline" color="#3B82F6" />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => router.push('/about' as any)}
+            />
           </Card.Content>
         </Card>
 
-        {/* 3.5. SUPPORT & FEEDBACK */}
-        <Card style={[styles.settingsCard, { borderColor: '#06B6D4', borderWidth: 1 }]}>
-          <Card.Content style={{ gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <IconButton icon="help-circle-outline" iconColor="#06B6D4" size={24} style={{ margin: 0 }} />
-              <View style={{ flex: 1 }}>
-                <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: '#FFFFFF' }}>Need Help or Facing Issues?</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 11.5 }}>
-                  Report bugs, billing errors, or request feature upgrades directly.
-                </Text>
-              </View>
-            </View>
-            <Button 
-              mode="contained" 
-              buttonColor="#06B6D4" 
-              textColor="#0F0F0F"
-              icon="email-outline"
+        {/* 3.5. HELP & SUPPORT */}
+        <Card style={styles.menuCard}>
+          <Card.Content style={{ padding: 0 }}>
+            <Text variant="titleMedium" style={[styles.menuTitle, { color: theme.colors.primary }]}>
+              Help & Support
+            </Text>
+            <List.Item
+              title="Help Center"
+              description="Find guides and tutorials on using the app"
+              left={props => <List.Icon {...props} icon="help-circle-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://societysync.example.com/help')}
+            />
+            <Divider />
+            <List.Item
+              title="FAQ"
+              description="Frequently Asked Questions by residents"
+              left={props => <List.Icon {...props} icon="chat-question-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://societysync.example.com/faq')}
+            />
+            <Divider />
+            <List.Item
+              title="Contact Admin"
+              description="Reach out to your society secretary or committee"
+              left={props => <List.Icon {...props} icon="account-supervisor-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={handleContactAdmin}
+            />
+            <Divider />
+            <List.Item
+              title="Report Bug"
+              description="Report issues or submit app feedback"
+              left={props => <List.Icon {...props} icon="bug-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
               onPress={handleContactUs}
-              style={{ borderRadius: 8 }}
-              labelStyle={{ fontWeight: 'bold' }}
-            >
-              Contact Support Desk
-            </Button>
+            />
+            <Divider />
+            <List.Item
+              title="Privacy Policy"
+              description="Review our data protection and storage policies"
+              left={props => <List.Icon {...props} icon="shield-lock-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://societysync.example.com/privacy')}
+            />
+            <Divider />
+            <List.Item
+              title="Terms & Conditions"
+              description="Read user agreements and usage conditions"
+              left={props => <List.Icon {...props} icon="file-document-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://societysync.example.com/terms')}
+            />
+            <Divider />
+            <List.Item
+              title="Rate App"
+              description="Give us a 5-star rating on the App Store"
+              left={props => <List.Icon {...props} icon="star-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={handleRateApp}
+            />
           </Card.Content>
         </Card>
 
@@ -580,12 +673,39 @@ export const ProfileScreen: React.FC = () => {
           buttonColor={theme.colors.error}
           textColor={theme.colors.onError}
           icon="logout"
-          onPress={signOut}
+          onPress={() => setLogoutDialogVisible(true)}
           style={styles.logoutButton}
         >
           Sign Out of SocietySync
         </Button>
       </ScrollView>
+
+      {/* Logout Confirmation Dialog */}
+      <Portal>
+        <Dialog 
+          visible={logoutDialogVisible} 
+          onDismiss={() => setLogoutDialogVisible(false)}
+          style={{ backgroundColor: theme.colors.elevation.level3 }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold' }}>Confirm Logout</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">Are you sure you want to logout of SocietySync?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setLogoutDialogVisible(false)} textColor={theme.colors.outline}>Cancel</Button>
+            <Button 
+              onPress={() => {
+                setLogoutDialogVisible(false);
+                signOut();
+              }} 
+              textColor={theme.colors.error}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Logout
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
 
       {/* Snackbar Toast */}
       <Snackbar
@@ -597,6 +717,31 @@ export const ProfileScreen: React.FC = () => {
         {snackbarMessage}
       </Snackbar>
     </View>
+  );
+};
+
+// Helper links open function
+const handleOpenExternalLink = async (url: string) => {
+  try {
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert('Link Error', 'Cannot open link: ' + url);
+    }
+  } catch (e) {
+    Alert.alert('Link Error', 'An error occurred opening the link.');
+  }
+};
+
+const handleRateApp = () => {
+  Alert.alert(
+    'Rate App',
+    'Thank you for using SocietySync! Would you like to rate us 5 stars on the App Store?',
+    [
+      { text: 'Later', style: 'cancel' },
+      { text: 'Rate Now', onPress: () => {} }
+    ]
   );
 };
 
@@ -620,7 +765,6 @@ const styles = StyleSheet.create({
   },
   screenHeaderTitle: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   scrollContainer: {
     padding: 16,
@@ -733,5 +877,17 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontWeight: 'bold',
     fontSize: 11,
+  },
+  menuCard: {
+    borderRadius: 16,
+    elevation: 1,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  menuTitle: {
+    fontWeight: 'bold',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
 });

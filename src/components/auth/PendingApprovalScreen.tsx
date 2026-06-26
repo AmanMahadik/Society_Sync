@@ -4,7 +4,7 @@ import { Text, Button, Card, useTheme } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 
 export const PendingApprovalScreen: React.FC = () => {
-  const { profile, refreshProfile, signOut, isMock } = useAuth();
+  const { profile, refreshProfile, signOut } = useAuth();
   const theme = useTheme();
   const [checking, setChecking] = useState(false);
 
@@ -41,16 +41,6 @@ export const PendingApprovalScreen: React.FC = () => {
           <Text variant="bodySmall" style={styles.instruction}>
             For security and financial integrity, your society's Secretary/Chairman must verify your details before granting access.
           </Text>
-
-          {isMock && (
-            <Card style={styles.tipCard}>
-              <Card.Content style={{ padding: 8 }}>
-                <Text variant="bodySmall" style={{ color: theme.colors.primary, textAlign: 'center', fontWeight: 'bold' }}>
-                  💡 Testing Tip: Log out, log in as "Secretary (Admin)", go to the Profile/Admin tab, approve this flat, and then log back in here!
-                </Text>
-              </Card.Content>
-            </Card>
-          )}
 
           <Button
             mode="contained"

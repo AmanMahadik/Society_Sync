@@ -484,3 +484,7 @@ insert into public.parking_slots (slot_number, is_available) values
 -- Seed default society settings
 insert into public.society_settings (society_name, address, maintenance_rate_per_sqft, late_fee_percentage, parking_slot_count)
 values ('SocietySync Co-Op Housing', 'Ganesh Nagar, Pune, Maharashtra', 3.50, 2.00, 10);
+
+-- MIGRATION: Add vehicle_number and bio to profiles table if they do not exist
+alter table public.profiles add column if not exists vehicle_number text;
+alter table public.profiles add column if not exists bio text;

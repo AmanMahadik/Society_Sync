@@ -3,10 +3,12 @@ import { StyleSheet, View, ScrollView, Vibration, Platform, Image } from 'react-
 import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint } from '../../lib/data-manager';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const HomeScreen: React.FC = () => {
   const { profile, user } = useAuth();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [sosModalVisible, setSosModalVisible] = useState(false);
@@ -158,7 +160,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       {/* 1. LOUD ALARM OVERLAY FOR GUARD/ADMIN */}
       {activeAlarm && (
         <Card style={[styles.alarmCard, { backgroundColor: theme.colors.errorContainer }]}>
@@ -202,7 +204,7 @@ export const HomeScreen: React.FC = () => {
               resizeMode="contain"
             />
             <View>
-              <Text variant="headlineSmall" style={[styles.welcomeText, { color: '#FFFFFF' }]}>
+              <Text variant="headlineSmall" style={[styles.welcomeText, { color: theme.colors.onSurface }]}>
                 Namaste, {profile?.full_name?.split(' ')[0]}
               </Text>
               <View style={styles.roleBadgeContainer}>
@@ -277,7 +279,7 @@ export const HomeScreen: React.FC = () => {
         {/* 4. GIANT RED SOS BUTTON */}
         <Card style={[styles.sosCard, { backgroundColor: '#1E1E1E', borderColor: '#FF3B30', borderWidth: 1.5 }]}>
           <Card.Content style={styles.sosCardContent}>
-            <Text variant="titleMedium" style={[styles.sosTitle, { color: '#FFFFFF' }]}>Need Urgent Utilities or Security Help?</Text>
+            <Text variant="titleMedium" style={[styles.sosTitle, { color: theme.colors.onSurface }]}>Need Urgent Utilities or Security Help?</Text>
             <Text variant="bodySmall" style={styles.sosSubtitle}>
               Tap the Red Shield to trigger a persistent alarm on the Guard Desk and Admin panels instantly.
             </Text>
@@ -442,7 +444,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   welcomeRow: {
     flexDirection: 'row',

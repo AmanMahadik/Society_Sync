@@ -8,7 +8,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }) => {
-  const { signIn, signInWithGoogle, signInAsMock, isMock, toggleMockMode } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const theme = useTheme();
 
   const [email, setEmail] = useState('');
@@ -38,13 +38,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     if (googleError) {
       setError(googleError);
     }
-  };
-
-  const handleQuickLogin = async (role: 'admin' | 'owner' | 'renter' | 'pending' | 'guard') => {
-    setError(null);
-    setLoading(true);
-    await signInAsMock(role);
-    setLoading(false);
   };
 
   return (
@@ -130,97 +123,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
           >
             Don't have an account? Register Flat
           </Button>
-        </Card.Content>
-      </Card>
-
-      {/* Demo / Mock Login Section - Very Premium and helpful for Testing */}
-      <Card style={[styles.card, styles.demoCard, { borderColor: theme.colors.primary, borderWidth: 1 }]}>
-        <Card.Content>
-          <Text variant="titleMedium" style={[styles.demoTitle, { color: theme.colors.primary }]}>
-            ⚡ Fast-Track Demo Portal
-          </Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12, textAlign: 'center' }}>
-            No Supabase configured? Tap any role to log in instantly with pre-seeded mock data.
-          </Text>
-
-          <View style={styles.demoButtonsContainer}>
-            <Button
-              mode="contained"
-              onPress={() => handleQuickLogin('admin')}
-              icon="shield-crown"
-              buttonColor="#FFD700"
-              textColor="#0F0F0F"
-              style={styles.demoButton}
-              labelStyle={[styles.demoButtonLabel, { fontWeight: 'bold' }]}
-            >
-              Secretary (Admin)
-            </Button>
-
-            <Button
-              mode="contained"
-              onPress={() => handleQuickLogin('owner')}
-              icon="home-key"
-              buttonColor="#00D4AA"
-              textColor="#0F0F0F"
-              style={styles.demoButton}
-              labelStyle={[styles.demoButtonLabel, { fontWeight: 'bold' }]}
-            >
-              Flat Owner (Amit)
-            </Button>
-
-            <Button
-              mode="contained"
-              onPress={() => handleQuickLogin('guard')}
-              icon="shield-account"
-              buttonColor="#06B6D4"
-              textColor="#0F0F0F"
-              style={styles.demoButton}
-              labelStyle={[styles.demoButtonLabel, { fontWeight: 'bold' }]}
-            >
-              Security Guard
-            </Button>
-
-            <Button
-              mode="contained"
-              onPress={() => handleQuickLogin('renter')}
-              icon="home-account"
-              buttonColor="#3B82F6"
-              textColor="#FFFFFF"
-              style={styles.demoButton}
-              labelStyle={[styles.demoButtonLabel, { fontWeight: 'bold' }]}
-            >
-              Tenant (Suresh)
-            </Button>
-
-            <Button
-              mode="outlined"
-              onPress={() => handleQuickLogin('pending')}
-              icon="clock-outline"
-              textColor="#FFFFFF"
-              style={[styles.demoButton, { flexBasis: '100%', borderColor: '#888888' }]}
-              labelStyle={[styles.demoButtonLabel, { fontWeight: 'bold' }]}
-            >
-              Pending Approval User
-            </Button>
-          </View>
-
-          <Divider style={{ marginVertical: 12 }} />
-
-          <View style={styles.modeToggleContainer}>
-            <Text variant="bodySmall" style={{ alignSelf: 'center' }}>
-              Backend Mode: <Text style={{ fontWeight: 'bold', color: isMock ? theme.colors.secondary : theme.colors.primary }}>
-                {isMock ? 'Demo Mode (Offline)' : 'Supabase Production'}
-              </Text>
-            </Text>
-            <Button 
-              compact 
-              mode="text" 
-              onPress={() => toggleMockMode(!isMock)}
-              labelStyle={{ fontSize: 11 }}
-            >
-              Switch to {isMock ? 'Supabase' : 'Demo'}
-            </Button>
-          </View>
         </Card.Content>
       </Card>
     </ScrollView>
