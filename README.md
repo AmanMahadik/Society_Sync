@@ -1,66 +1,125 @@
 <div align="center">
 
-# 🏢 SocietySync
-
-### The Digital Nervous System for Modern Residential Societies
-
-**Communication · Maintenance · Parking · Emergencies · Finance — Unified.**
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0F2027,50:203A43,100:6C5CE7&height=220&section=header&text=SocietySync&fontSize=46&fontColor=A3FFB0&animation=fadeIn&fontAlignY=38&desc=Track.%20Connect.%20Protect.%20Repeat.&descAlignY=58&descSize=18" width="100%" alt="SocietySync banner"/>
 
 <br/>
 
-![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-000000?style=for-the-badge&logo=apple&logoColor=white)
-![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020?style=for-the-badge&logo=expo&logoColor=white)
-![React Native](https://img.shields.io/badge/React%20Native-Paper%20MD3-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)
+[![Made with Supabase](https://img.shields.io/badge/Backend-Supabase-2EA043?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg?style=for-the-badge)](#-license)
+[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-000000?style=for-the-badge&logo=apple&logoColor=white)](#)
 
 <br/>
 
-```
-╔══════════════════════════════════════════════════════════╗
-║   🚨 SOS Alerts   💰 Ledgers   🚗 Parking   💬 Voting    ║
-╚══════════════════════════════════════════════════════════╝
-```
+[![Repo Size](https://img.shields.io/github/repo-size/your-org/societysync?style=flat-square&color=6C5CE7)](https://github.com/your-org/societysync)
+[![Last Commit](https://img.shields.io/github/last-commit/your-org/societysync?style=flat-square&color=6C5CE7)](https://github.com/your-org/societysync/commits)
+[![Stars](https://img.shields.io/github/stars/your-org/societysync?style=flat-square&color=yellow)](https://github.com/your-org/societysync/stargazers)
+[![Forks](https://img.shields.io/github/forks/your-org/societysync?style=flat-square&color=blue)](https://github.com/your-org/societysync/network/members)
+[![Issues](https://img.shields.io/github/issues/your-org/societysync?style=flat-square&color=orange)](https://github.com/your-org/societysync/issues)
+
+### 🏢 A premium, secure digital society manager that helps Admins, Owners, Tenants, and Guards **run residential life — from one app, in real time.**
 
 </div>
 
 <br/>
 
-> **SocietySync** consolidates every fragmented, paper-based, and chat-group-scattered process of running a residential society into **one secure, real-time mobile app** — with strict role-based access for Admins, Owners, Tenants, and Security Guards.
+<div align="center">
+
+### 🛠️ Built With
+
+<img src="https://skillicons.dev/icons?i=react,supabase,postgres,nodejs&theme=dark" />
+
+<br/><br/>
+
+**Expo (React Native SDK 54)** &nbsp;•&nbsp; **React Native Paper (MD3)** &nbsp;•&nbsp; **Supabase Auth** &nbsp;•&nbsp; **PostgreSQL + RLS** &nbsp;•&nbsp; **Supabase Realtime**
+
+</div>
 
 <br/>
 
 ---
 
-## ✨ Why SocietySync?
+## 📲 Get the App
+
+<div align="center">
+
+### 👉 [**Download the Android Build (Expo)**](#) 👈
+
+Scan the QR on that page with **Expo Go**, or download the standalone `.apk` directly to your Android device.
+
+> 📌 *Replace this link with your own Expo / EAS build URL once published.*
+
+</div>
+
+---
+
+## 📚 Table of Contents
+
+- [About the Project](#-about-the-project)
+- [Key Features](#-key-features)
+- [App in Motion](#-app-in-motion)
+- [System Architecture](#%EF%B8%8F-system-architecture)
+- [Tech Stack](#-tech-stack)
+- [Role-Based Access Control](#-role-based-access-control-rbac)
+- [Database Schema](#%EF%B8%8F-database-schema)
+- [Project Structure](#-project-directory-structure)
+- [Environment Setup](#%EF%B8%8F-environment-configuration)
+- [Running Locally](#-running-the-project-locally)
+- [UI/UX Principles](#-uiux-principles)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Author](#-author)
+
+---
+
+## 🌱 About the Project
+
+**SocietySync** is a full-stack digital society management platform built to replace fragmented WhatsApp groups, paper registers, and manual parking logs with one secure, real-time mobile app. Whether you're a Society Administrator auditing festival funds, a Resident booking visitor parking, or a Security Guard managing gate entries — SocietySync gives every role exactly the tools they need, and nothing they don't.
+
+> 💡 *Tap the SOS Shield. Watch the alarm reach every admin instantly. Resolve, repeat, sleep easier.*
+
+It's underpinned by **Supabase** and **Expo React Native**, with strict **Role-Based Access Control (RBAC)** enforced all the way down to the database layer via Postgres Row-Level Security.
+
+---
+
+## ✨ Key Features
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 😩 Before
-- 📋 Maintenance dues tracked on paper ledgers
-- 📱 Society updates lost in WhatsApp chaos
-- 🚗 Visitor parking = first-come, double-booked chaos
-- 🆘 Emergencies reported via phone calls that go unanswered
-- 💸 Festival fund collections with zero transparency
+### 🚨 Real-Time Emergency SOS Shield
+One-tap crisis alert from the resident dashboard. Triggers a **persistent full-screen alarm + vibration** for all active Admins and Guards, with a full Acknowledge → Resolve workflow and automatic feedback loops back to the resident and admin team.
+
+### 💰 Festival Ledgers & Maintenance Dues
+Transparent festival fund tracking — Total Chandaa, Total Expense, Fund Balance — with itemized transactions and receipt-bill uploads. Plus a monthly maintenance tracker showing **Pending / Paid / Partial / Overdue** status.
 
 </td>
 <td width="50%" valign="top">
 
-### 🚀 After SocietySync
-- ✅ Real-time maintenance tracker with payment status
-- ✅ Structured, threaded society discussions & live polls
-- ✅ Slot-based parking booking with admin approval
-- ✅ One-tap SOS Shield with instant guard/admin alarm
-- ✅ Fully auditable festival income & expense ledgers
+### 🚗 Smart Visitor Parking Management
+Live **V1–V10** slot grid by date and time-block (Morning / Afternoon / Evening / Overnight). Residents request, Admins approve or reject, and approved bookings auto-populate the Guard's **Gate Entry Checklist**.
+
+### 💬 Council Chats & Live Voting Polls
+Category-threaded discussions (`#General-Complaints`, `#Water-Infrastructure`, `#Annual-Budget`) plus Admin-created polls with **Supabase Realtime** vote counts updating live on every screen.
+
+### 👤 Unified Profile, Settings & Roster
+Wing/flat-organized resident directory, role cycling for Admins, Dark/Light/System theming, and a diagnostics panel showing live connectivity (Supabase, WebSockets, Notifications).
 
 </td>
 </tr>
 </table>
 
-<br/>
+<div align="center">
+
+```
+🏢 ──────────────────────────────────────────── 🏢
+   Less Chaos On Paper   →   More Trust In The App
+🏢 ──────────────────────────────────────────── 🏢
+```
+
+</div>
+
+---
 
 ## 🎬 App in Motion
 
@@ -68,18 +127,21 @@
 
 | 🚨 Emergency SOS Shield | 💬 Live Council Chat & Polls | 🚗 Smart Parking Grid |
 |:---:|:---:|:---:|
-| Full-screen red alert, persistent vibration, real-time acknowledge → resolve workflow | Threaded discussions with Supabase Realtime-powered live vote counting | Visual V1–V10 slot grid that updates instantly as bookings are approved |
+| Full-screen red alert, persistent vibration, real-time acknowledge → resolve workflow | Threaded discussions with Realtime-powered live vote counting | Visual V1–V10 slot grid that updates instantly as bookings are approved |
 
 </div>
 
-> 💡 *Tip for repo maintainers: drop your screen-recording GIFs into `/assets/demo/` and reference them here, e.g.*
-> `![SOS Demo](./assets/demo/sos-alert.gif)` — animated GIFs render natively on GitHub and are the fastest way to show off Realtime features in action.
+> 💡 *Drop your screen-recording GIFs into `docs/demo/` and reference them here, e.g. `![SOS Demo](./docs/demo/sos-alert.gif)` — animated GIFs render natively on GitHub and are the fastest way to show Realtime features in action.*
 
-<br/>
+---
 
 ## 🏗️ System Architecture
 
-SocietySync follows a **thin-client, Realtime-first** architecture — the mobile app is purely presentational, while Supabase handles auth, data, storage, and live sync, all locked down with Postgres Row-Level Security.
+<div align="center">
+<img src="https://raw.githubusercontent.com/your-org/societysync/main/docs/architecture-diagram.png" width="650" alt="System architecture diagram"/>
+
+<sub>📌 <i>Export the Mermaid diagram below as a PNG into <code>docs/architecture-diagram.png</code> so this image renders — see note below.</i></sub>
+</div>
 
 ```mermaid
 flowchart TB
@@ -117,13 +179,11 @@ flowchart TB
 
     Admin & Owner & Tenant & Guard -->|Scoped by RLS Policy| DB
 
-    style Client fill:#6C5CE7,stroke:#4834d4,color:#fff
-    style Edge fill:#00B894,stroke:#00866e,color:#fff
-    style Backend fill:#0984E3,stroke:#055086,color:#fff
-    style Roles fill:#2D3436,stroke:#000,color:#fff
+    style Client fill:#1f6feb,color:#fff,stroke:#0d419d
+    style Edge fill:#2ea043,color:#fff,stroke:#1a7f37
+    style Backend fill:#8957e5,color:#fff,stroke:#6639ba
+    style Roles fill:#2D3436,color:#fff,stroke:#000
 ```
-
-<br/>
 
 ### 🔄 Real-Time SOS Alert Flow
 
@@ -148,15 +208,15 @@ sequenceDiagram
     RT->>A: ✅ Feedback notification confirming resolution
 ```
 
-<br/>
+| Layer | Technology |
+|---|---|
+| **Frontend** | Expo (React Native SDK 54), Expo Router, React Native Paper (MD3), `@expo/vector-icons`, AsyncStorage, react-native-safe-area-context |
+| **Backend** | Supabase Auth (JWT + Google Sign-In), Supabase Realtime (WebSockets), Supabase Storage (Buckets) |
+| **Database** | PostgreSQL on Supabase + Postgres Row-Level Security (RLS) |
+
+---
 
 ## 🧱 Tech Stack
-
-<div align="center">
-
-### 📱 Frontend
-
-<img src="https://skillicons.dev/icons?i=react,typescript" height="50"/>
 
 | Layer | Technology | Purpose |
 |:---|:---|:---|
@@ -166,49 +226,13 @@ sequenceDiagram
 | **Icons** | `@expo/vector-icons` | Material Community Icons |
 | **Local Storage** | `AsyncStorage` | Persists theme & language preferences |
 | **Layout Safety** | `react-native-safe-area-context` | Notch / punch-hole / status-bar aware spacing |
-
-### ☁️ Backend
-
-<img src="https://skillicons.dev/icons?i=supabase,postgres" height="50"/>
-
-| Layer | Technology | Purpose |
-|:---|:---|:---|
 | **Database** | `PostgreSQL` (Supabase) | Enterprise-grade relational storage |
 | **Auth** | `Supabase Auth` | JWT sessions, Google Sign-In, password recovery |
 | **Realtime** | `Supabase Realtime (WebSockets)` | Live chat, poll updates, SOS alarms |
 | **Storage** | `Supabase Storage Buckets` | Avatars & transaction receipt bills |
 | **Security** | `Postgres Row-Level Security (RLS)` | Per-role, per-user data access policies |
 
-</div>
-
-<br/>
-
-## 🧩 Core Modules
-
-<table>
-<tr>
-<td width="20%" align="center">🚨<br/><b>Emergency<br/>SOS Shield</b></td>
-<td>One-tap crisis alert that triggers a persistent full-screen alarm for Admins & Guards, with an Acknowledge → Resolve workflow and automatic resident + admin feedback loops.</td>
-</tr>
-<tr>
-<td width="20%" align="center">💰<br/><b>Festival Ledgers<br/>& Maintenance</b></td>
-<td>Transparent festival fund tracking (Chandaa, Expenses, Balance) with receipt uploads, plus a monthly maintenance dues tracker (Pending / Paid / Partial / Overdue).</td>
-</tr>
-<tr>
-<td width="20%" align="center">🚗<br/><b>Smart Visitor<br/>Parking</b></td>
-<td>Live V1–V10 slot grid by date & time-block, an admin approval queue, and a guard-facing Gate Entry Checklist that auto-populates on approval.</td>
-</tr>
-<tr>
-<td width="20%" align="center">💬<br/><b>Council Chats<br/>& Live Polls</b></td>
-<td>Category-threaded discussions (#General, #Water-Infra, #Budget) plus Realtime voting polls with results updating live across every screen.</td>
-</tr>
-<tr>
-<td width="20%" align="center">👤<br/><b>Profile &<br/>Roster</b></td>
-<td>Wing/flat-organized resident directory, role cycling for admins, Dark/Light/System theming, and a diagnostics panel for connectivity health.</td>
-</tr>
-</table>
-
-<br/>
+---
 
 ## 🔐 Role-Based Access Control (RBAC)
 
@@ -228,7 +252,7 @@ sequenceDiagram
 
 </div>
 
-<br/>
+---
 
 ## 🗄️ Database Schema
 
@@ -294,7 +318,96 @@ erDiagram
 
 > 🔐 **Row-Level Security is enforced on every table.** Profiles are publicly readable (for the roster) but only self-or-admin editable. SOS complaints can be inserted by any approved resident but only updated by Guards/Admins. Notifications are strictly scoped to `auth.uid() = user_id`.
 
+---
+
+## 📂 Project Directory Structure
+
+```text
+societysync/
+├── app/                          # Expo Router screens (file-based routing)
+│   ├── (auth)/                     # Sign in / sign up / password recovery
+│   ├── (tabs)/                      # Home, Parking, Chat, Profile tabs
+│   └── (admin)/                     # Admin-only approval & roster screens
+│
+├── components/                   # Reusable React Native Paper UI components
+│
+├── lib/
+│   ├── supabase.ts                  # Supabase client init
+│   └── realtime/                    # Realtime channel subscriptions (SOS, chat, polls)
+│
+├── docs/
+│   ├── architecture-diagram.png     # 📌 Exported architecture diagram
+│   └── demo/                        # 🎬 Drop your demo GIFs here
+│
+└── supabase/
+    ├── migrations/                   # SQL schema & RLS policies
+    └── seed.sql
+```
+
+---
+
+## ⚙️ Environment Configuration
+
+<details>
+<summary><b>🔧 App Environment (<code>.env</code>)</b> — click to expand</summary>
+
 <br/>
+
+Create a `.env` file in the project root with the following variables:
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_public_key
+EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+```
+
+</details>
+
+<details>
+<summary><b>🗄️ Supabase Project Setup</b> — click to expand</summary>
+
+<br/>
+
+1. Create a new project at [supabase.com](https://supabase.com).
+2. Run the migrations in `supabase/migrations/` to create tables and RLS policies.
+3. Create a Storage bucket named `avatars` (public read) for resident profile photos.
+4. Enable **Google** as an auth provider under Authentication → Providers.
+5. Copy your Project URL and `anon` public key into `.env`.
+
+</details>
+
+---
+
+## 💻 Running the Project Locally
+
+**1️⃣ Install Dependencies**
+
+```bash
+npm install
+```
+
+**2️⃣ Configure Environment**
+
+```bash
+cp .env.example .env
+# fill in your Supabase URL & anon key
+```
+
+**3️⃣ Push Database Migrations**
+
+```bash
+npx supabase db push
+```
+
+**4️⃣ Start the App**
+
+```bash
+npx expo start
+```
+
+> **✨ Tip:** Scan the Metro QR code with **Expo Go** on your phone, or press `a` / `i` in the terminal to launch an Android/iOS simulator.
+
+---
 
 ## 🎨 UI/UX Principles
 
@@ -303,58 +416,53 @@ erDiagram
 - **🌗 Theme-Aware Contrast** — colors bind to `theme.colors.onSurface` / `theme.colors.surface`, never hardcoded — full Dark & Light mode support.
 - **🏷️ Smart Contrast Badging** — role badges auto-adjust shade per theme (e.g. `#047857` for Owners in Light Mode) to stay readable.
 
-<br/>
+---
 
-## 📂 Project Structure
+## 🤝 Contributing
 
-```
-societysync/
-├── app/                      # Expo Router screens (file-based routing)
-│   ├── (auth)/                 # Sign in / sign up / password recovery
-│   ├── (tabs)/                  # Home, Parking, Chat, Profile tabs
-│   └── (admin)/                 # Admin-only approval & roster screens
-├── components/                # Reusable RN Paper UI components
-├── lib/
-│   ├── supabase.ts              # Supabase client init
-│   └── realtime/                # Realtime channel subscriptions
-├── assets/
-│   └── demo/                    # 🎬 Drop your demo GIFs here
-└── supabase/
-    ├── migrations/               # SQL schema & RLS policies
-    └── seed.sql
-```
-
-<br/>
-
-## 🚀 Getting Started
+Contributions, forks, and pull requests are welcome! 🎉
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/<your-org>/societysync.git
-cd societysync
+# 1. Fork the repo
+# 2. Clone your fork
+git clone https://github.com/<your-username>/societysync.git
 
-# 2. Install dependencies
-npm install
+# 3. Create your feature branch
+git checkout -b feature/amazing-feature
 
-# 3. Configure environment variables
-cp .env.example .env
-# Add your Supabase URL & anon key
+# 4. Commit your changes
+git commit -m "Add some amazing feature"
 
-# 4. Run database migrations
-npx supabase db push
+# 5. Push to the branch
+git push origin feature/amazing-feature
 
-# 5. Start the app
-npx expo start
+# 6. Open a Pull Request 🚀
 ```
 
-<br/>
+Found a bug or have an idea? [Open an issue](../../issues) — every contribution helps make society management a little less painful for the next admin who picks it up.
+
+---
+
+## 📄 License
+
+This project is **Proprietary**. All rights reserved. Redistribution, modification, or commercial use requires explicit prior permission from the author.
+
+> 📌 *Swap this section for your actual license (MIT, CC BY-NC 4.0, etc.) if you intend to open-source the project.*
+
+---
+
+## 👤 Author
 
 <div align="center">
 
-### 🌟 Built for societies that deserve better than spreadsheets and WhatsApp groups.
+**Your Name Here**
+
+[![GitHub](https://img.shields.io/badge/GitHub-your--org-181717?style=for-the-badge&logo=github)](https://github.com/your-org)
 
 <br/>
 
-**Made with ❤️ using Expo, React Native & Supabase**
+### ⭐ If SocietySync made your residential society a little less chaotic, consider giving it a star!
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6C5CE7,50:203A43,100:0F2027&height=120&section=footer" width="100%"/>
 
 </div>
