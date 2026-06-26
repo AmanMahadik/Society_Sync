@@ -45,7 +45,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build_android": "eas build --platform android",
+    "build_android": "eas build --platform android --profile preview",
     "build_ios": "eas build --platform ios",
     "build_web": "expo export --platform web",
     "run_production": "npx serve dist -s"
