@@ -142,10 +142,12 @@ const AppRouterController: React.FC = () => {
     return <PendingApprovalScreen />;
   }
 
+  const safeIndex = index < routes.length ? index : 0;
+
   // Helper to dynamically set active tab color based on brand color system
   const getTabActiveColor = () => {
-    if (!routes[index]) return '#00D4AA';
-    switch (routes[index].key) {
+    if (!routes[safeIndex]) return '#00D4AA';
+    switch (routes[safeIndex].key) {
       case 'home': return '#00D4AA';     // Emerald Green
       case 'finances': return '#FFD700'; // Gold
       case 'parking': return '#3B82F6';  // Blue
@@ -159,7 +161,7 @@ const AppRouterController: React.FC = () => {
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <BottomNavigation
-        navigationState={{ index, routes }}
+        navigationState={{ index: safeIndex, routes }}
         onIndexChange={setIndex}
         renderScene={renderScene}
         barStyle={{ backgroundColor: theme.colors.elevation.level2 }}

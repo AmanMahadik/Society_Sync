@@ -68,7 +68,7 @@ export default function EditProfileScreen() {
       }
 
       const options: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: (ImagePicker as any).MediaType?.IMAGE || 'images',
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,

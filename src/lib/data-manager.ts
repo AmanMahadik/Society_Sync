@@ -461,6 +461,40 @@ class DataManager {
     return data;
   }
 
+  async updateTransaction(txId: string, updatedFields: Partial<Omit<Transaction, 'id' | 'recorded_at' | 'event_id'>>, eventId: string): Promise<void> {
+    const { error } = await supabase
+      .from('transactions')
+      .update(updatedFields)
+      .eq('id', txId);
+    if (error) throw error;
+
+    // Recalculate event aggregates
+    const eventTxs = await this.getTransactions(eventId);
+    const totalIncome = eventTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalExpense = eventTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+    await supabase
+      .from('events')
+      .update({ total_income: totalIncome, total_expense: totalExpense })
+      .eq('id', eventId);
+  }
+
+  async deleteTransaction(txId: string, eventId: string): Promise<void> {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', txId);
+    if (error) throw error;
+
+    // Recalculate event aggregates
+    const eventTxs = await this.getTransactions(eventId);
+    const totalIncome = eventTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalExpense = eventTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+    await supabase
+      .from('events')
+      .update({ total_income: totalIncome, total_expense: totalExpense })
+      .eq('id', eventId);
+  }
+
   // ==========================================
   // 4. MAINTENANCE DUES
   // ==========================================
