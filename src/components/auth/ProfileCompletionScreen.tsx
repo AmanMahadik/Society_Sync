@@ -100,7 +100,7 @@ export const ProfileCompletionScreen: React.FC = () => {
             value={role}
             onValueChange={(val) => setRole(val as UserRole)}
             buttons={[
-              { value: 'owner', label: 'Flat Owner', icon: 'home-key' },
+              { value: 'owner', label: 'Flat Owner', icon: 'home-lock' },
               { value: 'renter', label: 'Renter / Tenant', icon: 'home-account' },
             ]}
             style={styles.segmentedButtons}

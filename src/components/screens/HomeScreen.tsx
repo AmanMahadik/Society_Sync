@@ -227,7 +227,7 @@ export const HomeScreen: React.FC = () => {
                   const badge = (() => {
                     switch (profile?.role) {
                       case 'admin': return { icon: 'shield-crown', color: '#FFD700', text: 'Admin' };
-                      case 'owner': return { icon: 'home-key', color: '#00D4AA', text: 'Owner' };
+                      case 'owner': return { icon: 'home-lock', color: '#00D4AA', text: 'Owner' };
                       case 'renter': return { icon: 'home-account', color: '#3B82F6', text: 'Tenant' };
                       case 'guard': return { icon: 'shield-account', color: '#06B6D4', text: 'Guard' };
                       default: return { icon: 'account-circle', color: '#888888', text: 'Resident' };
@@ -343,12 +343,20 @@ export const HomeScreen: React.FC = () => {
                       {c.type.replace('_', ' ').toUpperCase()}
                     </Text>
                   </View>
-                  <Chip 
-                    textStyle={{ fontSize: 9, fontWeight: 'bold', color: '#FFF' }}
-                    style={{ backgroundColor: getAlertColor(c.status), height: 22, justifyContent: 'center' }}
+                  <View 
+                    style={{ 
+                      backgroundColor: getAlertColor(c.status), 
+                      paddingHorizontal: 8, 
+                      paddingVertical: 3, 
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
                   >
-                    {c.status.toUpperCase()}
-                  </Chip>
+                    <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFF' }}>
+                      {c.status.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
 
                 <Text variant="bodyMedium" style={styles.alertDesc}>{c.description}</Text>
@@ -580,7 +588,7 @@ const styles = StyleSheet.create({
   },
   sosSubtitle: {
     textAlign: 'center',
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.7)',
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 12,

@@ -370,6 +370,12 @@ create policy "Allow approved insert votes" on public.poll_votes for insert to a
 create policy "Allow approved read settings" on public.society_settings for select to authenticated using (public.is_user_approved(auth.uid()));
 create policy "Allow admins to manage settings" on public.society_settings for all to authenticated using (public.is_admin(auth.uid()));
 
+-- Notifications Policies
+create policy "Allow users to read own notifications" on public.notifications for select to authenticated using (auth.uid() = user_id);
+create policy "Allow authenticated users to insert notifications" on public.notifications for insert to authenticated with check (true);
+create policy "Allow users to update own notifications" on public.notifications for update to authenticated using (auth.uid() = user_id);
+
+
 --------------------------------------------------------------------------------
 -- AUTO-PROFILE SYNC TRIGGER ON SIGN UP
 --------------------------------------------------------------------------------

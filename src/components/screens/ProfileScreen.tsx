@@ -310,9 +310,9 @@ export const ProfileScreen: React.FC = () => {
                 <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontWeight: '500' }}>{profile.vehicle_number}</Text>
               </View>
             ) : null}
-            <View style={styles.detailsRow}>
-              <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Ledger Roster Status:</Text>
-              <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
+            <View style={[styles.detailsRow, { alignItems: 'flex-start' }]}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, marginRight: 8 }}>Ledger Roster Status:</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: '#00D4AA', flex: 1, textAlign: 'right' }}>
                 APPROVED COUNCIL MEMBER
               </Text>
             </View>

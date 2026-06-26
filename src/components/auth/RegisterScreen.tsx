@@ -91,7 +91,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             value={role}
             onValueChange={(val) => setRole(val as UserRole)}
             buttons={[
-              { value: 'owner', label: 'Flat Owner', icon: 'home-key' },
+              { value: 'owner', label: 'Flat Owner', icon: 'home-lock' },
               { value: 'renter', label: 'Renter / Tenant', icon: 'home-account' },
             ]}
             style={styles.segmentedButtons}
