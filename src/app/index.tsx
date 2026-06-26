@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Animated } from 'react-native';
 import { ActivityIndicator, BottomNavigation, Text, useTheme, MD3DarkTheme } from 'react-native-paper';
@@ -12,6 +13,8 @@ import { ParkingScreen } from '../components/screens/ParkingScreen';
 import { ChatScreen } from '../components/screens/ChatScreen';
 import { ProfileScreen } from '../components/screens/ProfileScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
 
 // Premium Branded Dark Theme matching SocietySync Design Specifications
 const premiumDarkTheme = {
@@ -74,6 +77,37 @@ const AppRouterController: React.FC = () => {
           })
         ])
       ).start();
+    }
+  }, [loading]);
+
+  // Request critical permissions (Notifications, Camera, and Gallery) on startup after loading screen finishes
+  useEffect(() => {
+    const requestPermissionsOnStartup = async () => {
+      try {
+        // 1. Notifications Permission
+        const { status: notifStatus } = await Notifications.getPermissionsAsync();
+        if (notifStatus !== 'granted') {
+          await Notifications.requestPermissionsAsync();
+        }
+
+        // 2. Camera Permission (for profile pictures / finance receipts)
+        const { status: cameraStatus } = await ImagePicker.getCameraPermissionsAsync();
+        if (cameraStatus !== 'granted') {
+          await ImagePicker.requestCameraPermissionsAsync();
+        }
+
+        // 3. Media Library / Gallery Permission (for picking photos / saving files)
+        const { status: libraryStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+        if (libraryStatus !== 'granted') {
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        }
+      } catch (error) {
+        console.warn('Error requesting permissions on startup:', error);
+      }
+    };
+
+    if (!loading) {
+      requestPermissionsOnStartup();
     }
   }, [loading]);
 
@@ -153,13 +187,6 @@ const AppRouterController: React.FC = () => {
           ]}
           resizeMode="contain"
         />
-        <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginBottom: 16 }} />
-        <Text style={{ color: theme.colors.primary, fontSize: 20, fontWeight: 'bold', letterSpacing: 1 }}>
-          SocietySync
-        </Text>
-        <Text style={[styles.loadingText, { color: theme.colors.outline, marginTop: 6 }]}>
-          Connecting to Digital Council...
-        </Text>
       </View>
     );
   }
@@ -228,7 +255,6 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 22,
-    marginBottom: 28,
   },
   loadingText: {
     fontSize: 13,
