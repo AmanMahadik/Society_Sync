@@ -266,7 +266,7 @@ export const ProfileScreen: React.FC = () => {
         </View>
         <IconButton 
           icon="cog" 
-          iconColor="#FFFFFF" 
+          iconColor={theme.colors.onSurface} 
           size={24} 
           onPress={() => router.push('/settings' as any)} 
           style={{ margin: 0 }}
@@ -657,7 +657,7 @@ export const ProfileScreen: React.FC = () => {
               description="Find guides and tutorials on using the app"
               left={props => <List.Icon {...props} icon="help-circle-outline" color={theme.colors.primary} />}
               right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
-              onPress={() => handleOpenExternalLink('https://societysync.example.com/help')}
+              onPress={() => handleOpenExternalLink('https://amanmahadik.github.io/Society_Sync/#help-center')}
             />
             <Divider />
             <List.Item
@@ -665,7 +665,7 @@ export const ProfileScreen: React.FC = () => {
               description="Frequently Asked Questions by residents"
               left={props => <List.Icon {...props} icon="chat-question-outline" color={theme.colors.primary} />}
               right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
-              onPress={() => handleOpenExternalLink('https://societysync.example.com/faq')}
+              onPress={() => handleOpenExternalLink('https://amanmahadik.github.io/Society_Sync/#faqs')}
             />
             <Divider />
             <List.Item
@@ -689,7 +689,7 @@ export const ProfileScreen: React.FC = () => {
               description="Review our data protection and storage policies"
               left={props => <List.Icon {...props} icon="shield-lock-outline" color={theme.colors.primary} />}
               right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
-              onPress={() => handleOpenExternalLink('https://societysync.example.com/privacy')}
+              onPress={() => handleOpenExternalLink('https://amanmahadik.github.io/Society_Sync/#legal')}
             />
             <Divider />
             <List.Item
@@ -697,7 +697,7 @@ export const ProfileScreen: React.FC = () => {
               description="Read user agreements and usage conditions"
               left={props => <List.Icon {...props} icon="file-document-outline" color={theme.colors.primary} />}
               right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
-              onPress={() => handleOpenExternalLink('https://societysync.example.com/terms')}
+              onPress={() => handleOpenExternalLink('https://amanmahadik.github.io/Society_Sync/#legal')}
             />
             <Divider />
             <List.Item

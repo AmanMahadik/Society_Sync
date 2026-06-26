@@ -167,9 +167,9 @@ export default function AboutScreen() {
             <Divider />
             <List.Item
               title="Official Website"
-              description="https://societysync.example.com"
+              description="https://amanmahadik.github.io/Society_Sync/"
               left={props => <List.Icon {...props} icon="web" color={theme.colors.primary} />}
-              onPress={() => handleOpenURL('https://societysync.example.com')}
+              onPress={() => handleOpenURL('https://amanmahadik.github.io/Society_Sync/')}
             />
             <Divider />
             <List.Item
