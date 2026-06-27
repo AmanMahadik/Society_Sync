@@ -134,6 +134,7 @@ export interface ChatMessage {
   sender_name?: string;
   sender_role?: UserRole;
   sender_flat?: string;
+  sender_avatar?: string | null;
 }
 
 // 10. Voting Polls
@@ -304,6 +305,31 @@ class DataManager {
           is_read: false
         });
       if (error) console.error('Error inserting notification:', error);
+
+      // Fetch user push token and send system push notification via Expo
+      const { data: recipientProfile } = await supabase
+        .from('profiles')
+        .select('notification_token')
+        .eq('id', userId)
+        .single();
+      
+      if (recipientProfile?.notification_token) {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: recipientProfile.notification_token,
+            sound: 'default',
+            title: title,
+            body: body,
+            data: data || {},
+          }),
+        });
+      }
     } catch (e) {
       console.error('Notification insert catch:', e);
     }
@@ -667,16 +693,17 @@ class DataManager {
       .from('parking_requests')
       .update({ status, approved_by: adminId, approved_at: new Date().toISOString() })
       .eq('id', requestId)
-      .select('*, slot:parking_slots(slot_number)')
-      .single();
+      .select('*, slot:parking_slots(slot_number)');
+      
     if (error) throw error;
 
-    if (data) {
-      const slotNum = data.slot?.slot_number || 'Visitor Slot';
+    if (data && data.length > 0) {
+      const record = data[0];
+      const slotNum = record.slot?.slot_number || 'Visitor Slot';
       await this.createNotification(
-        data.user_id,
+        record.user_id,
         status === 'approved' ? `✅ Parking Approved` : `❌ Parking Rejected`,
-        `Your visitor parking request for Slot ${slotNum} on ${data.date} (${data.time_slot}) has been ${status.toUpperCase()} by the Admin.`
+        `Your visitor parking request for Slot ${slotNum} on ${record.date} (${record.time_slot}) has been ${status.toUpperCase()} by the Guard/Admin.`
       );
     }
   }
@@ -719,16 +746,21 @@ class DataManager {
     try {
       const { data: staff } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, role')
         .in('role', ['admin', 'guard']);
       
       if (staff) {
         for (const s of staff) {
-          await this.createNotification(
-            s.id,
-            `🚨 SOS Crisis Alert: Flat ${wing}-${flat}`,
-            `${type.replace('_', ' ').toUpperCase()} crisis reported! Description: ${description}`
-          );
+          const isGuard = s.role === 'guard';
+          const title = isGuard
+            ? `🚨 SOS Crisis Alert: Flat ${wing}-${flat}`
+            : `SOS Warning Registered: Flat ${wing}-${flat}`;
+          
+          const body = isGuard
+            ? `${type.replace('_', ' ').toUpperCase()} crisis reported! Description: ${description}`
+            : `A utility crisis warning was logged: ${description}`;
+
+          await this.createNotification(s.id, title, body);
         }
       }
     } catch (err) {
@@ -834,7 +866,7 @@ class DataManager {
   async getChatMessages(threadId: string): Promise<ChatMessage[]> {
     const { data, error } = await supabase
       .from('chat_messages')
-      .select('*, sender:profiles(full_name, role, flat_number, wing)')
+      .select('*, sender:profiles(full_name, role, flat_number, wing, google_picture_url)')
       .eq('thread_id', threadId)
       .order('created_at', { ascending: true });
     if (error) throw error;
@@ -842,8 +874,17 @@ class DataManager {
       ...m,
       sender_name: m.sender?.full_name,
       sender_role: m.sender?.role,
-      sender_flat: m.sender ? `${m.sender.wing}-${m.sender.flat_number}` : '?'
+      sender_flat: m.sender ? `${m.sender.wing}-${m.sender.flat_number}` : '?',
+      sender_avatar: m.sender?.google_picture_url
     }));
+  }
+
+  async clearThreadMessages(threadId: string): Promise<void> {
+    const { error } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('thread_id', threadId);
+    if (error) throw error;
   }
 
   async sendChatMessage(threadId: string, userId: string, content: string): Promise<ChatMessage> {

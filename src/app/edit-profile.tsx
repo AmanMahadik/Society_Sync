@@ -46,8 +46,8 @@ export default function EditProfileScreen() {
   // Validation
   const isNameValid = fullName.trim().length >= 3;
   const isPhoneValid = /^\d{10}$/.test(phone.trim());
-  const isWingValid = wing.trim().length > 0;
-  const isFlatValid = flatNumber.trim().length > 0;
+  const isWingValid = (profile?.role === 'admin' || profile?.role === 'guard') ? true : wing.trim().length > 0;
+  const isFlatValid = (profile?.role === 'admin' || profile?.role === 'guard') ? true : flatNumber.trim().length > 0;
   
   const isFormValid = isNameValid && isPhoneValid && isWingValid && isFlatValid;
 
@@ -275,7 +275,7 @@ export default function EditProfileScreen() {
               {/* Wing */}
               <View style={{ flex: 1, marginRight: 8 }}>
                 <TextInput
-                  label="Wing"
+                  label={profile?.role === 'admin' || profile?.role === 'guard' ? "Wing (Optional)" : "Wing"}
                   value={wing}
                   onChangeText={setWing}
                   mode="outlined"
@@ -287,7 +287,7 @@ export default function EditProfileScreen() {
               {/* Flat Number */}
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <TextInput
-                  label="Flat Number"
+                  label={profile?.role === 'admin' || profile?.role === 'guard' ? "Flat (Optional)" : "Flat Number"}
                   value={flatNumber}
                   onChangeText={setFlatNumber}
                   mode="outlined"

@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Animated } from 'react-native';
+import { StyleSheet, View, Animated, Platform } from 'react-native';
 import { ActivityIndicator, BottomNavigation, Text, useTheme, MD3DarkTheme } from 'react-native-paper';
 import { useAuth } from '../lib/auth-context';
 import { LoginScreen } from '../components/auth/LoginScreen';
@@ -15,6 +15,55 @@ import { ProfileScreen } from '../components/screens/ProfileScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import { supabase } from '../lib/supabase';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
+
+// Configure foreground floating notifications
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+async function registerForPushNotificationsAsync() {
+  if (Platform.OS === 'web') return null;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#00D4AA',
+    });
+  }
+
+  if (Device.isDevice) {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      console.warn('Failed to get push token for push notifications!');
+      return null;
+    }
+    
+    // Get the Expo push token
+    const token = (await Notifications.getExpoPushTokenAsync({
+      projectId: Constants?.expoConfig?.extra?.eas?.projectId,
+    })).data;
+    return token;
+  } else {
+    console.warn('Must use physical device for Push Notifications');
+    return null;
+  }
+}
 
 // Premium Branded Dark Theme matching SocietySync Design Specifications
 const premiumDarkTheme = {
@@ -79,6 +128,26 @@ const AppRouterController: React.FC = () => {
       ).start();
     }
   }, [loading]);
+
+  // Register push token for notifications
+  useEffect(() => {
+    const savePushToken = async () => {
+      if (user && profile) {
+        try {
+          const token = await registerForPushNotificationsAsync();
+          if (token && profile.notification_token !== token) {
+            await supabase
+              .from('profiles')
+              .update({ notification_token: token })
+              .eq('id', user.id);
+          }
+        } catch (err) {
+          console.warn('Error saving push token:', err);
+        }
+      }
+    };
+    savePushToken();
+  }, [user, profile]);
 
   // Request critical permissions (Notifications, Camera, and Gallery) on startup after loading screen finishes
   useEffect(() => {

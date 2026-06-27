@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Vibration, Platform, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity } from 'react-native';
 import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export const HomeScreen: React.FC = () => {
+interface HomeScreenProps {
+  jumpTo?: (key: string) => void;
+}
+
+export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const { profile, user } = useAuth();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -267,19 +271,21 @@ export const HomeScreen: React.FC = () => {
               </View>
             </View>
           </View>
-          {profile?.google_picture_url ? (
-            <Avatar.Image 
-              size={42} 
-              source={{ uri: profile.google_picture_url }} 
-            />
-          ) : (
-            <Avatar.Text 
-              size={42} 
-              label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
-              style={{ backgroundColor: '#00D4AA' }}
-              color="#0F0F0F"
-            />
-          )}
+          <TouchableOpacity onPress={() => jumpTo?.('profile')} activeOpacity={0.7}>
+            {profile?.google_picture_url ? (
+              <Avatar.Image 
+                size={42} 
+                source={{ uri: profile.google_picture_url }} 
+              />
+            ) : (
+              <Avatar.Text 
+                size={42} 
+                label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
+                style={{ backgroundColor: '#00D4AA' }}
+                color="#0F0F0F"
+              />
+            )}
+          </TouchableOpacity>
         </View>
  
         {/* 3. HOME SUMMARY CARDS GRID */}

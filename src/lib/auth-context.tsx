@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
+import { router } from 'expo-router';
 
 // Complete the OAuth session redirect in WebBrowser on native platforms
 if (Platform.OS !== 'web') {
@@ -20,6 +21,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,12 +31,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Listen for Supabase session changes
+  // Listen for Supabase session changes and deep links
   useEffect(() => {
     let authSubscription: any;
+    let linkingSubscription: any;
+
+    const handleDeepLink = async (url: string) => {
+      try {
+        const params: { [key: string]: string } = {};
+        const hashIndex = url.indexOf('#');
+        if (hashIndex !== -1) {
+          const hash = url.substring(hashIndex + 1);
+          hash.split('&').forEach(pair => {
+            const [key, val] = pair.split('=');
+            if (key && val) params[key] = decodeURIComponent(val);
+          });
+        }
+        const queryIndex = url.indexOf('?');
+        if (queryIndex !== -1) {
+          const query = url.substring(queryIndex + 1);
+          query.split('&').forEach(pair => {
+            const [key, val] = pair.split('=');
+            if (key && val) params[key] = decodeURIComponent(val);
+          });
+        }
+        
+        const { access_token, refresh_token, type } = params;
+        if (access_token && refresh_token) {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (!error && (url.includes('change-password') || type === 'recovery')) {
+            setTimeout(() => {
+              try {
+                router.replace('/change-password?recovery=true');
+              } catch (e) {
+                console.error('Deep link navigation error:', e);
+              }
+            }, 800);
+          }
+        }
+      } catch (e) {
+        console.error('Error handling deep link:', e);
+      }
+    };
 
     const checkInitialSession = async () => {
       try {
+        // Parse initial URL if app was launched via deep link
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl) {
+          await handleDeepLink(initialUrl);
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setUser(session.user);
@@ -65,9 +112,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkInitialSession();
 
+    // Listen for deep links when app is running
+    linkingSubscription = Linking.addEventListener('url', (event) => {
+      if (event.url) {
+        handleDeepLink(event.url);
+      }
+    });
+
     return () => {
       if (authSubscription) {
         authSubscription.unsubscribe();
+      }
+      if (linkingSubscription) {
+        linkingSubscription.remove();
       }
     };
   }, []);
@@ -207,6 +264,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const redirectUrl = Linking.createURL('/change-password');
+      console.log('Forgot Password Redirect URL (Register this in Supabase -> Auth -> Redirect URLs):', redirectUrl);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+      return { error };
+    } catch (e: any) {
+      return { error: e.message || e };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -216,7 +286,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signUp,
       signInWithGoogle,
       signOut,
-      refreshProfile
+      refreshProfile,
+      resetPassword
     }}>
       {children}
     </AuthContext.Provider>

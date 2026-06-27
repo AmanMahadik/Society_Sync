@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView, View } from 'react-native';
 import { Appbar, TextInput, Button, Text, Card, Snackbar, useTheme, List } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/auth-context';
 import { supabase } from '../lib/supabase';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  const searchParams = useLocalSearchParams();
+  const isRecovery = searchParams.recovery === 'true';
   const theme = useTheme();
   const { user } = useAuth();
 
@@ -41,7 +43,7 @@ export default function ChangePasswordScreen() {
       return;
     }
 
-    if (!currentPassword) {
+    if (!isRecovery && !currentPassword) {
       showMsg('Please enter your current password.', true);
       return;
     }
@@ -59,16 +61,18 @@ export default function ChangePasswordScreen() {
     setLoading(true);
 
     try {
-      // 1. Verify current password by signing in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
-      });
+      // 1. Verify current password by signing in (only if not in recovery mode)
+      if (!isRecovery) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
 
-      if (signInError) {
-        showMsg('Verification failed: Current password is incorrect.', true);
-        setLoading(false);
-        return;
+        if (signInError) {
+          showMsg('Verification failed: Current password is incorrect.', true);
+          setLoading(false);
+          return;
+        }
       }
 
       // 2. Update password
@@ -89,7 +93,11 @@ export default function ChangePasswordScreen() {
       
       // Navigate back after a short delay
       setTimeout(() => {
-        router.back();
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/');
+        }
       }, 2000);
 
     } catch (err: any) {
@@ -118,20 +126,22 @@ export default function ChangePasswordScreen() {
             </Text>
             
             {/* Current Password */}
-            <TextInput
-              label="Current Password"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry={!showCurrent}
-              right={
-                <TextInput.Icon 
-                  icon={showCurrent ? "eye-off" : "eye"} 
-                  onPress={() => setShowCurrent(!showCurrent)} 
-                />
-              }
-              mode="outlined"
-              style={styles.input}
-            />
+            {!isRecovery && (
+              <TextInput
+                label="Current Password"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry={!showCurrent}
+                right={
+                  <TextInput.Icon 
+                    icon={showCurrent ? "eye-off" : "eye"} 
+                    onPress={() => setShowCurrent(!showCurrent)} 
+                  />
+                }
+                mode="outlined"
+                style={styles.input}
+              />
+            )}
 
             {/* New Password */}
             <TextInput
@@ -177,7 +187,7 @@ export default function ChangePasswordScreen() {
               mode="contained"
               onPress={handleUpdatePassword}
               loading={loading}
-              disabled={loading || !currentPassword || !newPassword || !confirmPassword || !passwordsMatch || !isPasswordStrong}
+              disabled={loading || (!isRecovery && !currentPassword) || !newPassword || !confirmPassword || !passwordsMatch || !isPasswordStrong}
               style={[styles.button, { marginTop: 24 }]}
               buttonColor={theme.colors.primary}
             >

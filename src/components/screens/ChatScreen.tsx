@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { Text, Card, TextInput, IconButton, Button, Avatar, useTheme, Chip, SegmentedButtons, Portal, Modal, ProgressBar, Snackbar, Divider } from 'react-native-paper';
+import { Text, Card, TextInput, IconButton, Button, Avatar, useTheme, Chip, SegmentedButtons, Portal, Modal, ProgressBar, Snackbar, Divider, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ChatMessage, ChatThread, Poll, PollOption } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +35,10 @@ export const ChatScreen: React.FC = () => {
   // Snackbar Toast
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  // Clear Chat Dialog State (Admin only)
+  const [clearChatDialogVisible, setClearChatDialogVisible] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -127,6 +131,22 @@ export const ChatScreen: React.FC = () => {
       console.error(e);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleClearChat = async () => {
+    if (!activeThread) return;
+    setClearing(true);
+    try {
+      await dataManager.clearThreadMessages(activeThread.id);
+      setClearChatDialogVisible(false);
+      showToast('Chat history cleared successfully!');
+      fetchMessages();
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || 'Failed to clear chat.');
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -370,6 +390,18 @@ export const ChatScreen: React.FC = () => {
             Category: {getCategoryLabel(activeThread.category)}
           </Text>
         </View>
+        
+        {/* Admin Clear Chat option */}
+        {profile?.role === 'admin' && threadTab === 'chat' && (
+          <IconButton 
+            icon="delete-sweep" 
+            iconColor={theme.colors.error} 
+            size={22} 
+            onPress={() => setClearChatDialogVisible(true)} 
+            style={{ margin: 0 }}
+          />
+        )}
+        
         <IconButton icon="refresh" size={20} onPress={loadThreadData} />
       </View>
 
@@ -438,12 +470,19 @@ export const ChatScreen: React.FC = () => {
                   ]}
                 >
                   {!isMe && (
-                    <Avatar.Text 
-                      size={30} 
-                      label={msg.sender_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
-                      style={{ backgroundColor: getRoleBadgeColor(msg.sender_role || 'renter') }}
-                      labelStyle={{ fontSize: 11 }}
-                    />
+                    msg.sender_avatar ? (
+                      <Avatar.Image 
+                        size={30} 
+                        source={{ uri: msg.sender_avatar }} 
+                      />
+                    ) : (
+                      <Avatar.Text 
+                        size={30} 
+                        label={msg.sender_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
+                        style={{ backgroundColor: getRoleBadgeColor(msg.sender_role || 'renter') }}
+                        labelStyle={{ fontSize: 11 }}
+                      />
+                    )
                   )}
 
                   <View style={{ maxWidth: '80%' }}>
@@ -629,6 +668,34 @@ export const ChatScreen: React.FC = () => {
           )}
         </View>
       )}
+
+      {/* CREATE POLL MODAL */}
+      <Portal>
+        <Dialog 
+          visible={clearChatDialogVisible} 
+          onDismiss={() => setClearChatDialogVisible(false)}
+          style={{ backgroundColor: theme.colors.elevation.level3 }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold', color: theme.colors.error }}>🚨 Clear Chat History</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+              Are you sure you want to permanently delete all messages in this thread? This action cannot be undone.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setClearChatDialogVisible(false)} textColor={theme.colors.outline}>Cancel</Button>
+            <Button 
+              onPress={handleClearChat} 
+              loading={clearing}
+              disabled={clearing}
+              textColor={theme.colors.error}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Clear Chat
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
 
       {/* CREATE POLL MODAL */}
       <Portal>

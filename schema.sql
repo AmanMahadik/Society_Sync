@@ -277,6 +277,16 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function public.is_guard(user_id uuid)
+returns boolean security definer as $$
+begin
+  return exists (
+    select 1 from public.profiles 
+    where id = user_id and role = 'guard'
+  );
+end;
+$$ language plpgsql;
+
 -- Profiles Policies
 create policy "Allow read of approved profiles" on public.profiles
   for select to authenticated using (true);
@@ -335,6 +345,9 @@ create policy "Allow approved insert requests" on public.parking_requests
 create policy "Allow admins to manage requests" on public.parking_requests
   for all to authenticated using (public.is_admin(auth.uid()));
 
+create policy "Allow guards to update requests" on public.parking_requests
+  for update to authenticated using (public.is_guard(auth.uid()));
+
 -- Chat Threads Policies
 create policy "Allow approved read threads" on public.chat_threads
   for select to authenticated using (public.is_user_approved(auth.uid()));
@@ -355,6 +368,9 @@ create policy "Allow owners and admins to insert messages" on public.chat_messag
       where id = auth.uid() and (role = 'owner' or role = 'admin')
     )
   );
+
+create policy "Allow admins to delete messages" on public.chat_messages
+  for delete to authenticated using (public.is_admin(auth.uid()));
 
 -- Polls, Options, and Votes Policies
 create policy "Allow approved read polls" on public.polls for select to authenticated using (public.is_user_approved(auth.uid()));

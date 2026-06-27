@@ -40,8 +40,8 @@ export const ParkingScreen: React.FC = () => {
       const allBookings = await dataManager.getParkingBookings(selectedDate);
       setBookings(allBookings);
 
-      // Filter pending bookings for Admin's queue across the entire day
-      if (profile?.role === 'admin') {
+      // Filter pending bookings for Guard's queue across the entire day
+      if (profile?.role === 'guard') {
         setPendingRequests(allBookings.filter(b => b.status === 'pending'));
       }
     } catch (e) {
@@ -218,7 +218,9 @@ export const ParkingScreen: React.FC = () => {
                 ]}
                 onPress={() => {
                   if (status === 'available') {
-                    handleBookSlot(slotName);
+                    if (profile?.role !== 'guard') {
+                      handleBookSlot(slotName);
+                    }
                   } else if (booking) {
                     handleShowDetail(booking);
                   }
@@ -251,8 +253,8 @@ export const ParkingScreen: React.FC = () => {
           })}
         </View>
 
-        {/* Admin Approvals Queue */}
-        {profile?.role === 'admin' && (
+        {/* Guard Approvals Queue */}
+        {profile?.role === 'guard' && (
           <View style={{ marginTop: 24 }}>
             <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>
               ⏳ Pending Bookings Queue ({pendingRequests.length})
@@ -338,7 +340,13 @@ export const ParkingScreen: React.FC = () => {
                   title={`${b.vehicle_number} - ${b.visitor_name}`}
                   description={`Slot ${b.slot_number} • Flat ${b.user_flat} • Approved`}
                   left={props => <List.Icon {...props} icon="check-circle" color="#388E3C" />}
-                  style={{ backgroundColor: '#E8F5E9', borderRadius: 8, marginBottom: 8 }}
+                  style={{ 
+                    backgroundColor: theme.dark ? 'rgba(56, 142, 60, 0.15)' : '#E8F5E9', 
+                    borderRadius: 8, 
+                    marginBottom: 8 
+                  }}
+                  titleStyle={{ color: theme.dark ? '#C8E6C9' : '#1B5E20', fontWeight: 'bold' }}
+                  descriptionStyle={{ color: theme.dark ? '#A5D6A7' : '#2E7D32' }}
                 />
               ))
             )}
