@@ -566,3 +566,14 @@ using (
   bucket_id = 'bills'
 );
 
+-- Account Deletion function executing as DB Administrator to clear user credentials
+create or replace function public.delete_own_user()
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+

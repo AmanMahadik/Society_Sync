@@ -1,7 +1,9 @@
 import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Animated, Platform } from 'react-native';
-import { ActivityIndicator, BottomNavigation, Text, useTheme, MD3DarkTheme } from 'react-native-paper';
+import { StyleSheet, View, Animated, Platform, Image } from 'react-native';
+import { ActivityIndicator, BottomNavigation, Text, useTheme, MD3DarkTheme, Button } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useAuth } from '../lib/auth-context';
 import { LoginScreen } from '../components/auth/LoginScreen';
 import { RegisterScreen } from '../components/auth/RegisterScreen';
@@ -106,6 +108,51 @@ const AppRouterController: React.FC = () => {
 
   // Bottom Tab Navigation State
   const [index, setIndex] = useState(0);
+
+  // Biometric App Lock State
+  const [isBiometricLocked, setIsBiometricLocked] = useState(false);
+  const [biometricChecking, setBiometricChecking] = useState(false);
+
+  useEffect(() => {
+    const checkBiometricSetting = async () => {
+      if (user && profile && profile.status === 'approved') {
+        const enabled = await AsyncStorage.getItem('biometrics_enabled');
+        if (enabled === 'true') {
+          setIsBiometricLocked(true);
+          triggerBiometricUnlock();
+        } else {
+          setIsBiometricLocked(false);
+        }
+      }
+    };
+    checkBiometricSetting();
+  }, [user, profile]);
+
+  const triggerBiometricUnlock = async () => {
+    try {
+      setBiometricChecking(true);
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Unlock SocietySync',
+          fallbackLabel: 'Use Device Passcode',
+          disableDeviceFallback: false,
+        });
+        if (result.success) {
+          setIsBiometricLocked(false);
+        }
+      } else {
+        // If device has no hardware or biometrics enrolled, unlock automatically
+        setIsBiometricLocked(false);
+      }
+    } catch (e) {
+      console.warn('Biometric error:', e);
+      setIsBiometricLocked(false);
+    } finally {
+      setBiometricChecking(false);
+    }
+  };
 
   // Premium logo breathing/pulsing fade-in/out animation value
   const fadeAnim = React.useRef(new Animated.Value(0.35)).current;
@@ -278,6 +325,44 @@ const AppRouterController: React.FC = () => {
     return <PendingApprovalScreen />;
   }
 
+  // 4.5. Biometric Lock Gate (if enabled)
+  if (isBiometricLocked && user && profile && profile.status === 'approved') {
+    return (
+      <View style={[styles.lockContainer, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.lockLogoWrapper}>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.lockLogo}
+          />
+        </View>
+        <Text variant="headlineMedium" style={styles.lockTitle}>SocietySync Locked</Text>
+        <Text variant="bodyMedium" style={[styles.lockSubtitle, { color: theme.colors.outline }]}>
+          Please authenticate with FaceID or Fingerprint to access your society dashboard.
+        </Text>
+        <Button
+          mode="contained"
+          onPress={triggerBiometricUnlock}
+          loading={biometricChecking}
+          icon="fingerprint"
+          style={styles.lockButton}
+        >
+          Unlock App
+        </Button>
+        <Button
+          mode="text"
+          onPress={async () => {
+            await supabase.auth.signOut();
+            setIsBiometricLocked(false);
+          }}
+          textColor={theme.colors.error}
+          style={{ marginTop: 16 }}
+        >
+          Sign Out / Use Another Account
+        </Button>
+      </View>
+    );
+  }
+
   const safeIndex = index < routes.length ? index : 0;
 
   // Helper to dynamically set active tab color based on brand color system
@@ -327,5 +412,46 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
+  },
+  lockContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  lockLogoWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 22,
+    backgroundColor: '#00D4AA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  lockLogo: {
+    width: 90,
+    height: 90,
+    borderRadius: 18,
+  },
+  lockTitle: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  lockSubtitle: {
+    textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 16,
+    lineHeight: 20,
+  },
+  lockButton: {
+    width: '80%',
+    paddingVertical: 4,
+    borderRadius: 28,
   },
 });

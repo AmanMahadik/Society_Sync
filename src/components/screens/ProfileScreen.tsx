@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Image, Linking, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { supabase } from '../../lib/supabase';
 import { Text, Card, Button, Avatar, useTheme, List, Divider, Switch, Snackbar, IconButton, Chip, TextInput, Portal, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Profile, UserRole, SocietySettings, Complaint } from '../../lib/data-manager';
@@ -28,6 +31,66 @@ export const ProfileScreen: React.FC = () => {
   // Snackbar Toast
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  // Biometric & Account Deletion States
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  useEffect(() => {
+    const loadBiometrics = async () => {
+      const val = await AsyncStorage.getItem('biometrics_enabled');
+      setBiometricsEnabled(val === 'true');
+    };
+    loadBiometrics();
+  }, []);
+
+  const handleToggleBiometrics = async (newValue: boolean) => {
+    try {
+      if (newValue) {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        if (!hasHardware || !isEnrolled) {
+          Alert.alert('Not Supported', 'Your device does not support biometrics or has no enrolled prints/faces.');
+          return;
+        }
+
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to enable biometric app lock',
+        });
+        if (result.success) {
+          await AsyncStorage.setItem('biometrics_enabled', 'true');
+          setBiometricsEnabled(true);
+          showToast('Biometric app lock enabled!');
+        }
+      } else {
+        await AsyncStorage.setItem('biometrics_enabled', 'false');
+        setBiometricsEnabled(false);
+        showToast('Biometric app lock disabled.');
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    try {
+      setDeletingAccount(true);
+      const { error } = await supabase.rpc('delete_own_user');
+      if (error) throw error;
+      
+      await AsyncStorage.removeItem('biometrics_enabled');
+      await signOut();
+      showToast('Account deleted successfully.');
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Error', e.message || 'An error occurred while deleting your account.');
+    } finally {
+      setDeletingAccount(false);
+      setDeleteDialogVisible(false);
+    }
+  };
 
   const showToast = (msg: string) => {
     setSnackbarMessage(msg);
@@ -637,6 +700,19 @@ export const ProfileScreen: React.FC = () => {
             />
             <Divider />
             <List.Item
+              title="Biometric App Lock"
+              description="Protect app access using FaceID / Fingerprint"
+              left={props => <List.Icon {...props} icon="fingerprint" color="#8B5CF6" />}
+              right={props => (
+                <Switch
+                  value={biometricsEnabled}
+                  onValueChange={handleToggleBiometrics}
+                  color="#00D4AA"
+                />
+              )}
+            />
+            <Divider />
+            <List.Item
               title="About Us"
               description="Learn more about SocietySync features & tech stack"
               left={props => <List.Icon {...props} icon="information-outline" color="#3B82F6" />}
@@ -710,6 +786,22 @@ export const ProfileScreen: React.FC = () => {
           </Card.Content>
         </Card>
 
+        {/* 3.8. DANGER ZONE */}
+        <Card style={[styles.menuCard, { borderColor: theme.colors.error, borderWidth: 1, marginTop: 16 }]}>
+          <Card.Content style={{ padding: 0 }}>
+            <Text variant="titleMedium" style={[styles.menuTitle, { color: theme.colors.error }]}>
+              Danger Zone
+            </Text>
+            <List.Item
+              title="Delete Account"
+              titleStyle={{ color: theme.colors.error }}
+              description="Permanently delete your profile, flat, and auth login data"
+              left={props => <List.Icon {...props} icon="account-remove-outline" color={theme.colors.error} />}
+              onPress={() => setDeleteDialogVisible(true)}
+            />
+          </Card.Content>
+        </Card>
+
         {/* 4. LOG OUT BUTTON */}
         <Button 
           mode="contained" 
@@ -737,14 +829,48 @@ export const ProfileScreen: React.FC = () => {
           <Dialog.Actions>
             <Button onPress={() => setLogoutDialogVisible(false)} textColor={theme.colors.outline}>Cancel</Button>
             <Button 
-              onPress={() => {
+              onPress={async () => {
                 setLogoutDialogVisible(false);
-                signOut();
+                await signOut();
               }} 
-              textColor={theme.colors.error}
+              textColor={theme.colors.primary}
               labelStyle={{ fontWeight: 'bold' }}
             >
               Logout
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Portal>
+        <Dialog 
+          visible={deleteDialogVisible} 
+          onDismiss={() => !deletingAccount && setDeleteDialogVisible(false)}
+          style={{ backgroundColor: theme.colors.elevation.level3 }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold', color: theme.colors.error }}>Delete Account?</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              Are you absolutely sure you want to permanently delete your account? This action is irreversible and will erase all profile data, flat associations, and log you out immediately.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button 
+              onPress={() => setDeleteDialogVisible(false)} 
+              textColor={theme.colors.outline}
+              disabled={deletingAccount}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onPress={handleDeleteAccount} 
+              loading={deletingAccount}
+              disabled={deletingAccount}
+              textColor={theme.colors.error}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Delete Account
             </Button>
           </Dialog.Actions>
         </Dialog>

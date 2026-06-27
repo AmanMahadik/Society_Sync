@@ -50,14 +50,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError(null);
-    setLoading(true);
-    const { error: googleError } = await signInWithGoogle();
-    setLoading(false);
-    if (googleError) {
-      showError(getErrorMessage(googleError));
-    }
+  const handleGoogleLogin = () => {
+    showError('Google Sign-In is coming soon!');
   };
 
   const handleResetPassword = async () => {

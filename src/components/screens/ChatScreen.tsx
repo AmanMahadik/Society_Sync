@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, Card, TextInput, IconButton, Button, Avatar, useTheme, Chip, SegmentedButtons, Portal, Modal, ProgressBar, Snackbar, Divider, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ChatMessage, ChatThread, Poll, PollOption } from '../../lib/data-manager';
@@ -40,6 +41,9 @@ export const ChatScreen: React.FC = () => {
   const [clearChatDialogVisible, setClearChatDialogVisible] = useState(false);
   const [clearing, setClearing] = useState(false);
 
+  // Offline caching state
+  const [isOffline, setIsOffline] = useState(false);
+
   const scrollViewRef = useRef<ScrollView>(null);
 
   const showToast = (msg: string) => {
@@ -49,18 +53,41 @@ export const ChatScreen: React.FC = () => {
 
   const fetchThreads = async () => {
     try {
+      const cached = await AsyncStorage.getItem('cached_chat_threads');
+      if (cached) {
+        setThreads(JSON.parse(cached));
+      }
+    } catch (e) {
+      console.warn('Failed to load cached threads:', e);
+    }
+
+    try {
       const list = await dataManager.getChatThreads();
       setThreads(list);
+      setIsOffline(false);
+      await AsyncStorage.setItem('cached_chat_threads', JSON.stringify(list));
     } catch (e) {
       console.error('Error fetching threads', e);
+      setIsOffline(true);
     }
   };
 
   const fetchMessages = async () => {
     if (!activeThread) return;
     try {
+      const cached = await AsyncStorage.getItem(`cached_messages_${activeThread.id}`);
+      if (cached) {
+        setMessages(JSON.parse(cached));
+      }
+    } catch (e) {
+      console.warn('Failed to load cached messages:', e);
+    }
+
+    try {
       const msgs = await dataManager.getChatMessages(activeThread.id);
       setMessages(msgs);
+      setIsOffline(false);
+      await AsyncStorage.setItem(`cached_messages_${activeThread.id}`, JSON.stringify(msgs));
       
       // Auto scroll to bottom
       setTimeout(() => {
@@ -68,6 +95,7 @@ export const ChatScreen: React.FC = () => {
       }, 100);
     } catch (e) {
       console.error('Error fetching messages', e);
+      setIsOffline(true);
     }
   };
 
@@ -442,6 +470,16 @@ export const ChatScreen: React.FC = () => {
             )}
           </Card.Content>
         </Card>
+      )}
+
+      {threadTab === 'chat' && isOffline && (
+        <Chip 
+          icon="wifi-off" 
+          style={{ margin: 8, alignSelf: 'center', backgroundColor: '#FBEAE3' }} 
+          textStyle={{ color: '#A8401C', fontSize: 10, fontWeight: 'bold' }}
+        >
+          Offline Mode (Showing Cached Chat)
+        </Chip>
       )}
 
       {/* ==================== SCREEN B1: DEBATE MESSAGES STREAM ==================== */}

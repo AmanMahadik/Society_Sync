@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Image } from 'react-native';
-import { Text, Card, Button, TextInput, IconButton, Portal, Modal, useTheme, Snackbar, SegmentedButtons, List } from 'react-native-paper';
+import { Text, Card, Button, TextInput, IconButton, Portal, Modal, useTheme, Snackbar, SegmentedButtons, List, Chip } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ParkingRequest, ParkingTimeSlot, ParkingStatus } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +31,9 @@ export const ParkingScreen: React.FC = () => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
+  // Offline caching state
+  const [isOffline, setIsOffline] = useState(false);
+
   const showToast = (msg: string) => {
     setSnackbarMessage(msg);
     setSnackbarVisible(true);
@@ -37,15 +41,30 @@ export const ParkingScreen: React.FC = () => {
 
   const fetchBookings = async () => {
     try {
+      const cached = await AsyncStorage.getItem(`cached_parking_bookings_${selectedDate}`);
+      if (cached) {
+        const cachedBookings = JSON.parse(cached);
+        setBookings(cachedBookings);
+        if (profile?.role === 'guard') {
+          setPendingRequests(cachedBookings.filter((b: any) => b.status === 'pending'));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load cached bookings:', e);
+    }
+
+    try {
       const allBookings = await dataManager.getParkingBookings(selectedDate);
       setBookings(allBookings);
+      setIsOffline(false);
+      await AsyncStorage.setItem(`cached_parking_bookings_${selectedDate}`, JSON.stringify(allBookings));
 
-      // Filter pending bookings for Guard's queue across the entire day
       if (profile?.role === 'guard') {
         setPendingRequests(allBookings.filter(b => b.status === 'pending'));
       }
     } catch (e) {
       console.error('Error fetching bookings', e);
+      setIsOffline(true);
     }
   };
 
@@ -169,6 +188,15 @@ export const ParkingScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {isOffline && (
+          <Chip 
+            icon="wifi-off" 
+            style={{ marginHorizontal: 16, marginVertical: 8, alignSelf: 'center', backgroundColor: '#FBEAE3' }} 
+            textStyle={{ color: '#A8401C', fontSize: 11, fontWeight: 'bold' }}
+          >
+            Offline Mode (Showing Cached Bookings)
+          </Chip>
+        )}
         {/* Visual Legend Header */}
         <Card style={styles.infoCard}>
           <Card.Content>
