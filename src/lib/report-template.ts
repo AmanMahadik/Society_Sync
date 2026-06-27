@@ -23,612 +23,352 @@ export function getReportTemplate(
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <title>Event Bills & Transactions Report</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700;8..60,900&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700;8..60,900&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-  :root {
-    --ink: #10243E;
-    --ink-soft: #1B3A5C;
-    --gold: #C9A227;
-    --gold-deep: #9C7C1B;
-    --paper: #FBF9F4;
-    --paper-card: #FFFFFF;
-    --slate: #5B6472;
-    --slate-light: #8B93A1;
-    --line: #E3DCC9;
-    --green: #1E7245;
-    --green-bg: #EAF4ED;
-    --red: #A8401C;
-    --red-bg: #FBEAE3;
-    --gold-bg: #FBF3DC;
-  }
+:root {
+  --ink: #10243E;
+  --ink-soft: #1B3A5C;
+  --gold: #C9A227;
+  --gold-deep: #9C7C1B;
+  --paper: #FBF9F4;
+  --paper-card: #FFFFFF;
+  --slate: #5B6472;
+  --slate-light: #8B93A1;
+  --line: #E3DCC9;
+  --green: #1E7245;
+  --green-bg: #EAF4ED;
+  --red: #A8401C;
+  --red-bg: #FBEAE3;
+  --gold-bg: #FBF3DC;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'Inter', sans-serif;
-    color: var(--ink);
-    background: #e0e0e0;
-  }
+html, body {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background: #ccc;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
 
-  /* A4 page: 210mm × 297mm */
-  .page {
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto 12mm auto;
-    position: relative;
-    background: var(--paper);
-    overflow: hidden;
-    page-break-after: always;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-  }
-  .page:last-child { page-break-after: auto; }
+/* ── STRICT A4: each .page is exactly one printed sheet ── */
+.page {
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;           /* never spill onto next page */
+  position: relative;
+  background: var(--paper);
+  margin: 0 auto 8mm auto;
+  page-break-after: always;
+  page-break-inside: avoid;
+  box-shadow: 0 3px 18px rgba(0,0,0,.18);
+}
+.page:last-child { page-break-after: auto; }
 
-  @media print {
-    body { background: none; }
-    .page { margin: 0; box-shadow: none; }
-  }
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+@media print {
+  html, body { background: none; }
+  .page { margin: 0; box-shadow: none; }
+}
 
-  /* ---- Spine ---- */
-  .spine {
-    position: absolute;
-    top: 0; left: 0; bottom: 0;
-    width: 16mm;
-    background: linear-gradient(180deg, var(--ink) 0%, var(--ink-soft) 100%);
-    z-index: 2;
-  }
-  .spine-label {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    white-space: nowrap;
-    color: var(--gold);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
+/* ── Spine ── */
+.spine {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 14mm;
+  background: linear-gradient(180deg, var(--ink) 0%, var(--ink-soft) 100%);
+  z-index: 2;
+}
+.spine-label {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%) rotate(-90deg);
+  white-space: nowrap;
+  color: var(--gold);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
 
-  .content {
-    margin-left: 16mm;
-    padding: 14mm 14mm 22mm 13mm;
-  }
+/* ── Content area (inside spine, inside footer) ── */
+.content {
+  position: absolute;
+  top: 0; left: 14mm; right: 0;
+  bottom: 12mm;                /* leave room for footer */
+  padding: 11mm 13mm 4mm 12mm;
+  overflow: hidden;
+}
 
-  /* ---- Running header / footer ---- */
-  .doc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    border-bottom: 1.8px solid var(--ink);
-    padding-bottom: 6px;
-    margin-bottom: 9mm;
-  }
-  .doc-header .h-left {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: .3px;
-  }
-  .doc-header .h-right {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    color: var(--slate);
-    letter-spacing: .5px;
-  }
-  .doc-footer {
-    position: absolute;
-    bottom: 9mm; left: 13mm; right: 14mm;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 8px;
-    color: var(--slate-light);
-    border-top: .75px solid var(--line);
-    padding-top: 5px;
-    letter-spacing: .4px;
-    margin-left: 16mm;
-  }
+/* ── Running header ── */
+.doc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1.6px solid var(--ink);
+  padding-bottom: 5px;
+  margin-bottom: 7mm;
+}
+.doc-header .h-left {
+  font-family: 'Source Serif 4', serif;
+  font-weight: 700;
+  font-size: 11.5px;
+}
+.doc-header .h-right {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--slate);
+  letter-spacing: .5px;
+}
 
-  /* ===================== COVER PAGE ===================== */
-  .cover { background: var(--ink); color: #fff; }
-  .cover::before {
-    content: "";
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(circle at 85% 8%, rgba(201,162,39,0.18), transparent 44%),
-      radial-gradient(circle at 6% 92%, rgba(201,162,39,0.12), transparent 40%);
-  }
-  .cover-frame {
-    position: absolute;
-    top: 12mm; left: 12mm; right: 12mm; bottom: 12mm;
-    border: 1.2px solid rgba(201,162,39,0.5);
-    z-index: 1;
-  }
-  .cover-frame::before {
-    content: "";
-    position: absolute; inset: 7px;
-    border: 1px solid rgba(201,162,39,0.25);
-  }
-  .cover-inner {
-    position: relative;
-    z-index: 2;
-    height: 297mm;
-    display: flex;
-    flex-direction: column;
-    padding: 28mm 22mm 22mm 22mm;
-  }
-  .cover-eyebrow {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 3.5px;
-    color: var(--gold);
-    text-transform: uppercase;
-    margin-bottom: 10mm;
-  }
-  .cover-seal {
-    width: 82px; height: 82px;
-    border-radius: 50%;
-    border: 2px solid var(--gold);
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 8mm;
-    position: relative;
-  }
-  .cover-seal::before {
-    content: "";
-    position: absolute; inset: 8px;
-    border: 1px solid rgba(201,162,39,0.5);
-    border-radius: 50%;
-  }
-  .cover-seal-mark {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 26px;
-    color: var(--gold);
-    letter-spacing: 1px;
-  }
-  .cover-title {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 52px;
-    line-height: 1.08;
-    max-width: 140mm;
-    margin-bottom: 8mm;
-    color: #fff;
-  }
-  .cover-title em {
-    font-style: normal;
-    color: var(--gold);
-    font-weight: 600;
-  }
-  .cover-sub {
-    font-size: 14px;
-    color: #C9D2DE;
-    max-width: 125mm;
-    line-height: 1.7;
-    font-weight: 400;
-    margin-bottom: 0;
-  }
-  .cover-meta {
-    margin-top: auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    border-top: 1px solid rgba(255,255,255,0.2);
-    padding-top: 8mm;
-    gap: 0;
-  }
-  .cover-meta div { padding-right: 8mm; }
-  .cover-meta .m-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 4px;
-  }
-  .cover-meta .m-value {
-    font-size: 15px;
-    font-weight: 700;
-    color: #fff;
-  }
-  .cover-stamp {
-    position: absolute;
-    bottom: 32mm; right: 24mm;
-    text-align: right;
-    z-index: 3;
-  }
-  .cover-stamp .s-amount {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 36px;
-    color: var(--gold);
-  }
-  .cover-stamp .s-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 2px;
-    color: #C9D2DE;
-    margin-top: 3px;
-  }
+/* ── Footer ── */
+.doc-footer {
+  position: absolute;
+  bottom: 0; left: 14mm; right: 0;
+  height: 12mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 13mm 0 12mm;
+  border-top: .75px solid var(--line);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 7.5px;
+  color: var(--slate-light);
+  letter-spacing: .3px;
+  background: var(--paper);
+}
 
-  /* ===================== TYPOGRAPHY ===================== */
-  h1.section-title {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 26px;
-    color: var(--ink);
-    margin-bottom: 3mm;
-    line-height: 1.15;
-  }
-  .section-rule {
-    width: 44px; height: 4px;
-    background: var(--gold);
-    margin-bottom: 6mm;
-    border-radius: 2px;
-  }
-  .section-intro {
-    font-size: 12px;
-    color: var(--slate);
-    line-height: 1.75;
-    max-width: 155mm;
-    margin-bottom: 8mm;
-  }
+/* ═══════════════ COVER ═══════════════ */
+.cover { background: var(--ink); }
+.cover::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 82% 6%,  rgba(201,162,39,.18), transparent 44%),
+    radial-gradient(circle at 8%  93%, rgba(201,162,39,.12), transparent 40%);
+}
+.cover-frame {
+  position: absolute;
+  top: 11mm; left: 11mm; right: 11mm; bottom: 11mm;
+  border: 1.2px solid rgba(201,162,39,.48);
+  z-index: 1;
+}
+.cover-frame::before {
+  content: "";
+  position: absolute; inset: 6px;
+  border: 1px solid rgba(201,162,39,.22);
+}
 
-  /* ===================== SUMMARY CARDS ===================== */
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5mm;
-    margin-bottom: 8mm;
-  }
-  .stat-card {
-    background: var(--paper-card);
-    border: 1px solid var(--line);
-    border-top: 4px solid var(--gold);
-    padding: 6mm 5mm 5mm 5mm;
-  }
-  .stat-card .s-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--slate);
-    margin-bottom: 4mm;
-    line-height: 1.4;
-  }
-  .stat-card .s-value {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 26px;
-    color: var(--ink);
-    line-height: 1;
-  }
-  .stat-card .s-foot {
-    font-size: 9px;
-    color: var(--slate-light);
-    margin-top: 3mm;
-    padding-top: 3mm;
-    border-top: .75px dashed var(--line);
-    line-height: 1.4;
-  }
-  .stat-card.income { border-top-color: var(--green); }
-  .stat-card.income .s-value { color: var(--green); }
-  .stat-card.expense { border-top-color: var(--red); }
-  .stat-card.expense .s-value { color: var(--red); }
+/* all cover content in one flex column that fills 297mm */
+.cover-body {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  padding: 22mm 20mm 20mm 22mm;
+  color: #fff;
+}
+.cover-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 8mm;
+}
+.cover-seal {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 7mm;
+  position: relative;
+  flex-shrink: 0;
+}
+.cover-seal::before {
+  content: "";
+  position: absolute; inset: 7px;
+  border: 1px solid rgba(201,162,39,.5);
+  border-radius: 50%;
+}
+.cover-seal-mark {
+  font-family: 'Source Serif 4', serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--gold);
+}
+.cover-title {
+  font-family: 'Source Serif 4', serif;
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1.08;
+  margin-bottom: 7mm;
+  flex-shrink: 0;
+}
+.cover-title em { font-style: normal; color: var(--gold); }
+.cover-sub {
+  font-size: 12px;
+  color: #C9D2DE;
+  line-height: 1.7;
+  max-width: 120mm;
+  flex-shrink: 0;
+}
 
-  /* ===================== BALANCE BAR ===================== */
-  .balance-bar {
-    background: var(--ink);
-    color: #fff;
-    padding: 7mm 8mm;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8mm;
-    position: relative;
-    overflow: hidden;
-  }
-  .balance-bar::after {
-    content: "";
-    position: absolute; right: 0; top: 0; bottom: 0; width: 4px;
-    background: var(--gold);
-  }
-  .balance-bar .b-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 3px;
-  }
-  .balance-bar .b-desc {
-    font-size: 11px;
-    color: #C9D2DE;
-    max-width: 110mm;
-    line-height: 1.5;
-  }
-  .balance-bar .b-amount {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 32px;
-    white-space: nowrap;
-    padding-right: 6mm;
-  }
+/* push stamp + meta to bottom */
+.cover-spacer { flex: 1; }
 
-  /* ===================== CHART ===================== */
-  .chart-section-title {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 18px;
-    color: var(--ink);
-    margin-bottom: 2mm;
-  }
-  .chart-section-rule {
-    width: 32px; height: 3px;
-    background: var(--gold);
-    margin-bottom: 6mm;
-    border-radius: 2px;
-  }
-  .chart-outer {
-    background: var(--paper-card);
-    border: 1px solid var(--line);
-    padding: 6mm 7mm 5mm 7mm;
-    margin-bottom: 7mm;
-  }
-  .chart-wrap {
-    display: flex;
-    align-items: flex-end;
-    gap: 5mm;
-    height: 56mm;
-    padding-bottom: 0;
-    border-bottom: 2px solid var(--ink);
-    margin-bottom: 3mm;
-  }
-  .chart-bar-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100%;
-    justify-content: flex-end;
-  }
-  .chart-amount {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    color: var(--ink);
-    margin-bottom: 2.5mm;
-    font-weight: 600;
-    text-align: center;
-    line-height: 1.3;
-  }
-  .chart-bar {
-    width: 70%;
-    border-radius: 3px 3px 0 0;
-    min-height: 4mm;
-  }
-  .chart-bar.exp { background: linear-gradient(180deg, #C1572F 0%, var(--red) 100%); }
-  .chart-bar.inc { background: linear-gradient(180deg, #2A7A4F 0%, var(--green) 100%); }
-  .chart-bar.neutral { background: linear-gradient(180deg, #2A4D74 0%, var(--ink) 100%); }
-  .chart-labels {
-    display: flex;
-    gap: 5mm;
-  }
-  .chart-label-col {
-    flex: 1;
-    text-align: center;
-    font-size: 9px;
-    color: var(--slate);
-    letter-spacing: .3px;
-    line-height: 1.3;
-    font-family: 'IBM Plex Mono', monospace;
-  }
-  .chart-legend {
-    display: flex;
-    gap: 8mm;
-    margin-top: 4mm;
-    justify-content: flex-end;
-  }
-  .chart-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    color: var(--slate);
-  }
-  .legend-dot {
-    width: 10px; height: 10px;
-    border-radius: 2px;
-    display: inline-block;
-  }
+.cover-stamp {
+  margin-bottom: 7mm;
+  text-align: right;
+}
+.cover-stamp .s-amount {
+  font-family: 'Source Serif 4', serif;
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--gold);
+}
+.cover-stamp .s-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 2px;
+  color: #C9D2DE;
+  margin-top: 2px;
+}
+.cover-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid rgba(255,255,255,.2);
+  padding-top: 6mm;
+  flex-shrink: 0;
+}
+.cover-meta .m-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 3px;
+}
+.cover-meta .m-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
 
-  /* ===================== TABLES ===================== */
-  table.ledger {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 8mm;
-    font-size: 11px;
-  }
-  table.ledger thead th {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #fff;
-    background: var(--ink);
-    text-align: left;
-    padding: 4mm 4mm;
-    font-weight: 500;
-  }
-  table.ledger thead th.num { text-align: right; }
-  table.ledger tbody td {
-    font-size: 11px;
-    padding: 3.8mm 4mm;
-    border-bottom: .75px solid var(--line);
-    vertical-align: top;
-    line-height: 1.45;
-  }
-  table.ledger tbody tr:nth-child(even) { background: #F6F2E8; }
-  table.ledger tbody tr:hover { background: #F0EBD8; }
-  table.ledger tbody td.num {
-    text-align: right;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    white-space: nowrap;
-    font-weight: 600;
-  }
-  table.ledger tbody td .item-name {
-    font-weight: 600;
-    color: var(--ink);
-    font-size: 11.5px;
-  }
-  table.ledger tbody td .item-sub {
-    font-size: 9.5px;
-    color: var(--slate-light);
-    margin-top: 2px;
-  }
-  .pill {
-    display: inline-block;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 8px;
-    letter-spacing: .5px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-  .pill.paid { background: var(--green-bg); color: var(--green); }
-  .pill.income { background: var(--gold-bg); color: var(--gold-deep); }
-  .pill.expense { background: var(--red-bg); color: var(--red); }
+/* ═══════════════ TYPOGRAPHY ═══════════════ */
+h1.sec { font-family: 'Source Serif 4', serif; font-weight: 700; font-size: 22px; color: var(--ink); margin-bottom: 2.5mm; line-height: 1.15; }
+h2.sec { font-family: 'Source Serif 4', serif; font-weight: 700; font-size: 16px; color: var(--ink); margin-bottom: 2mm; }
+.rule { width: 38px; height: 3.5px; background: var(--gold); margin-bottom: 5mm; border-radius: 2px; }
+.intro { font-size: 10.5px; color: var(--slate); line-height: 1.7; max-width: 155mm; margin-bottom: 6mm; }
 
-  table.ledger tfoot td {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 4.5mm 4mm;
-    border-top: 2px solid var(--ink);
-    background: var(--paper);
-  }
-  table.ledger tfoot td.num {
-    text-align: right;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
-    color: var(--ink);
-  }
+/* ═══════════════ SUMMARY CARDS ═══════════════ */
+.summary-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 4mm; margin-bottom: 5mm; }
+.stat-card { background: var(--paper-card); border: 1px solid var(--line); border-top: 3.5px solid var(--gold); padding: 5mm 4.5mm 4mm; }
+.stat-card .s-label { font-family: 'IBM Plex Mono', monospace; font-size: 7.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--slate); margin-bottom: 3.5mm; line-height: 1.4; }
+.stat-card .s-value { font-family: 'Source Serif 4', serif; font-weight: 700; font-size: 24px; color: var(--ink); line-height: 1; }
+.stat-card .s-foot { font-size: 8.5px; color: var(--slate-light); margin-top: 2.5mm; padding-top: 2.5mm; border-top: .75px dashed var(--line); line-height: 1.4; }
+.stat-card.income { border-top-color: var(--green); } .stat-card.income .s-value { color: var(--green); }
+.stat-card.expense { border-top-color: var(--red);  } .stat-card.expense .s-value { color: var(--red);  }
 
-  /* ===================== NOTE BOX ===================== */
-  .note-box {
-    background: var(--gold-bg);
-    border-left: 4px solid var(--gold);
-    padding: 5mm 6mm;
-    font-size: 11px;
-    color: #5C4A12;
-    line-height: 1.65;
-    margin-bottom: 7mm;
-  }
-  .note-box b { color: var(--gold-deep); }
+/* ═══════════════ BALANCE BAR ═══════════════ */
+.bal-bar { background: var(--ink); color: #fff; padding: 5.5mm 7mm; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6mm; position: relative; overflow: hidden; }
+.bal-bar::after { content:""; position:absolute; right:0;top:0;bottom:0;width:4px; background:var(--gold); }
+.bal-bar .b-lbl { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); margin-bottom:2px; }
+.bal-bar .b-desc { font-size:10px; color:#C9D2DE; max-width:110mm; line-height:1.45; }
+.bal-bar .b-amt { font-family:'Source Serif 4',serif; font-weight:700; font-size:28px; white-space:nowrap; padding-right:6mm; }
 
-  /* ===================== RECONCILIATION TABLE ===================== */
-  table.recon {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 7mm;
-    font-size: 12px;
-  }
-  table.recon thead th {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    background: var(--ink);
-    color: #fff;
-    padding: 4mm;
-    text-align: left;
-  }
-  table.recon thead th.num { text-align: right; }
-  table.recon tbody td {
-    padding: 4mm;
-    border-bottom: .75px solid var(--line);
-    font-size: 12px;
-  }
-  table.recon tbody tr:nth-child(even) { background: #F6F2E8; }
-  table.recon tbody td.num {
-    text-align: right;
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 600;
-    font-size: 12px;
-  }
-  table.recon tfoot td {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 700;
-    font-size: 14px;
-    padding: 4.5mm 4mm;
-    border-top: 2px solid var(--ink);
-    background: var(--paper);
-  }
-  table.recon tfoot td.num {
-    text-align: right;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 15px;
-  }
+/* ═══════════════ CHART ═══════════════ */
+.chart-outer { background: var(--paper-card); border: 1px solid var(--line); padding: 5mm 6mm 4mm; margin-bottom: 5mm; }
+.chart-wrap { display: flex; align-items: flex-end; gap: 4.5mm; height: 46mm; border-bottom: 1.8px solid var(--ink); margin-bottom: 2.5mm; }
+.chart-bar-col { flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; }
+.chart-amt { font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--ink); margin-bottom:2mm; font-weight:600; text-align:center; line-height:1.3; }
+.chart-bar { width:68%; border-radius:3px 3px 0 0; min-height:3mm; }
+.chart-bar.exp     { background: linear-gradient(180deg,#C1572F,var(--red));   }
+.chart-bar.inc     { background: linear-gradient(180deg,#2A7A4F,var(--green)); }
+.chart-bar.neutral { background: linear-gradient(180deg,#2A4D74,var(--ink));   }
+.chart-labels { display:flex; gap:4.5mm; }
+.chart-lbl { flex:1; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--slate); line-height:1.3; }
+.chart-legend { display:flex; gap:6mm; margin-top:3mm; justify-content:flex-end; }
+.chart-legend-item { display:flex; align-items:center; gap:3px; font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--slate); }
+.ldot { width:9px;height:9px;border-radius:2px;display:inline-block; }
 
-  /* ===================== CERTIFICATION ===================== */
-  .cert-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14mm;
-    margin-top: 12mm;
-  }
-  .cert-block .c-line {
-    border-bottom: 1.2px solid var(--ink);
-    height: 16mm;
-  }
-  .cert-block .c-role {
-    font-family: 'Source Serif 4', serif;
-    font-weight: 600;
-    font-size: 13px;
-    margin-top: 3mm;
-    color: var(--ink);
-  }
-  .cert-block .c-meta {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    color: var(--slate);
-    margin-top: 2mm;
-    line-height: 1.6;
-  }
-  .disclaimer {
-    margin-top: 12mm;
-    padding-top: 5mm;
-    border-top: .75px solid var(--line);
-    font-size: 9px;
-    color: var(--slate-light);
-    line-height: 1.7;
-  }
+/* ═══════════════ TABLES ═══════════════ */
+table.ledger { width:100%; border-collapse:collapse; margin-bottom:5mm; }
+table.ledger thead th { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:1px; text-transform:uppercase; color:#fff; background:var(--ink); text-align:left; padding:3.2mm 3.5mm; font-weight:500; }
+table.ledger thead th.r { text-align:right; }
+table.ledger tbody td { font-size:10.5px; padding:3mm 3.5mm; border-bottom:.75px solid var(--line); vertical-align:top; line-height:1.4; }
+table.ledger tbody tr:nth-child(even) { background:#F6F2E8; }
+table.ledger tbody tr:hover { background:#F0EBD8; }
+table.ledger tbody td.r { text-align:right; font-family:'IBM Plex Mono',monospace; font-size:10.5px; white-space:nowrap; font-weight:600; }
+table.ledger tbody td .iname { font-weight:600; color:var(--ink); font-size:11px; }
+table.ledger tbody td .isub  { font-size:9px; color:var(--slate-light); margin-top:1px; }
+table.ledger tfoot td { font-family:'Source Serif 4',serif; font-weight:700; font-size:12px; padding:3.5mm 3.5mm; border-top:2px solid var(--ink); background:var(--paper); }
+table.ledger tfoot td.r { text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13px; }
+
+.pill { display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:7.5px; letter-spacing:.5px; padding:2px 7px; border-radius:9px; text-transform:uppercase; font-weight:600; }
+.pill.paid    { background:var(--green-bg); color:var(--green); }
+.pill.income  { background:var(--gold-bg);  color:var(--gold-deep); }
+.pill.expense { background:var(--red-bg);   color:var(--red); }
+
+/* recon table */
+table.recon { width:100%; border-collapse:collapse; margin-bottom:5mm; }
+table.recon thead th { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:1px; text-transform:uppercase; background:var(--ink); color:#fff; padding:3.5mm; text-align:left; }
+table.recon thead th.r { text-align:right; }
+table.recon tbody td { padding:3.5mm; border-bottom:.75px solid var(--line); font-size:11.5px; }
+table.recon tbody tr:nth-child(even) { background:#F6F2E8; }
+table.recon tbody td.r { text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:11.5px; }
+table.recon tfoot td { font-family:'Source Serif 4',serif; font-weight:700; font-size:13px; padding:4mm 3.5mm; border-top:2px solid var(--ink); background:var(--paper); }
+table.recon tfoot td.r { text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14px; }
+
+/* note */
+.note { background:var(--gold-bg); border-left:4px solid var(--gold); padding:4mm 5mm; font-size:10px; color:#5C4A12; line-height:1.65; margin-bottom:5mm; }
+.note b { color:var(--gold-deep); }
+
+/* cert */
+.cert-grid { display:grid; grid-template-columns:1fr 1fr; gap:12mm; margin-top:10mm; }
+.cert-block .c-line { border-bottom:1.2px solid var(--ink); height:14mm; }
+.cert-block .c-role { font-family:'Source Serif 4',serif; font-weight:600; font-size:12px; margin-top:2.5mm; }
+.cert-block .c-meta { font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--slate); margin-top:1.5mm; line-height:1.6; }
+.disclaimer { margin-top:10mm; padding-top:4mm; border-top:.75px solid var(--line); font-size:8.5px; color:var(--slate-light); line-height:1.7; }
 </style>
 </head>
 <body>
 
-<!-- ============================================================ -->
-<!-- PAGE 1 — COVER                                                -->
-<!-- ============================================================ -->
+<!-- ════════════════════════════════════════
+     PAGE 1 — COVER
+════════════════════════════════════════ -->
 <div class="page cover">
   <div class="cover-frame"></div>
-  <div class="cover-inner">
-    <div class="cover-eyebrow">${profile?.society_name || 'SocietySync'} Residents' Welfare Association</div>
+
+  <div class="cover-body">
+    <div class="cover-eyebrow">${profile?.society_name || 'SocietySync'} Residents&rsquo; Welfare Association</div>
 
     <div class="cover-seal">
       <div class="cover-seal-mark">${initials}</div>
     </div>
 
     <div class="cover-title">Event Bills &amp;<br/>Transactions <em>Report</em></div>
+
     <div class="cover-sub">
       An itemized statement of contributions received and expenses incurred for the
-      ${selectedEvent.name} celebration, prepared for review by the
-      Society Management Committee and General Body.
+      ${selectedEvent.name} celebration, prepared for review by the Society Management
+      Committee and General Body.
+    </div>
+
+    <div class="cover-spacer"></div>
+
+    <div class="cover-stamp">
+      <div class="s-amount">&#8377;${balance.toLocaleString('en-IN')}</div>
+      <div class="s-label">CLOSING FUND BALANCE</div>
     </div>
 
     <div class="cover-meta">
@@ -645,21 +385,14 @@ export function getReportTemplate(
         <div class="m-value">${currentDate}</div>
       </div>
     </div>
-
-    <div class="cover-stamp">
-      <div class="s-amount">&#8377;${balance.toLocaleString('en-IN')}</div>
-      <div class="s-label">CLOSING FUND BALANCE</div>
-    </div>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- PAGE 2 — FINANCIAL SUMMARY                                    -->
-<!-- ============================================================ -->
+<!-- ════════════════════════════════════════
+     PAGE 2 — FINANCIAL SUMMARY
+════════════════════════════════════════ -->
 <div class="page">
-  <div class="spine">
-    <div class="spine-label">Section 01 — Financial Summary</div>
-  </div>
+  <div class="spine"><div class="spine-label">Section 01 — Financial Summary</div></div>
   <div class="content">
 
     <div class="doc-header">
@@ -667,19 +400,19 @@ export function getReportTemplate(
       <div class="h-right">${selectedEvent.name.toUpperCase()} &nbsp;|&nbsp; PAGE 02</div>
     </div>
 
-    <h1 class="section-title">Financial Summary</h1>
-    <div class="section-rule"></div>
-    <p class="section-intro">
-      This statement consolidates all Chandaa (contributions) received from residents and sponsors,
-      against verified expense bills recorded by the Festival Committee. All figures are in Indian
-      Rupees (₹) and are reconciled against bank deposit slips and physical receipt bills on file.
+    <h1 class="sec">Financial Summary</h1>
+    <div class="rule"></div>
+    <p class="intro">
+      This statement consolidates all Chandaa (contributions) received from residents and sponsors against
+      verified expense bills recorded by the Festival Committee. All figures are in Indian Rupees (&#8377;)
+      and are reconciled against bank deposit slips and physical receipt bills on file.
     </p>
 
     <div class="summary-grid">
       <div class="stat-card income">
         <div class="s-label">Total Contributions Received</div>
         <div class="s-value">&#8377;${totalIncome.toLocaleString('en-IN')}</div>
-        <div class="s-foot">${incomeCount} contributions · Reconciled</div>
+        <div class="s-foot">${incomeCount} contributions &middot; Reconciled</div>
       </div>
       <div class="stat-card expense">
         <div class="s-label">Total Expenses Incurred</div>
@@ -693,17 +426,16 @@ export function getReportTemplate(
       </div>
     </div>
 
-    <div class="balance-bar">
+    <div class="bal-bar">
       <div>
-        <div class="b-label">Net Position</div>
+        <div class="b-lbl">Net Position</div>
         <div class="b-desc">${balance >= 0 ? 'Contributions exceeded expenses for this event.' : 'Expenses exceeded contributions for this event.'}</div>
       </div>
-      <div class="b-amount">${balance >= 0 ? '+' : '-'} &#8377;${Math.abs(balance).toLocaleString('en-IN')}</div>
+      <div class="b-amt">${balance >= 0 ? '+' : '-'} &#8377;${Math.abs(balance).toLocaleString('en-IN')}</div>
     </div>
 
-    <!-- Chart Section -->
-    <div class="chart-section-title">Expense Distribution by Category</div>
-    <div class="chart-section-rule"></div>
+    <h2 class="sec">Expense Distribution by Category</h2>
+    <div class="rule" style="margin-bottom:4mm;"></div>
 
     <div class="chart-outer">
       <div class="chart-wrap">
@@ -713,30 +445,28 @@ export function getReportTemplate(
         ${chartLabels}
       </div>
       <div class="chart-legend">
-        <div class="chart-legend-item"><span class="legend-dot" style="background:var(--red);"></span> Expense Spend</div>
-        <div class="chart-legend-item"><span class="legend-dot" style="background:var(--ink);"></span> No Spend</div>
+        <div class="chart-legend-item"><span class="ldot" style="background:var(--red);"></span> Expense</div>
+        <div class="chart-legend-item"><span class="ldot" style="background:var(--ink);"></span> No Spend</div>
       </div>
     </div>
 
-    <div class="note-box">
-      <b>Note:</b> This is an official system-generated financial ledger report compiled directly
-      from the verified database of ${profile?.society_name || 'SocietySync'} Co-Op Housing. All figures are subject to audit.
+    <div class="note">
+      <b>Note:</b> This is an official system-generated financial ledger report compiled directly from
+      the verified database of ${profile?.society_name || 'SocietySync'} Co-Op Housing. All figures are subject to committee audit.
     </div>
 
   </div>
   <div class="doc-footer">
-    <span>${profile?.society_name || 'SocietySync'} Residents' Welfare Association · Prepared via SocietySync Festival Ledger</span>
-    <span>CONFIDENTIAL — FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
+    <span>${profile?.society_name || 'SocietySync'} Residents&rsquo; Welfare Association &middot; Prepared via SocietySync Festival Ledger</span>
+    <span>CONFIDENTIAL &mdash; FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- PAGE 3 — INCOME LEDGER                                        -->
-<!-- ============================================================ -->
+<!-- ════════════════════════════════════════
+     PAGE 3 — INCOME LEDGER
+════════════════════════════════════════ -->
 <div class="page">
-  <div class="spine">
-    <div class="spine-label">Section 02 — Contributions Ledger</div>
-  </div>
+  <div class="spine"><div class="spine-label">Section 02 — Contributions Ledger</div></div>
   <div class="content">
 
     <div class="doc-header">
@@ -744,22 +474,22 @@ export function getReportTemplate(
       <div class="h-right">${selectedEvent.name.toUpperCase()} &nbsp;|&nbsp; PAGE 03</div>
     </div>
 
-    <h1 class="section-title">Contributions Received (Chandaa)</h1>
-    <div class="section-rule"></div>
-    <p class="section-intro">
-      Itemized record of all contributions collected from residents and external sponsors,
-      in order of receipt. Each entry is cross-referenced against the official receipt book number.
+    <h1 class="sec">Contributions Received (Chandaa)</h1>
+    <div class="rule"></div>
+    <p class="intro">
+      Itemized record of all contributions collected from residents and external sponsors in order of receipt.
+      Each entry is cross-referenced against the official receipt book number.
     </p>
 
     <table class="ledger">
       <thead>
         <tr>
           <th style="width:13%;">Date</th>
-          <th style="width:14%;">Receipt No.</th>
+          <th style="width:13%;">Receipt No.</th>
           <th>Contributor</th>
           <th style="width:14%;">Mode</th>
           <th style="width:11%;">Status</th>
-          <th class="num" style="width:16%;">Amount (₹)</th>
+          <th class="r" style="width:15%;">Amount (&#8377;)</th>
         </tr>
       </thead>
       <tbody>
@@ -768,30 +498,28 @@ export function getReportTemplate(
       <tfoot>
         <tr>
           <td colspan="5">Total Contributions Received</td>
-          <td class="num">&#8377;${totalIncome.toLocaleString('en-IN')}</td>
+          <td class="r">&#8377;${totalIncome.toLocaleString('en-IN')}</td>
         </tr>
       </tfoot>
     </table>
 
-    <div class="note-box">
+    <div class="note">
       <b>Verification:</b> All collections are recorded and validated by the Treasurer. Bank transfer
       and UPI entries are reconciled against the society bank statement. Original receipts are on file.
     </div>
 
   </div>
   <div class="doc-footer">
-    <span>${profile?.society_name || 'SocietySync'} Residents' Welfare Association · Prepared via SocietySync Festival Ledger</span>
-    <span>CONFIDENTIAL — FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
+    <span>${profile?.society_name || 'SocietySync'} Residents&rsquo; Welfare Association &middot; Prepared via SocietySync Festival Ledger</span>
+    <span>CONFIDENTIAL &mdash; FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- PAGE 4 — EXPENSE LEDGER                                       -->
-<!-- ============================================================ -->
+<!-- ════════════════════════════════════════
+     PAGE 4 — EXPENSE LEDGER
+════════════════════════════════════════ -->
 <div class="page">
-  <div class="spine">
-    <div class="spine-label">Section 03 — Expense Bills Ledger</div>
-  </div>
+  <div class="spine"><div class="spine-label">Section 03 — Expense Bills Ledger</div></div>
   <div class="content">
 
     <div class="doc-header">
@@ -799,11 +527,11 @@ export function getReportTemplate(
       <div class="h-right">${selectedEvent.name.toUpperCase()} &nbsp;|&nbsp; PAGE 04</div>
     </div>
 
-    <h1 class="section-title">Expense Bills &amp; Vendor Payments</h1>
-    <div class="section-rule"></div>
-    <p class="section-intro">
-      Every expense below is supported by a physical or digital receipt bill, uploaded against the
-      corresponding transaction in the Festival Ledger module and available for committee audit on request.
+    <h1 class="sec">Expense Bills &amp; Vendor Payments</h1>
+    <div class="rule"></div>
+    <p class="intro">
+      Every expense below is supported by a physical or digital receipt bill uploaded against the
+      corresponding transaction in the Festival Ledger module, available for committee audit on request.
     </p>
 
     <table class="ledger">
@@ -812,9 +540,9 @@ export function getReportTemplate(
           <th style="width:13%;">Date</th>
           <th style="width:13%;">Bill No.</th>
           <th>Vendor / Description</th>
-          <th style="width:18%;">Category</th>
-          <th style="width:11%;">Receipt</th>
-          <th class="num" style="width:15%;">Amount (₹)</th>
+          <th style="width:17%;">Category</th>
+          <th style="width:10%;">Receipt</th>
+          <th class="r" style="width:14%;">Amount (&#8377;)</th>
         </tr>
       </thead>
       <tbody>
@@ -823,61 +551,59 @@ export function getReportTemplate(
       <tfoot>
         <tr>
           <td colspan="5">Total Expenses Incurred</td>
-          <td class="num">&#8377;${totalExpense.toLocaleString('en-IN')}</td>
+          <td class="r">&#8377;${totalExpense.toLocaleString('en-IN')}</td>
         </tr>
       </tfoot>
     </table>
 
-    <div class="note-box">
+    <div class="note">
       <b>Full bill register:</b> Scanned receipts and supporting documents for all expense bills
       are stored securely in Supabase Storage and can be audited via the SocietySync app at any time.
     </div>
 
-    <!-- Mini comparison chart -->
-    <div class="chart-section-title" style="font-size:16px; margin-top:4mm;">Income vs Expense Comparison</div>
-    <div class="chart-section-rule"></div>
+    <!-- Income vs Expense vs Balance comparison chart -->
+    <h2 class="sec" style="margin-top:4mm;">Income vs Expense vs Balance</h2>
+    <div class="rule" style="margin-bottom:4mm;"></div>
 
     <div class="chart-outer">
-      <div class="chart-wrap" style="height: 48mm;">
+      <div class="chart-wrap" style="height:44mm;">
         <div class="chart-bar-col">
-          <div class="chart-amount">&#8377;${totalIncome.toLocaleString('en-IN')}<br/><span style="color:var(--green); font-size:8px;">INCOME</span></div>
-          <div class="chart-bar inc" style="height: ${incPercent}%;"></div>
+          <div class="chart-amt">&#8377;${totalIncome.toLocaleString('en-IN')}<br/><span style="color:var(--green);font-size:7.5px;">INCOME</span></div>
+          <div class="chart-bar inc" style="height:${incPercent}%;"></div>
         </div>
         <div class="chart-bar-col">
-          <div class="chart-amount">&#8377;${totalExpense.toLocaleString('en-IN')}<br/><span style="color:var(--red); font-size:8px;">EXPENSE</span></div>
-          <div class="chart-bar exp" style="height: ${expPercent}%;"></div>
+          <div class="chart-amt">&#8377;${totalExpense.toLocaleString('en-IN')}<br/><span style="color:var(--red);font-size:7.5px;">EXPENSE</span></div>
+          <div class="chart-bar exp" style="height:${expPercent}%;"></div>
         </div>
         <div class="chart-bar-col">
-          <div class="chart-amount">&#8377;${balance.toLocaleString('en-IN')}<br/><span style="color:var(--ink); font-size:8px;">BALANCE</span></div>
-          <div class="chart-bar neutral" style="height: ${balPercent}%;"></div>
+          <div class="chart-amount">&#8377;${balance.toLocaleString('en-IN')}<br/><span style="color:var(--ink);font-size:7.5px;">BALANCE</span></div>
+          <div class="chart-bar neutral" style="height:${balPercent}%;"></div>
         </div>
       </div>
       <div class="chart-labels">
-        <div class="chart-label-col">Total Income</div>
-        <div class="chart-label-col">Total Expense</div>
-        <div class="chart-label-col">Closing Balance</div>
+        <div class="chart-lbl">Total Income</div>
+        <div class="chart-lbl">Total Expense</div>
+        <div class="chart-lbl">Closing Balance</div>
       </div>
       <div class="chart-legend">
-        <div class="chart-legend-item"><span class="legend-dot" style="background:var(--green);"></span> Income</div>
-        <div class="chart-legend-item"><span class="legend-dot" style="background:var(--red);"></span> Expense</div>
-        <div class="chart-legend-item"><span class="legend-dot" style="background:var(--ink);"></span> Balance</div>
+        <div class="chart-legend-item"><span class="ldot" style="background:var(--green);"></span> Income</div>
+        <div class="chart-legend-item"><span class="ldot" style="background:var(--red);"></span> Expense</div>
+        <div class="chart-legend-item"><span class="ldot" style="background:var(--ink);"></span> Balance</div>
       </div>
     </div>
 
   </div>
   <div class="doc-footer">
-    <span>${profile?.society_name || 'SocietySync'} Residents' Welfare Association · Prepared via SocietySync Festival Ledger</span>
-    <span>CONFIDENTIAL — FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
+    <span>${profile?.society_name || 'SocietySync'} Residents&rsquo; Welfare Association &middot; Prepared via SocietySync Festival Ledger</span>
+    <span>CONFIDENTIAL &mdash; FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- PAGE 5 — CERTIFICATION                                        -->
-<!-- ============================================================ -->
+<!-- ════════════════════════════════════════
+     PAGE 5 — CERTIFICATION
+════════════════════════════════════════ -->
 <div class="page">
-  <div class="spine">
-    <div class="spine-label">Section 04 — Certification</div>
-  </div>
+  <div class="spine"><div class="spine-label">Section 04 — Certification</div></div>
   <div class="content">
 
     <div class="doc-header">
@@ -885,9 +611,9 @@ export function getReportTemplate(
       <div class="h-right">${selectedEvent.name.toUpperCase()} &nbsp;|&nbsp; PAGE 05</div>
     </div>
 
-    <h1 class="section-title">Reconciliation &amp; Certification</h1>
-    <div class="section-rule"></div>
-    <p class="section-intro">
+    <h1 class="sec">Reconciliation &amp; Certification</h1>
+    <div class="rule"></div>
+    <p class="intro">
       The figures presented in this report have been reviewed against bank statements, cash registers,
       and physical bills on file. The undersigned certify that this statement presents a true and fair
       summary of all funds received and expended for this event.
@@ -897,27 +623,27 @@ export function getReportTemplate(
       <thead>
         <tr>
           <th>Particulars</th>
-          <th class="num">Amount (₹)</th>
+          <th class="r">Amount (&#8377;)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td>Opening Balance (carried from previous event)</td>
-          <td class="num">&#8377;0.00</td>
+          <td class="r">&#8377;0.00</td>
         </tr>
         <tr>
-          <td>Add: Total Contributions Received (${incomeCount} entries)</td>
-          <td class="num" style="color:var(--green);">+ &#8377;${totalIncome.toLocaleString('en-IN')}</td>
+          <td>Add: Total Contributions Received &mdash; ${incomeCount} entries</td>
+          <td class="r" style="color:var(--green);">+ &#8377;${totalIncome.toLocaleString('en-IN')}</td>
         </tr>
         <tr>
-          <td>Less: Total Expenses Incurred (${expenseCount} entries)</td>
-          <td class="num" style="color:var(--red);">&#8377;(${totalExpense.toLocaleString('en-IN')})</td>
+          <td>Less: Total Expenses Incurred &mdash; ${expenseCount} entries</td>
+          <td class="r" style="color:var(--red);">(&#8377;${totalExpense.toLocaleString('en-IN')})</td>
         </tr>
       </tbody>
       <tfoot>
         <tr>
-          <td>Closing Balance — Transferred to Society General Fund</td>
-          <td class="num">&#8377;${balance.toLocaleString('en-IN')}</td>
+          <td>Closing Balance &mdash; Transferred to Society General Fund</td>
+          <td class="r">&#8377;${balance.toLocaleString('en-IN')}</td>
         </tr>
       </tfoot>
     </table>
@@ -944,8 +670,8 @@ export function getReportTemplate(
 
   </div>
   <div class="doc-footer">
-    <span>${profile?.society_name || 'SocietySync'} Residents' Welfare Association · Prepared via SocietySync Festival Ledger</span>
-    <span>CONFIDENTIAL — FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
+    <span>${profile?.society_name || 'SocietySync'} Residents&rsquo; Welfare Association &middot; Prepared via SocietySync Festival Ledger</span>
+    <span>CONFIDENTIAL &mdash; FOR COMMITTEE &amp; RESIDENT CIRCULATION</span>
   </div>
 </div>
 
