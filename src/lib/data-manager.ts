@@ -944,11 +944,18 @@ class DataManager {
 
   async updateSocietySettings(settings: Omit<SocietySettings, 'id'>): Promise<void> {
     const current = await this.getSocietySettings();
-    const payload = current ? { id: current.id, ...settings } : settings;
-    const { error } = await supabase
-      .from('society_settings')
-      .upsert(payload);
-    if (error) throw error;
+    if (current) {
+      const { error } = await supabase
+        .from('society_settings')
+        .update(settings)
+        .eq('id', current.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('society_settings')
+        .insert(settings);
+      if (error) throw error;
+    }
   }
 }
 

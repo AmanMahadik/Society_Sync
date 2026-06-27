@@ -494,3 +494,59 @@ values ('SocietySync Co-Op Housing', 'Ganesh Nagar, Pune, Maharashtra', 3.50, 2.
 -- MIGRATION: Add vehicle_number and bio to profiles table if they do not exist
 alter table public.profiles add column if not exists vehicle_number text;
 alter table public.profiles add column if not exists bio text;
+
+--------------------------------------------------------------------------------
+-- STORAGE BUCKETS & POLICIES SETUP
+--------------------------------------------------------------------------------
+
+-- 1. Create 'avatars' bucket (for user profile pictures)
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+-- 2. Create 'bills' bucket (for transaction receipt uploads)
+insert into storage.buckets (id, name, public)
+values ('bills', 'bills', true)
+on conflict (id) do nothing;
+
+-- RLS Policies for storage.objects:
+
+-- Allow public read access to avatars and bills
+create policy "Allow public read access to avatars"
+on storage.objects for select
+using ( bucket_id = 'avatars' );
+
+create policy "Allow public read access to bills"
+on storage.objects for select
+using ( bucket_id = 'bills' );
+
+-- Allow authenticated users to upload to avatars and bills
+create policy "Allow authenticated users to upload avatars"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'avatars'
+);
+
+create policy "Allow authenticated users to upload bills"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'bills'
+);
+
+-- Allow authenticated users to update/overwrite files in avatars and bills
+create policy "Allow authenticated users to update avatars"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'avatars'
+);
+
+create policy "Allow authenticated users to update bills"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'bills'
+);
+

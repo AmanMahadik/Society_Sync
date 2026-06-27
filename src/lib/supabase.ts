@@ -22,3 +22,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+/**
+ * Helper to convert a local file URI to an ArrayBuffer.
+ * This is necessary in React Native / Expo to bypass the winterfill FormData bug
+ * and upload files reliably to Supabase storage.
+ */
+export async function uriToArrayBuffer(localUri: string): Promise<ArrayBuffer> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result instanceof ArrayBuffer) {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read file as ArrayBuffer'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Error reading file as ArrayBuffer'));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+

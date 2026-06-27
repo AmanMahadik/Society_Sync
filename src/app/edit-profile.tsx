@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../lib/auth-context';
 import { dataManager } from '../lib/data-manager';
-import { supabase } from '../lib/supabase';
+import { supabase, uriToArrayBuffer } from '../lib/supabase';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -93,8 +93,7 @@ export default function EditProfileScreen() {
     if (!user) return null;
     
     try {
-      const response = await fetch(localUri);
-      const blob = await response.blob();
+      const arrayBuffer = await uriToArrayBuffer(localUri);
       
       const fileExt = localUri.split('.').pop() || 'jpg';
       const fileName = `${user.id}_${Date.now()}.${fileExt}`;
@@ -103,7 +102,7 @@ export default function EditProfileScreen() {
       // Upload to 'avatars' bucket
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, blob, {
+        .upload(filePath, arrayBuffer, {
           contentType: `image/${fileExt}`,
           upsert: true,
         });

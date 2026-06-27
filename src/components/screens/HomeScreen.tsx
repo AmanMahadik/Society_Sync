@@ -267,12 +267,19 @@ export const HomeScreen: React.FC = () => {
               </View>
             </View>
           </View>
-          <Avatar.Text 
-            size={42} 
-            label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
-            style={{ backgroundColor: '#00D4AA' }}
-            color="#0F0F0F"
-          />
+          {profile?.google_picture_url ? (
+            <Avatar.Image 
+              size={42} 
+              source={{ uri: profile.google_picture_url }} 
+            />
+          ) : (
+            <Avatar.Text 
+              size={42} 
+              label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
+              style={{ backgroundColor: '#00D4AA' }}
+              color="#0F0F0F"
+            />
+          )}
         </View>
  
         {/* 3. HOME SUMMARY CARDS GRID */}

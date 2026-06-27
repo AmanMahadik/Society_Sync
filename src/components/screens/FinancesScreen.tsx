@@ -5,7 +5,7 @@ import { useAuth } from '../../lib/auth-context';
 import { dataManager, Event, Transaction, MaintenanceDue } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '../../lib/supabase';
+import { supabase, uriToArrayBuffer } from '../../lib/supabase';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
@@ -155,8 +155,7 @@ export const FinancesScreen: React.FC = () => {
     if (!user) return;
     setUploadingReceipt(true);
     try {
-      const response = await fetch(localUri);
-      const blob = await response.blob();
+      const arrayBuffer = await uriToArrayBuffer(localUri);
       
       const fileExt = localUri.split('.').pop() || 'jpg';
       const fileName = `receipt_${Date.now()}.${fileExt}`;
@@ -165,7 +164,7 @@ export const FinancesScreen: React.FC = () => {
       // Upload to public 'bills' bucket
       const { error: uploadError } = await supabase.storage
         .from('bills')
-        .upload(filePath, blob, {
+        .upload(filePath, arrayBuffer, {
           contentType: `image/${fileExt}`,
           upsert: true,
         });
@@ -174,7 +173,7 @@ export const FinancesScreen: React.FC = () => {
         // Fallback to 'avatars' bucket if 'bills' bucket is not created
         const { error: fallbackError } = await supabase.storage
           .from('avatars')
-          .upload(filePath, blob, {
+          .upload(filePath, arrayBuffer, {
             contentType: `image/${fileExt}`,
             upsert: true,
           });
