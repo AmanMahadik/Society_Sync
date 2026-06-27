@@ -42,11 +42,9 @@
 
 <div align="center">
 
-### 👉 [**Download the Android Build (Expo)**](#) 👈
+### 👉 [**⬇️ Download the Android Build (Expo)**](https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/b8cfa267-de50-43d7-979b-2ac99bcd0c96) 👈
 
-Scan the QR on that page with **Expo Go**, or download the standalone `.apk` directly to your Android device.
-
-> 📌 *Replace this link with your own Expo / EAS build URL once published.*
+Click the link above to open the Expo build page, then tap **"Download build"** to get the standalone `.apk` directly — or scan the QR with **Expo Go** on your Android device.
 
 </div>
 
