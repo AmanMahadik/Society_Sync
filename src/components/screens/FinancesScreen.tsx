@@ -69,7 +69,7 @@ export const FinancesScreen: React.FC = () => {
         setTransactions(txList);
       }
 
-      const dues = await dataManager.getMaintenanceDues();
+      const dues = await dataManager.getMaintenanceDues(profile?.role, profile?.wing, profile?.flat_number);
       setMaintenanceDues(dues);
     } catch (e) {
       console.error('Error fetching financial data', e);

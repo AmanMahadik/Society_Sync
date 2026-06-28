@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image, Linking, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, Image, Linking, Alert, Clipboard, TouchableOpacity, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView } from 'react-native-webview';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { supabase } from '../../lib/supabase';
 import { Text, Card, Button, Avatar, useTheme, List, Divider, Switch, Snackbar, IconButton, Chip, TextInput, Portal, Dialog } from 'react-native-paper';
@@ -36,6 +37,31 @@ export const ProfileScreen: React.FC = () => {
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Society Details States
+  const [societyModalVisible, setSocietyModalVisible] = useState(false);
+  const [societyDetails, setSocietyDetails] = useState<any | null>(null);
+  const [loadingSociety, setLoadingSociety] = useState(false);
+
+  const handleOpenSocietyModal = async () => {
+    if (!profile?.society_id) return;
+    setSocietyModalVisible(true);
+    setLoadingSociety(true);
+    try {
+      const { data, error } = await supabase
+        .from('societies')
+        .select('*')
+        .eq('id', profile.society_id)
+        .single();
+      if (!error && data) {
+        setSocietyDetails(data);
+      }
+    } catch (e) {
+      console.warn('Error fetching society details:', e);
+    } finally {
+      setLoadingSociety(false);
+    }
+  };
 
   useEffect(() => {
     const loadBiometrics = async () => {
@@ -113,8 +139,23 @@ export const ProfileScreen: React.FC = () => {
         setPCount(String(socSettings.parking_slot_count));
         setAContact(socSettings.admin_contact || '');
       }
+
+      // Fetch user's society details
+      if (profile?.society_id) {
+        setLoadingSociety(true);
+        const { data, error } = await supabase
+          .from('societies')
+          .select('*')
+          .eq('id', profile.society_id)
+          .single();
+        if (!error && data) {
+          setSocietyDetails(data);
+        }
+        setLoadingSociety(false);
+      }
     } catch (e) {
       console.error('Error fetching profiles data', e);
+      setLoadingSociety(false);
     }
   };
 
@@ -414,6 +455,123 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </Card.Content>
         </Card>
+
+        {/* 1.5. YOUR SOCIETY INFO CARD */}
+        {profile?.role === 'master_admin' ? (
+          <Card style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#00D4AA', backgroundColor: theme.colors.elevation.level1 }}>
+            <Card.Content>
+              <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#00D4AA', marginBottom: 6 }}>🛡️ Master Administrator Access</Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                You have global system-wide administrative privileges. You are not bound to any individual society registry.
+              </Text>
+            </Card.Content>
+          </Card>
+        ) : societyDetails ? (
+          <Card style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#06B6D4', backgroundColor: theme.colors.elevation.level1 }}>
+            <Card.Content>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>🏢 Your Society</Text>
+                <View style={{ backgroundColor: '#06B6D4' + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                  <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 13, fontWeight: 'bold', color: '#06B6D4' }}>
+                    {profile?.society_code || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+              
+              <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface, marginBottom: 4 }}>
+                {societyDetails.name}
+              </Text>
+              
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, marginBottom: 12 }}>
+                {societyDetails.address_line1}
+                {societyDetails.address_line2 ? `, ${societyDetails.address_line2}` : ''}
+                {`\n${societyDetails.city}, ${societyDetails.state} — ${societyDetails.pincode}`}
+              </Text>
+
+              {/* WebView Map Embed */}
+              <View style={{ height: 180, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.outlineVariant, marginBottom: 16 }}>
+                <WebView
+                  source={{ uri: societyDetails.maps_embed_url || `https://maps.google.com/maps?q=${societyDetails.lat},${societyDetails.lng}&t=&z=15&ie=UTF8&iwloc=&output=embed` }}
+                  style={{ flex: 1 }}
+                  scrollEnabled={false}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Button 
+                  mode="outlined" 
+                  icon="map-marker-outline" 
+                  textColor="#06B6D4"
+                  style={{ flex: 1, borderColor: '#06B6D4', borderRadius: 8 }}
+                  onPress={() => {
+                    if (societyDetails.lat && societyDetails.lng) {
+                      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${societyDetails.lat},${societyDetails.lng}`);
+                    } else {
+                      showToast('Coordinates not configured.');
+                    }
+                  }}
+                >
+                  Open in Maps
+                </Button>
+                <Button 
+                  mode="contained" 
+                  icon="content-copy" 
+                  buttonColor="#06B6D4"
+                  textColor="#0F0F0F"
+                  style={{ flex: 1, borderRadius: 8 }}
+                  onPress={() => {
+                    if (profile?.society_code) {
+                      Clipboard.setString(profile.society_code);
+                      showToast('Society code copied!');
+                    }
+                  }}
+                >
+                  Copy Code
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        ) : (
+          <Card 
+            style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16 }}
+            onPress={handleOpenSocietyModal}
+          >
+            <Card.Content>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>🏢 Your Society</Text>
+                  <Text variant="bodyLarge" style={{ fontWeight: 'bold', color: theme.colors.primary, marginTop: 4 }}>
+                    {profile?.society_name || 'SocietySync housing'}
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 4 }}>
+                    Tap to view address & map pin
+                  </Text>
+                </View>
+                {profile?.society_code ? (
+                  <TouchableOpacity 
+                    onPress={() => {
+                      Clipboard.setString(profile.society_code || '');
+                      setSnackbarMessage('Society Code copied!');
+                      setSnackbarVisible(true);
+                    }}
+                    style={{ 
+                      backgroundColor: theme.colors.elevation.level3, 
+                      paddingHorizontal: 10, 
+                      paddingVertical: 6, 
+                      borderRadius: 8,
+                      borderColor: theme.colors.outlineVariant,
+                      borderWidth: 1
+                    }}
+                  >
+                    <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 13, fontWeight: 'bold', color: theme.colors.outline }}>
+                      {profile.society_code}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </Card.Content>
+          </Card>
+        )}
 
         {/* 2. ROLE PERMISSIONS MATRIX */}
         <Card style={styles.permissionsCard}>
@@ -871,6 +1029,59 @@ export const ProfileScreen: React.FC = () => {
               labelStyle={{ fontWeight: 'bold' }}
             >
               Delete Account
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Society Details & Map Modal */}
+      <Portal>
+        <Dialog
+          visible={societyModalVisible}
+          onDismiss={() => setSocietyModalVisible(false)}
+          style={{ backgroundColor: theme.colors.elevation.level3, maxHeight: '85%' }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold' }}>🏢 Society Details</Dialog.Title>
+          <Dialog.Content style={{ paddingHorizontal: 16 }}>
+            {loadingSociety ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, textAlign: 'center', marginVertical: 20 }}>
+                Fetching location coordinates...
+              </Text>
+            ) : societyDetails ? (
+              <ScrollView contentContainerStyle={{ gap: 12 }}>
+                <View>
+                  <Text variant="labelMedium" style={{ color: theme.colors.outline, textTransform: 'uppercase' }}>Society Name</Text>
+                  <Text variant="bodyLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                    {societyDetails.name}
+                  </Text>
+                </View>
+                
+                <View>
+                  <Text variant="labelMedium" style={{ color: theme.colors.outline, textTransform: 'uppercase' }}>Address</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                    {societyDetails.address_line1}
+                    {societyDetails.address_line2 ? `\n${societyDetails.address_line2}` : ''}
+                    {`\n${societyDetails.city}, ${societyDetails.state} — ${societyDetails.pincode}`}
+                  </Text>
+                </View>
+
+                {/* WebView Map */}
+                <View style={{ height: 220, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.outlineVariant, marginTop: 8 }}>
+                  <WebView
+                    source={{ uri: `https://www.google.com/maps/search/?api=1&query=${societyDetails.lat},${societyDetails.lng}` }}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </ScrollView>
+            ) : (
+              <Text variant="bodyMedium" style={{ color: theme.colors.error, textAlign: 'center', marginVertical: 20 }}>
+                Failed to load society details.
+              </Text>
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setSocietyModalVisible(false)} textColor={theme.colors.primary} labelStyle={{ fontWeight: 'bold' }}>
+              Close
             </Button>
           </Dialog.Actions>
         </Dialog>

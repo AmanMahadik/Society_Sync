@@ -17,7 +17,18 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any | null }>;
-  signUp: (email: string, password: string, fullName: string, role: UserRole, wing: string, flatNumber: string, phone: string) => Promise<{ error: any | null }>;
+  signUp: (
+    email: string, 
+    password: string, 
+    fullName: string, 
+    role: UserRole, 
+    wing: string, 
+    flatNumber: string, 
+    phone: string,
+    societyId?: string,
+    societyCode?: string,
+    societyName?: string
+  ) => Promise<{ error: any | null }>;
   signInWithGoogle: () => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -84,8 +95,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          setUser(session.user);
           const prof = await dataManager.getProfile(session.user.id);
+          dataManager.societyId = prof?.society_id || null;
           setProfile(prof);
         }
       } catch (e) {
@@ -100,9 +111,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session) {
           setUser(session.user);
           const prof = await dataManager.getProfile(session.user.id);
+          dataManager.societyId = prof?.society_id || null;
           setProfile(prof);
         } else {
           setUser(null);
+          dataManager.societyId = null;
           setProfile(null);
         }
         setLoading(false);
@@ -159,7 +172,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: UserRole, 
     wing: string, 
     flatNumber: string, 
-    phone: string
+    phone: string,
+    societyId?: string,
+    societyCode?: string,
+    societyName?: string
   ) => {
     setLoading(true);
     try {
@@ -172,7 +188,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role,
             wing,
             flat_number: flatNumber,
-            phone_number: phone
+            phone_number: phone,
+            society_name: societyName || 'SocietySync Co-Op Housing'
           }
         }
       });
@@ -182,6 +199,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.user);
         // Wait briefly for the postgres trigger to run and create the profile
         await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Check if email matches society's admin_email
+        let isPortalAdmin = false;
+        if (societyId) {
+          const { data: society } = await supabase
+            .from('societies')
+            .select('admin_email')
+            .eq('id', societyId)
+            .single();
+          if (society && society.admin_email === email.trim().toLowerCase()) {
+            isPortalAdmin = true;
+          }
+        }
+
+        // Update the newly created profile row with society ID
+        await supabase
+          .from('profiles')
+          .update({
+            society_id: societyId || null,
+            role: isPortalAdmin ? 'admin' : role
+          })
+          .eq('id', data.user.id);
+
         const prof = await dataManager.getProfile(data.user.id);
         setProfile(prof);
       }

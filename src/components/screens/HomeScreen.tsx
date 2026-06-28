@@ -4,6 +4,7 @@ import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip }
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNotifications } from '../../lib/notification-context';
 
 interface HomeScreenProps {
   jumpTo?: (key: string) => void;
@@ -11,6 +12,7 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const { profile, user } = useAuth();
+  const { addNotification } = useNotifications();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -53,13 +55,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const fetchComplaints = async () => {
+    if (!user) return;
     try {
-      const list = await dataManager.getComplaints();
+      const list = await dataManager.getComplaints(profile?.role, user.id);
       setComplaints(list);
       
-      // If user is Guard or Admin, check if there's any active 'pending' alert to trigger the loud visual alarm
-      if (profile?.role === 'admin' || profile?.role === 'guard') {
-        const pending = list.find(c => c.status === 'pending');
+      // If user is Guard, check if there's any active 'pending' alert to trigger the loud visual alarm
+      if (profile?.role === 'guard') {
+        const pending = list.find(c => c.status === 'pending' && c.type === 'security');
         if (pending) {
           setActiveAlarm(pending);
           // Vibrate device on new pending alert (if native)
@@ -71,6 +74,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
           if (Platform.OS !== 'web') {
             Vibration.cancel();
           }
+        }
+      } else {
+        // Admins and residents do not get the full-screen visual alarm overlay
+        setActiveAlarm(null);
+        if (Platform.OS !== 'web') {
+          Vibration.cancel();
         }
       }
     } catch (e) {
@@ -111,10 +120,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     let userWing = profile?.wing || '';
     let userFlat = profile?.flat_number || '';
     if (!userWing || userWing.trim() === '') {
-      userWing = profile?.role === 'admin' ? 'HQ' : (profile?.role === 'guard' ? 'Gate' : 'Gen');
+      userWing = (profile?.role === 'admin' || profile?.role === 'master_admin') ? 'HQ' : (profile?.role === 'guard' ? 'Gate' : 'Gen');
     }
     if (!userFlat || userFlat.trim() === '') {
-      userFlat = profile?.role === 'admin' ? 'Admin' : (profile?.role === 'guard' ? 'Guard' : 'Office');
+      userFlat = (profile?.role === 'admin' || profile?.role === 'master_admin') ? 'Admin' : (profile?.role === 'guard' ? 'Guard' : 'Office');
     }
 
     let desc = sosDescription;
@@ -136,6 +145,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
       );
       setSosModalVisible(false);
       setSosDescription('');
+
+      // Show confirmation toast
+      addNotification({
+        type: 'confirmation',
+        message: '✅ SOS Sent',
+        subtext: 'Your SOS alert has been sent. Help is on the way.',
+        autoDismiss: true,
+        dismissAfterMs: 5000
+      });
+
       loadAllData();
     } catch (e) {
       console.error(e);

@@ -1,579 +1,562 @@
--- SocietySync Ultimate Database Schema Setup
--- Run this in your Supabase SQL Editor
--- This database contains only structural seed data (no dummy/test transactions, dues, or residents)
+-- SocietySync Professional Multi-Tenant Schema Setup
+-- Run this inside your Supabase SQL Editor to rebuild the database from scratch
 
--- Enable UUID extension
+-- 1. CLEAN UP LEGACY TABLES (Precautionary Drop)
+drop table if exists public.maintenance cascade;
+drop table if exists public.visitors cascade;
+drop table if exists public.sos_alerts cascade;
+drop table if exists public.complaints cascade;
+drop table if exists public.announcements cascade;
+drop table if exists public.society_admins cascade;
+drop table if exists public.society_requests cascade;
+drop table if exists public.profiles cascade;
+drop table if exists public.societies cascade;
+
+-- Enable UUID Extension
 create extension if not exists "uuid-ossp";
 
--- 1. PROFILES TABLE (extends Supabase auth.users)
+-- =======================================================
+-- 2. CORE SYSTEM TABLES
+-- =======================================================
+
+-- A. SOCIETIES
+create table public.societies (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  address text not null,
+  state text not null,
+  city text not null,
+  pincode text not null,
+  society_code text unique not null, -- Format: SS-STATE-RANDOM e.g. SS-MH-4821
+  admin_email text not null,
+  admin_phone text,
+  total_units integer default 0,
+  status text default 'active' check (status in ('active', 'suspended')),
+  created_at timestamp with time zone default now()
+);
+
+-- B. PROFILES (Extends auth.users)
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  email text not null,
+  email text not null unique,
+  role text not null check (role in ('master_admin', 'admin', 'resident')),
+  society_id uuid references public.societies(id) on delete set null, -- Null for master_admin
   full_name text,
-  flat_number text,
   wing text,
-  role text not null check (role in ('admin', 'owner', 'renter', 'guard')),
-  society_name text,
+  flat_number text,
+  created_at timestamp with time zone default now()
+);
+
+-- Trigger function to automatically create profile row on user signup
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+as $$
+declare
+  default_role text;
+begin
+  if new.email = 'societysync5@gmail.com' then
+    default_role := 'master_admin';
+  else
+    default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+  end if;
+
+  insert into public.profiles (
+    id,
+    email,
+    role,
+    society_id,
+    full_name,
+    wing,
+    flat_number
+  ) values (
+    new.id,
+    new.email,
+    default_role,
+    case 
+      when new.raw_user_meta_data->>'society_id' is not null and new.raw_user_meta_data->>'society_id' <> '' 
+      then (new.raw_user_meta_data->>'society_id')::uuid 
+      else null 
+    end,
+    coalesce(new.raw_user_meta_data->>'full_name', 'New Resident'),
+    new.raw_user_meta_data->>'wing',
+    new.raw_user_meta_data->>'flat_number'
+  ) on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+-- Register the trigger
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- C. SOCIETY REGISTRATION REQUESTS (Pending Review Queue)
+create table public.society_requests (
+  id bigint primary key generated always as identity,
+  name text not null,
+  address text not null,
+  state text not null,
+  city text not null,
+  pincode text not null,
+  admin_name text not null,
+  admin_email text not null,
+  admin_phone text not null,
+  total_units integer not null,
+  document_url text,
   status text default 'pending' check (status in ('pending', 'approved', 'rejected')),
-  google_picture_url text,
-  phone text,
-  created_at timestamp with time zone default now(),
-  approved_at timestamp with time zone,
-  notification_token text -- For Expo Push Notifications
-);
-
--- Enable RLS on profiles
-alter table public.profiles enable row level security;
-
--- 2. EVENTS TABLE (Festival Ledger)
-create table public.events (
-  id bigint primary key generated always as identity,
-  name text not null, -- e.g., 'Ganesh Chaturthi 2026'
-  description text,
-  event_date date,
-  total_income decimal(12,2) default 0.00,
-  total_expense decimal(12,2) default 0.00,
-  balance decimal(12,2) generated always as (total_income - total_expense) stored,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default now(),
-  is_active boolean default true
-);
-
--- Enable RLS on events
-alter table public.events enable row level security;
-
--- 3. TRANSACTIONS TABLE (Income & Expense Entries)
-create table public.transactions (
-  id bigint primary key generated always as identity,
-  event_id bigint references public.events(id) on delete cascade,
-  type text not null check (type in ('income', 'expense')),
-  category text not null, -- e.g., 'Chandaa', 'Pandal', 'Sound System'
-  amount decimal(12,2) not null,
-  description text,
-  bill_image_url text, -- Supabase Storage URL
-  recorded_by uuid references public.profiles(id),
-  recorded_at timestamp with time zone default now()
-);
-
--- Enable RLS on transactions
-alter table public.transactions enable row level security;
-
--- 4. MAINTENANCE DUES TABLE
-create table public.maintenance_dues (
-  id bigint primary key generated always as identity,
-  flat_number text not null,
-  wing text not null,
-  month date not null, -- First day of month
-  amount decimal(10,2) not null,
-  paid_amount decimal(10,2) default 0.00,
-  status text default 'pending' check (status in ('pending', 'partial', 'paid', 'overdue')),
-  due_date date not null,
-  paid_at timestamp with time zone,
-  interest_charged decimal(10,2) default 0.00,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now(),
-  unique(wing, flat_number, month)
-);
-
--- Enable RLS on maintenance_dues
-alter table public.maintenance_dues enable row level security;
-
--- 5. PARKING SLOTS TABLE
-create table public.parking_slots (
-  id bigint primary key generated always as identity,
-  slot_number text not null unique check (slot_number like 'V%'), -- V1 to V10
-  is_available boolean default true,
+  rejection_reason text,
   created_at timestamp with time zone default now()
 );
 
--- Enable RLS on parking_slots
-alter table public.parking_slots enable row level security;
-
--- 6. PARKING REQUESTS TABLE
-create table public.parking_requests (
+-- D. SOCIETY ADMINS (Stores credentials generated for approved admins)
+create table public.society_admins (
   id bigint primary key generated always as identity,
-  user_id uuid references public.profiles(id) on delete cascade,
-  slot_id bigint references public.parking_slots(id) on delete cascade,
-  date date not null,
-  time_slot text not null check (time_slot in ('morning', 'afternoon', 'evening', 'overnight')),
-  vehicle_number text not null,
-  visitor_name text,
-  status text default 'pending' check (status in ('pending', 'approved', 'rejected', 'completed')),
-  created_at timestamp with time zone default now(),
-  approved_at timestamp with time zone,
-  approved_by uuid references public.profiles(id)
-);
-
--- Enable RLS on parking_requests
-alter table public.parking_requests enable row level security;
-
--- 7. SOS COMPLAINTS TABLE (SOS alerts)
-create table public.complaints (
-  id bigint primary key generated always as identity,
-  user_id uuid references public.profiles(id) on delete cascade,
-  type text not null check (type in ('water_low', 'motor_off', 'electricity', 'security', 'other')),
-  wing text not null,
-  flat_number text not null,
-  description text,
-  status text default 'pending' check (status in ('pending', 'acknowledged', 'resolved', 'ignored')),
-  priority text default 'high' check (priority in ('low', 'medium', 'high', 'emergency')),
-  acknowledged_by uuid references public.profiles(id),
-  acknowledged_at timestamp with time zone,
-  resolved_at timestamp with time zone,
+  society_id uuid references public.societies(id) on delete cascade,
+  admin_email text not null,
+  generated_password text not null,
+  society_code text not null,
   created_at timestamp with time zone default now()
 );
 
--- Enable RLS on complaints
-alter table public.complaints enable row level security;
+-- =======================================================
+-- 3. SOCIETY OPERATIONS TABLES
+-- =======================================================
 
--- 8. CHAT THREADS TABLE (Society Council)
-create table public.chat_threads (
+-- E. ANNOUNCEMENTS
+create table public.announcements (
   id bigint primary key generated always as identity,
-  title text not null,
-  category text not null check (category in ('water-infrastructure', 'budget', 'events', 'maintenance', 'security', 'general')),
-  created_by uuid references public.profiles(id),
-  is_archived boolean default false,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
-);
-
--- Enable RLS on chat_threads
-alter table public.chat_threads enable row level security;
-
--- 9. CHAT MESSAGES TABLE
-create table public.chat_messages (
-  id bigint primary key generated always as identity,
-  thread_id bigint references public.chat_threads(id) on delete cascade,
-  user_id uuid references public.profiles(id) on delete cascade,
-  content text not null,
-  is_pinned boolean default false,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
-);
-
--- Enable RLS on chat_messages
-alter table public.chat_messages enable row level security;
-
--- 10. USER APPROVALS TABLE (Admin tracking)
-create table public.user_approvals (
-  id bigint primary key generated always as identity,
-  user_id uuid references public.profiles(id) on delete cascade,
-  approved_by uuid references public.profiles(id),
-  status text not null check (status in ('approved', 'rejected')),
-  reason text,
-  created_at timestamp with time zone default now(),
-  resolved_at timestamp with time zone default now()
-);
-
--- Enable RLS on user_approvals
-alter table public.user_approvals enable row level security;
-
--- 11. NOTIFICATIONS TABLE
-create table public.notifications (
-  id bigint primary key generated always as identity,
-  user_id uuid references public.profiles(id) on delete cascade,
+  society_id uuid references public.societies(id) on delete cascade,
   title text not null,
   body text not null,
-  data jsonb,
-  is_read boolean default false,
+  created_by uuid references public.profiles(id),
   created_at timestamp with time zone default now()
 );
 
--- Enable RLS on notifications
-alter table public.notifications enable row level security;
-
--- 12. SOCIETY SETTINGS TABLE
-create table public.society_settings (
+-- F. COMPLAINTS (Scoped Resident Complaints)
+create table public.complaints (
   id bigint primary key generated always as identity,
-  society_name text not null unique,
-  address text,
-  maintenance_rate_per_sqft decimal(10,2) default 3.50,
-  late_fee_percentage decimal(5,2) default 2.00,
-  parking_slot_count int default 10,
-  admin_contact text,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
-);
-
--- Enable RLS on society_settings
-alter table public.society_settings enable row level security;
-
--- 13. VOTING POLLS TABLE
-create table public.polls (
-  id bigint primary key generated always as identity,
+  society_id uuid references public.societies(id) on delete cascade,
+  user_id uuid references public.profiles(id) on delete cascade,
   title text not null,
   description text,
-  thread_id bigint references public.chat_threads(id) on delete cascade,
-  created_by uuid references public.profiles(id),
-  expires_at timestamp with time zone,
-  status text default 'active' check (status in ('active', 'closed')),
+  status text default 'pending' check (status in ('pending', 'acknowledged', 'resolved')),
   created_at timestamp with time zone default now()
 );
 
--- Enable RLS on polls
-alter table public.polls enable row level security;
-
--- 14. POLL OPTIONS TABLE
-create table public.poll_options (
+-- G. SOS ALERTS (Realtime Emergency Triggers)
+create table public.sos_alerts (
   id bigint primary key generated always as identity,
-  poll_id bigint references public.polls(id) on delete cascade,
-  option_text text not null,
-  vote_count int default 0,
-  created_at timestamp with time zone default now()
-);
-
--- Enable RLS on poll_options
-alter table public.poll_options enable row level security;
-
--- 15. POLL VOTES TABLE
-create table public.poll_votes (
-  id bigint primary key generated always as identity,
-  poll_id bigint references public.polls(id) on delete cascade,
-  option_id bigint references public.poll_options(id) on delete cascade,
+  society_id uuid references public.societies(id) on delete cascade,
   user_id uuid references public.profiles(id) on delete cascade,
-  voted_at timestamp with time zone default now(),
-  unique(poll_id, user_id) -- Each user can vote once per poll
+  wing text not null,
+  flat_number text not null,
+  description text,
+  status text default 'active' check (status in ('active', 'resolved')),
+  created_at timestamp with time zone default now()
 );
 
--- Enable RLS on poll_votes
-alter table public.poll_votes enable row level security;
+-- H. VISITORS (Security Gate Logs)
+create table public.visitors (
+  id bigint primary key generated always as identity,
+  society_id uuid references public.societies(id) on delete cascade,
+  name text not null,
+  phone text,
+  wing text not null,
+  flat_number text not null,
+  purpose text,
+  check_in timestamp with time zone default now(),
+  check_out timestamp with time zone
+);
 
---------------------------------------------------------------------------------
--- PERFORMANCE INDEXES
---------------------------------------------------------------------------------
-create index idx_profiles_status on public.profiles(status);
-create index idx_profiles_role on public.profiles(role);
-create index idx_complaints_status on public.complaints(status);
-create index idx_complaints_wing on public.complaints(wing);
-create index idx_parking_requests_date on public.parking_requests(date);
-create index idx_maintenance_dues_flat on public.maintenance_dues(flat_number);
-create index idx_maintenance_dues_status on public.maintenance_dues(status);
-create index idx_chat_messages_thread on public.chat_messages(thread_id);
-create index idx_notifications_user on public.notifications(user_id);
-create index idx_transactions_event on public.transactions(event_id);
+-- I. MAINTENANCE (Monthly Dues & Billings)
+create table public.maintenance (
+  id bigint primary key generated always as identity,
+  society_id uuid references public.societies(id) on delete cascade,
+  wing text not null,
+  flat_number text not null,
+  amount decimal(10,2) not null,
+  month date not null,
+  status text default 'unpaid' check (status in ('unpaid', 'paid')),
+  created_at timestamp with time zone default now()
+);
 
---------------------------------------------------------------------------------
--- ROW LEVEL SECURITY (RLS) POLICIES
---------------------------------------------------------------------------------
+-- =======================================================
+-- 4. ROW-LEVEL SECURITY (RLS) POLICIES
+-- =======================================================
 
--- Helper functions
-create or replace function public.is_user_approved(user_id uuid)
-returns boolean security definer as $$
+-- Enable RLS on all tables
+alter table public.societies enable row level security;
+alter table public.profiles enable row level security;
+alter table public.society_requests enable row level security;
+alter table public.society_admins enable row level security;
+alter table public.announcements enable row level security;
+alter table public.complaints enable row level security;
+alter table public.sos_alerts enable row level security;
+alter table public.visitors enable row level security;
+alter table public.maintenance enable row level security;
+
+-- Define RLS Policies with Master Admin God-Mode Bypass
+
+-- Security definer helpers to prevent policy recursion loops
+create or replace function public.is_master_admin(user_id uuid)
+returns boolean
+language plpgsql
+security definer
+as $$
 begin
   return exists (
     select 1 from public.profiles 
-    where id = user_id and status = 'approved'
+    where id = user_id and role = 'master_admin'
   );
 end;
-$$ language plpgsql;
+$$;
 
-create or replace function public.is_admin(user_id uuid)
-returns boolean security definer as $$
+create or replace function public.get_user_society_id(user_id uuid)
+returns uuid
+language plpgsql
+security definer
+as $$
 begin
-  return exists (
-    select 1 from public.profiles 
-    where id = user_id and role = 'admin'
-  );
+  return (select society_id from public.profiles where id = user_id);
 end;
-$$ language plpgsql;
+$$;
 
-create or replace function public.is_guard(user_id uuid)
-returns boolean security definer as $$
+create or replace function public.get_current_user_role()
+returns text
+language plpgsql
+security definer
+as $$
 begin
-  return exists (
-    select 1 from public.profiles 
-    where id = user_id and role = 'guard'
-  );
+  return (select role from public.profiles where id = auth.uid());
 end;
-$$ language plpgsql;
+$$;
 
--- Profiles Policies
-create policy "Allow read of approved profiles" on public.profiles
-  for select to authenticated using (true);
-
-create policy "Allow users to update own profile" on public.profiles
-  for update to authenticated using (auth.uid() = id);
-
-create policy "Admins can manage all profiles" on public.profiles
-  for all to authenticated using (public.is_admin(auth.uid()));
-
--- Complaints Policies
-create policy "Allow approved read complaints" on public.complaints
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow approved insert complaints" on public.complaints
-  for insert to authenticated with check (public.is_user_approved(auth.uid()) and auth.uid() = user_id);
-
-create policy "Allow guards/admins to update complaints" on public.complaints
-  for update to authenticated using (public.is_user_approved(auth.uid()));
-
--- Events Policies
-create policy "Allow approved read events" on public.events
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow admins to manage events" on public.events
-  for all to authenticated using (public.is_admin(auth.uid()));
-
--- Transactions Policies
-create policy "Allow approved read transactions" on public.transactions
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow admins to manage transactions" on public.transactions
-  for all to authenticated using (public.is_admin(auth.uid()));
-
--- Maintenance Dues Policies
-create policy "Allow approved read maintenance" on public.maintenance_dues
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow admins to manage maintenance" on public.maintenance_dues
-  for all to authenticated using (public.is_admin(auth.uid()));
-
--- Parking Slots Policies
-create policy "Allow approved read slots" on public.parking_slots
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow admins to manage slots" on public.parking_slots
-  for all to authenticated using (public.is_admin(auth.uid()));
-
--- Parking Requests Policies
-create policy "Allow approved read requests" on public.parking_requests
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow approved insert requests" on public.parking_requests
-  for insert to authenticated with check (public.is_user_approved(auth.uid()) and auth.uid() = user_id);
-
-create policy "Allow admins to manage requests" on public.parking_requests
-  for all to authenticated using (public.is_admin(auth.uid()));
-
-create policy "Allow guards to update requests" on public.parking_requests
-  for update to authenticated using (public.is_guard(auth.uid()));
-
--- Chat Threads Policies
-create policy "Allow approved read threads" on public.chat_threads
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow approved/owners/admins to manage threads" on public.chat_threads
-  for all to authenticated using (public.is_user_approved(auth.uid()));
-
--- Chat Messages Policies
-create policy "Allow approved read messages" on public.chat_messages
-  for select to authenticated using (public.is_user_approved(auth.uid()));
-
-create policy "Allow owners and admins to insert messages" on public.chat_messages
-  for insert to authenticated with check (
-    public.is_user_approved(auth.uid()) 
-    and auth.uid() = user_id
-    and exists (
-      select 1 from public.profiles 
-      where id = auth.uid() and (role = 'owner' or role = 'admin')
-    )
+-- 1. Societies
+create policy "Societies isolation and master admin access" on public.societies
+  for all to authenticated
+  using (
+    id = public.get_user_society_id(auth.uid())
+    or public.is_master_admin(auth.uid())
   );
 
-create policy "Allow admins to delete messages" on public.chat_messages
-  for delete to authenticated using (public.is_admin(auth.uid()));
+-- 2. Profiles
+create policy "Profiles isolation and master admin access" on public.profiles
+  for all to authenticated
+  using (
+    id = auth.uid()
+    or society_id = public.get_user_society_id(auth.uid())
+    or public.is_master_admin(auth.uid())
+  );
 
--- Polls, Options, and Votes Policies
-create policy "Allow approved read polls" on public.polls for select to authenticated using (public.is_user_approved(auth.uid()));
-create policy "Allow owners/admins to manage polls" on public.polls for all to authenticated using (public.is_user_approved(auth.uid()));
+-- Allow public inserts into profiles for signup registration
+create policy "Allow inserts for auth signups" on public.profiles
+  for insert with check (true);
 
-create policy "Allow approved read poll options" on public.poll_options for select to authenticated using (public.is_user_approved(auth.uid()));
-create policy "Allow owners/admins to manage poll options" on public.poll_options for all to authenticated using (public.is_user_approved(auth.uid()));
+-- 3. Society Requests
+create policy "Society requests visibility" on public.society_requests
+  for all to authenticated
+  using (
+    (select role from public.profiles where id = auth.uid()) = 'master_admin'
+  );
 
-create policy "Allow approved read votes" on public.poll_votes for select to authenticated using (public.is_user_approved(auth.uid()));
-create policy "Allow approved insert votes" on public.poll_votes for insert to authenticated with check (public.is_user_approved(auth.uid()) and auth.uid() = user_id);
+-- Allow public insertion of requests (so users can register from portal landing page)
+create policy "Allow public to insert requests" on public.society_requests
+  for insert with check (true);
 
--- Society Settings Policies
-create policy "Allow approved read settings" on public.society_settings for select to authenticated using (public.is_user_approved(auth.uid()));
-create policy "Allow admins to manage settings" on public.society_settings for all to authenticated using (public.is_admin(auth.uid()));
+-- 4. Society Admins
+create policy "Society admins visibility" on public.society_admins
+  for all to authenticated
+  using (
+    (select role from public.profiles where id = auth.uid()) = 'master_admin'
+  );
 
--- Notifications Policies
-create policy "Allow users to read own notifications" on public.notifications for select to authenticated using (auth.uid() = user_id);
-create policy "Allow authenticated users to insert notifications" on public.notifications for insert to authenticated with check (true);
-create policy "Allow users to update own notifications" on public.notifications for update to authenticated using (auth.uid() = user_id);
+-- 5. Announcements
+create policy "Announcements isolation and master admin access" on public.announcements
+  for all to authenticated
+  using (
+    society_id = (select society_id from public.profiles where id = auth.uid())
+    or (select role from public.profiles where id = auth.uid()) = 'master_admin'
+  );
 
+-- 6. Complaints
+create policy "Complaints isolation and master admin access" on public.complaints
+  for all to authenticated
+  using (
+    society_id = (select society_id from public.profiles where id = auth.uid())
+    or (select role from public.profiles where id = auth.uid()) = 'master_admin'
+  );
 
---------------------------------------------------------------------------------
--- AUTO-PROFILE SYNC TRIGGER ON SIGN UP
---------------------------------------------------------------------------------
+-- 7. SOS Alerts
+create policy "SOS Alerts isolation and master admin access" on public.sos_alerts
+  for all to authenticated
+  using (
+    society_id = (select society_id from public.profiles where id = auth.uid())
+    or (select role from public.profiles where id = auth.uid()) = 'master_admin'
+  );
 
-create or replace function public.handle_new_user()
-returns trigger as $$
-declare
-    default_role text := 'renter';
-    default_status text := 'pending';
-    user_count int;
-begin
-    -- Check if this is the first user in the database
-    select count(*) into user_count from public.profiles;
-    
-    if user_count = 0 then
-        -- The first user automatically becomes approved Admin
-        default_role := 'admin';
-        default_status := 'approved';
-    else
-        -- Check metadata for role selection from sign up form
-        default_role := coalesce(new.raw_user_meta_data->>'role', 'renter');
-        default_status := 'pending';
-    end if;
+-- 8. Visitors
+create policy "Visitors isolation and master admin access" on public.visitors
+  for all to authenticated
+  using (
+    society_id = (select society_id from public.profiles where id = auth.uid())
+    or (select role from public.profiles where id = auth.uid()) = 'master_admin'
+  );
 
-    -- CRITICAL REQUIREMENT: societysync5@gmail.com is ALWAYS treated as Admin and approved instantly
-    if new.email = 'societysync5@gmail.com' then
-        default_role := 'admin';
-        default_status := 'approved';
-    end if;
+-- 9. Maintenance
+create policy "Maintenance isolation and master admin access" on public.maintenance
+  for all to authenticated
+  using (
+    society_id = (select society_id from public.profiles where id = auth.uid())
+    or (select role from public.profiles where id = auth.uid()) = 'master_admin'
+  );
 
-    insert into public.profiles (
-        id, 
-        email,
-        full_name, 
-        role, 
-        flat_number, 
-        wing, 
-        phone,
-        society_name,
-        status,
-        google_picture_url,
-        approved_at
-    )
-    values (
-        new.id,
-        new.email,
-        coalesce(
-            new.raw_user_meta_data->>'full_name', 
-            new.raw_user_meta_data->>'name', 
-            'New Resident'
-        ),
-        default_role,
-        coalesce(
-            new.raw_user_meta_data->>'flat_number', 
-            case when new.email = 'societysync5@gmail.com' then 'Admin' else '' end
-        ),
-        coalesce(
-            new.raw_user_meta_data->>'wing', 
-            case when new.email = 'societysync5@gmail.com' then 'Admin' else '' end
-        ),
-        coalesce(
-            new.raw_user_meta_data->>'phone', 
-            new.raw_user_meta_data->>'phone_number', 
-            ''
-        ),
-        coalesce(
-            new.raw_user_meta_data->>'society_name', 
-            'SocietySync Co-Op Housing'
-        ),
-        default_status,
-        coalesce(
-            new.raw_user_meta_data->>'google_picture_url', 
-            new.raw_user_meta_data->>'avatar_url', 
-            new.raw_user_meta_data->>'picture', 
-            ''
-        ),
-        case when default_status = 'approved' then now() else null end
-    );
-    return new;
-end;
-$$ language plpgsql security definer;
+-- =======================================================
+-- 5. INDEXES FOR HIGH PERFORMANCE
+-- =======================================================
+create index if not exists idx_profiles_role on public.profiles(role);
+create index if not exists idx_profiles_society on public.profiles(society_id);
+create index if not exists idx_announcements_society on public.announcements(society_id);
+create index if not exists idx_complaints_society on public.complaints(society_id);
+create index if not exists idx_sos_alerts_society on public.sos_alerts(society_id);
+create index if not exists idx_visitors_society on public.visitors(society_id);
+create index if not exists idx_maintenance_society on public.maintenance(society_id);
 
--- Bind the trigger
-create or replace trigger on_auth_user_created
-    after insert on auth.users
-    for each row execute procedure public.handle_new_user();
+-- =======================================================
+-- 6. SECURITY DEFINER RPC HELPER FUNCTIONS
+-- =======================================================
 
---------------------------------------------------------------------------------
--- ESSENTIAL STRUCTURAL SEED DATA (NO DUMMY RESIDENTS/TXS/DUES)
---------------------------------------------------------------------------------
-
--- Seed structural Chat Threads (empty of messages)
-insert into public.chat_threads (title, category) values
-('#Water-Infrastructure', 'water-infrastructure'),
-('#Annual-Budget', 'budget'),
-('#Ganesh-Planning', 'events'),
-('#General-Complaints', 'general');
-
--- Seed structural Parking Slots V1 to V10 (needed for slot bookings to reference!)
-insert into public.parking_slots (slot_number, is_available) values
-('V1', true),
-('V2', true),
-('V3', true),
-('V4', true),
-('V5', true),
-('V6', true),
-('V7', true),
-('V8', true),
-('V9', true),
-('V10', true);
-
--- Seed default society settings
-insert into public.society_settings (society_name, address, maintenance_rate_per_sqft, late_fee_percentage, parking_slot_count)
-values ('SocietySync Co-Op Housing', 'Ganesh Nagar, Pune, Maharashtra', 3.50, 2.00, 10);
-
--- MIGRATION: Add vehicle_number and bio to profiles table if they do not exist
-alter table public.profiles add column if not exists vehicle_number text;
-alter table public.profiles add column if not exists bio text;
-
---------------------------------------------------------------------------------
--- STORAGE BUCKETS & POLICIES SETUP
---------------------------------------------------------------------------------
-
--- 1. Create 'avatars' bucket (for user profile pictures)
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', true)
-on conflict (id) do nothing;
-
--- 2. Create 'bills' bucket (for transaction receipt uploads)
-insert into storage.buckets (id, name, public)
-values ('bills', 'bills', true)
-on conflict (id) do nothing;
-
--- RLS Policies for storage.objects:
-
--- Allow public read access to avatars and bills
-create policy "Allow public read access to avatars"
-on storage.objects for select
-using ( bucket_id = 'avatars' );
-
-create policy "Allow public read access to bills"
-on storage.objects for select
-using ( bucket_id = 'bills' );
-
--- Allow authenticated users to upload to avatars and bills
-create policy "Allow authenticated users to upload avatars"
-on storage.objects for insert
-to authenticated
-with check (
-  bucket_id = 'avatars'
-);
-
-create policy "Allow authenticated users to upload bills"
-on storage.objects for insert
-to authenticated
-with check (
-  bucket_id = 'bills'
-);
-
--- Allow authenticated users to update/overwrite files in avatars and bills
-create policy "Allow authenticated users to update avatars"
-on storage.objects for update
-to authenticated
-using (
-  bucket_id = 'avatars'
-);
-
-create policy "Allow authenticated users to update bills"
-on storage.objects for update
-to authenticated
-using (
-  bucket_id = 'bills'
-);
-
--- Account Deletion function executing as DB Administrator to clear user credentials
-create or replace function public.delete_own_user()
+-- A. Toggle User Role (Bypasses RLS for Master Admin calls)
+create or replace function public.toggle_user_role(target_user_id uuid, new_role text)
 returns void
 language plpgsql
 security definer
 as $$
 begin
-  delete from auth.users where id = auth.uid();
+  -- Only allow master_admins to toggle roles!
+  if (select role from public.profiles where id = auth.uid()) <> 'master_admin' then
+    raise exception 'Unauthorized: Only master administrators can toggle roles.';
+  end if;
+
+  update public.profiles
+  set role = new_role
+  where id = target_user_id;
 end;
 $$;
+
+-- B. Approve Society Request (Creates Auth User, Profile, Society, and credentials transactionally)
+create or replace function public.approve_society_request(
+  req_id bigint,
+  gen_code text,
+  gen_password text
+)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  req record;
+  new_user_id uuid;
+  new_soc_id uuid;
+begin
+  -- 1. Verify caller is master_admin
+  if (select role from public.profiles where id = auth.uid()) <> 'master_admin' then
+    raise exception 'Unauthorized: Only master administrators can approve requests.';
+  end if;
+
+  -- 2. Fetch the request details
+  select * into req from public.society_requests where id = req_id;
+  if not found then
+    raise exception 'Society request not found.';
+  end if;
+
+  -- 3. Create the auth user in auth.users
+  new_user_id := gen_random_uuid();
+  insert into auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at
+  ) values (
+    '00000000-0000-0000-0000-000000000000',
+    new_user_id,
+    'authenticated',
+    'authenticated',
+    req.admin_email,
+    crypt(gen_password, gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    jsonb_build_object('full_name', req.admin_name),
+    now(),
+    now()
+  );
+
+  -- Create the identity link in auth.identities
+  insert into auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  ) values (
+    new_user_id,
+    new_user_id,
+    jsonb_build_object('sub', new_user_id, 'email', req.admin_email),
+    'email',
+    new_user_id::text,
+    now(),
+    now(),
+    now()
+  );
+
+  -- 4. Create the society record
+  new_soc_id := gen_random_uuid();
+  insert into public.societies (
+    id,
+    name,
+    address,
+    state,
+    city,
+    pincode,
+    society_code,
+    admin_email,
+    admin_phone,
+    total_units
+  ) values (
+    new_soc_id,
+    req.name,
+    req.address,
+    req.state,
+    req.city,
+    req.pincode,
+    gen_code,
+    req.admin_email,
+    req.admin_phone,
+    req.total_units
+  );
+
+  -- 5. Insert profile record
+  insert into public.profiles (
+    id,
+    email,
+    role,
+    society_id,
+    full_name,
+    wing,
+    flat_number
+  ) values (
+    new_user_id,
+    req.admin_email,
+    'admin',
+    new_soc_id,
+    req.admin_name,
+    'HQ',
+    'Admin'
+  );
+
+  -- 6. Insert credentials record into society_admins
+  insert into public.society_admins (
+    society_id,
+    admin_email,
+    generated_password,
+    society_code
+  ) values (
+    new_soc_id,
+    req.admin_email,
+    gen_password,
+    gen_code
+  );
+
+  -- 7. Update request status
+  update public.society_requests
+  set status = 'approved'
+  where id = req_id;
+
+  return new_user_id;
+end;
+$$;
+
+-- =======================================================
+-- 7. PRE-SEEDED SYSTEM ACCOUNTS
+-- =======================================================
+
+-- Seed Master Admin in auth.users (Password: Admin@123)
+insert into auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  '482f1c5a-4c26-4483-8f5f-b4feb384500a', -- Hardcoded UID
+  'authenticated',
+  'authenticated',
+  'societysync5@gmail.com',
+  '$2b$10$XUA5HFssRhGTLaTrDVVh2uBissBFiGZR2yJDFG0IoNQfNnJoTPUL.',
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"full_name":"Master Admin"}',
+  now(),
+  now()
+) on conflict (id) do nothing;
+
+-- Seed Master Admin in auth.identities
+insert into auth.identities (
+  id,
+  user_id,
+  identity_data,
+  provider,
+  provider_id,
+  last_sign_in_at,
+  created_at,
+  updated_at
+) values (
+  '482f1c5a-4c26-4483-8f5f-b4feb384500a',
+  '482f1c5a-4c26-4483-8f5f-b4feb384500a',
+  '{"sub":"482f1c5a-4c26-4483-8f5f-b4feb384500a","email":"societysync5@gmail.com"}'::jsonb,
+  'email',
+  '482f1c5a-4c26-4483-8f5f-b4feb384500a',
+  now(),
+  now(),
+  now()
+) on conflict do nothing;
+
+-- Seed Master Admin in public.profiles
+insert into public.profiles (
+  id,
+  email,
+  role,
+  society_id,
+  full_name,
+  wing,
+  flat_number
+) values (
+  '482f1c5a-4c26-4483-8f5f-b4feb384500a',
+  'societysync5@gmail.com',
+  'master_admin',
+  null,
+  'Master Admin',
+  'HQ',
+  'Admin'
+) on conflict (id) do nothing;
+
 

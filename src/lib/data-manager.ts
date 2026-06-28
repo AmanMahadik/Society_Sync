@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Role and Status types
-export type UserRole = 'admin' | 'owner' | 'renter' | 'guard';
+export type UserRole = 'master_admin' | 'admin' | 'resident' | 'owner' | 'renter' | 'guard';
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 export type ComplaintStatus = 'pending' | 'acknowledged' | 'resolved' | 'ignored';
 export type ParkingTimeSlot = 'morning' | 'afternoon' | 'evening' | 'overnight';
@@ -25,6 +25,8 @@ export interface Profile {
   notification_token?: string | null;
   vehicle_number?: string | null;
   bio?: string | null;
+  society_id?: string | null;
+  society_code?: string | null;
 }
 
 // 2. Events (Festival Ledger)
@@ -259,6 +261,7 @@ const INITIAL_DEMO_SETTINGS: SocietySettings = {
 };
 
 class DataManager {
+  public societyId: string | null = null;
   private useMock: boolean = false;
   private listeners: { [key: string]: Function[] } = {};
 
@@ -352,6 +355,7 @@ class DataManager {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
+      .eq('society_id', this.societyId)
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -369,7 +373,8 @@ class DataManager {
     const { error } = await supabase
       .from('profiles')
       .update({ status, approved_at: approved ? new Date().toISOString() : null })
-      .eq('id', userId);
+      .eq('id', userId)
+      .eq('society_id', this.societyId);
     if (error) throw error;
 
     await this.createNotification(
@@ -385,7 +390,8 @@ class DataManager {
     const { error } = await supabase
       .from('profiles')
       .update({ role })
-      .eq('id', userId);
+      .eq('id', userId)
+      .eq('society_id', this.societyId);
     if (error) throw error;
   }
 
@@ -398,7 +404,9 @@ class DataManager {
     society: string,
     vehicleNumber?: string | null,
     bio?: string | null,
-    avatarUrl?: string | null
+    avatarUrl?: string | null,
+    societyId?: string | null,
+    societyCode?: string | null
   ): Promise<void> {
     const updateData: any = { 
       full_name: fullName, 
@@ -410,6 +418,8 @@ class DataManager {
     if (vehicleNumber !== undefined) updateData.vehicle_number = vehicleNumber;
     if (bio !== undefined) updateData.bio = bio;
     if (avatarUrl !== undefined) updateData.google_picture_url = avatarUrl;
+    if (societyId !== undefined) updateData.society_id = societyId;
+    if (societyCode !== undefined) updateData.society_code = societyCode;
 
     const { error } = await supabase
       .from('profiles')
@@ -425,6 +435,7 @@ class DataManager {
     const { data, error } = await supabase
       .from('events')
       .select('*')
+      .eq('society_id', this.societyId)
       .order('event_date', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -436,7 +447,8 @@ class DataManager {
       description,
       event_date: date,
       is_active: true,
-      created_by: creatorId
+      created_by: creatorId,
+      society_id: this.societyId
     };
     const { data, error } = await supabase
       .from('events')
@@ -455,6 +467,7 @@ class DataManager {
       .from('transactions')
       .select('*, recorder:profiles(full_name)')
       .eq('event_id', eventId)
+      .eq('society_id', this.societyId)
       .order('recorded_at', { ascending: false });
     if (error) throw error;
     return (data || []).map((t: any) => ({
@@ -466,7 +479,8 @@ class DataManager {
   async addTransaction(tx: Omit<Transaction, 'id' | 'recorded_at'>): Promise<Transaction> {
     const newTx = {
       ...tx,
-      recorded_at: new Date().toISOString()
+      recorded_at: new Date().toISOString(),
+      society_id: this.societyId
     };
     const { data, error } = await supabase
       .from('transactions')
@@ -524,10 +538,12 @@ class DataManager {
   // ==========================================
   // 4. MAINTENANCE DUES
   // ==========================================
-  async getMaintenanceDues(): Promise<MaintenanceDue[]> {
-    const { data, error } = await supabase
-      .from('maintenance_dues')
-      .select('*');
+  async getMaintenanceDues(role?: string, wing?: string, flatNumber?: string): Promise<MaintenanceDue[]> {
+    let query = supabase.from('maintenance_dues').select('*').eq('society_id', this.societyId);
+    if (role !== 'admin' && wing && flatNumber) {
+      query = query.eq('wing', wing).eq('flat_number', flatNumber);
+    }
+    const { data, error } = await query;
     if (error) throw error;
     
     const settings = await this.getSocietySettings();
@@ -561,7 +577,8 @@ class DataManager {
   async addMaintenanceDue(due: Omit<MaintenanceDue, 'id' | 'interest_charged'>): Promise<MaintenanceDue> {
     const newDue = {
       ...due,
-      interest_charged: 0
+      interest_charged: 0,
+      society_id: this.societyId
     };
     const { data, error } = await supabase
       .from('maintenance_dues')
@@ -595,7 +612,7 @@ class DataManager {
   }
 
   async markDuesPaid(dueId: string): Promise<void> {
-    const { data: dueData } = await supabase.from('maintenance_dues').select('*').eq('id', dueId).single();
+    const { data: dueData } = await supabase.from('maintenance_dues').select('*').eq('id', dueId).eq('society_id', this.societyId).single();
     if (dueData) {
       const settings = await this.getSocietySettings();
       const lateFeePercent = settings?.late_fee_percentage || 2.0;
@@ -623,7 +640,8 @@ class DataManager {
     const { data, error } = await supabase
       .from('parking_requests')
       .select('*, user:profiles!parking_requests_user_id_fkey(full_name, flat_number, wing), slot:parking_slots(slot_number)')
-      .eq('date', date);
+      .eq('date', date)
+      .eq('society_id', this.societyId);
     if (error) throw error;
     
     return (data || []).map((item: any) => ({
@@ -635,7 +653,7 @@ class DataManager {
   }
 
   async requestParkingBooking(user_id: string, slotNum: string, date: string, time_slot: ParkingTimeSlot, vehicle: string, visitor: string): Promise<ParkingRequest> {
-    const { data: slotData } = await supabase.from('parking_slots').select('id').eq('slot_number', slotNum).single();
+    const { data: slotData } = await supabase.from('parking_slots').select('id').eq('slot_number', slotNum).eq('society_id', this.societyId).single();
     if (!slotData) throw new Error('Slot does not exist!');
 
     const { data: overlaps } = await supabase
@@ -644,7 +662,8 @@ class DataManager {
       .eq('date', date)
       .eq('slot_id', slotData.id)
       .eq('time_slot', time_slot)
-      .eq('status', 'approved');
+      .eq('status', 'approved')
+      .eq('society_id', this.societyId);
       
     if (overlaps && overlaps.length > 0) {
       throw new Error('Slot already booked for this time window!');
@@ -659,7 +678,8 @@ class DataManager {
         time_slot,
         vehicle_number: vehicle.toUpperCase(),
         visitor_name: visitor,
-        status: 'pending'
+        status: 'pending',
+        society_id: this.societyId
       })
       .select()
       .single();
@@ -711,11 +731,19 @@ class DataManager {
   // ==========================================
   // 6. SOS COMPLAINTS
   // ==========================================
-  async getComplaints(): Promise<Complaint[]> {
-    const { data, error } = await supabase
+  async getComplaints(role?: string, userId?: string): Promise<Complaint[]> {
+    let query = supabase
       .from('complaints')
       .select('*, user:profiles!complaints_user_id_fkey(full_name)')
-      .order('created_at', { ascending: false });
+      .eq('society_id', this.societyId);
+    
+    if (role === 'guard') {
+      query = query.eq('type', 'security').in('status', ['pending', 'acknowledged']);
+    } else if (role !== 'admin' && userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map((item: any) => ({
       ...item,
@@ -724,7 +752,7 @@ class DataManager {
   }
 
   async raiseComplaint(userId: string, type: 'water_low' | 'motor_off' | 'electricity' | 'security' | 'other', wing: string, flat: string, description: string): Promise<Complaint> {
-    const newComplaint: Omit<Complaint, 'id'> = {
+    const newComplaint: any = {
       user_id: userId,
       type,
       wing,
@@ -732,7 +760,9 @@ class DataManager {
       description,
       status: 'pending',
       priority: type === 'security' ? 'emergency' : 'high',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      target_role: type === 'security' ? ['guard', 'admin'] : ['admin'],
+      society_id: this.societyId
     };
 
     const { data, error } = await supabase
@@ -841,6 +871,7 @@ class DataManager {
       .from('chat_threads')
       .select('*')
       .eq('is_archived', false)
+      .eq('society_id', this.societyId)
       .order('updated_at', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -852,7 +883,8 @@ class DataManager {
       category,
       created_by: creatorId,
       is_archived: false,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      society_id: this.societyId
     };
     const { data, error } = await supabase
       .from('chat_threads')
@@ -868,6 +900,7 @@ class DataManager {
       .from('chat_messages')
       .select('*, sender:profiles(full_name, role, flat_number, wing, google_picture_url)')
       .eq('thread_id', threadId)
+      .eq('society_id', this.societyId)
       .order('created_at', { ascending: true });
     if (error) throw error;
     return (data || []).map((m: any) => ({
@@ -893,7 +926,8 @@ class DataManager {
       user_id: userId,
       content,
       is_pinned: false,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      society_id: this.societyId
     };
     const { data, error } = await supabase
       .from('chat_messages')
@@ -920,14 +954,15 @@ class DataManager {
       .from('polls')
       .select('*')
       .eq('thread_id', threadId)
+      .eq('society_id', this.societyId)
       .order('created_at', { ascending: false });
       
     if (pollsError) throw pollsError;
     
     const results: Poll[] = [];
     for (const poll of (pollsData || [])) {
-      const { data: opts } = await supabase.from('poll_options').select('*').eq('poll_id', poll.id);
-      const { data: myVote } = await supabase.from('poll_votes').select('id').eq('poll_id', poll.id).eq('user_id', userId);
+      const { data: opts } = await supabase.from('poll_options').select('*').eq('poll_id', poll.id).eq('society_id', this.societyId);
+      const { data: myVote } = await supabase.from('poll_votes').select('id').eq('poll_id', poll.id).eq('user_id', userId).eq('society_id', this.societyId);
       results.push({
         ...poll,
         options: opts || [],
@@ -940,12 +975,12 @@ class DataManager {
   async createPoll(threadId: string, title: string, description: string, creatorId: string, optionTexts: string[]): Promise<Poll> {
     const { data: poll, error } = await supabase
       .from('polls')
-      .insert({ thread_id: threadId, title, description, created_by: creatorId })
+      .insert({ thread_id: threadId, title, description, created_by: creatorId, society_id: this.societyId })
       .select()
       .single();
     if (error) throw error;
 
-    const optsToInsert = optionTexts.map(txt => ({ poll_id: poll.id, option_text: txt }));
+    const optsToInsert = optionTexts.map(txt => ({ poll_id: poll.id, option_text: txt, society_id: this.societyId }));
     const { data: insertedOpts } = await supabase.from('poll_options').insert(optsToInsert).select();
 
     return {
@@ -958,10 +993,10 @@ class DataManager {
   async voteInPoll(pollId: string, optionId: string, userId: string): Promise<void> {
     const { error } = await supabase
       .from('poll_votes')
-      .insert({ poll_id: pollId, option_id: optionId, user_id: userId });
+      .insert({ poll_id: pollId, option_id: optionId, user_id: userId, society_id: this.societyId });
     if (error) throw error;
 
-    const { data: opt } = await supabase.from('poll_options').select('vote_count').eq('id', optionId).single();
+    const { data: opt } = await supabase.from('poll_options').select('vote_count').eq('id', optionId).eq('society_id', this.societyId).single();
     if (opt) {
       await supabase
         .from('poll_options')

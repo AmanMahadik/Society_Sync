@@ -3,23 +3,63 @@ import { StyleSheet, View, ScrollView } from 'react-native';
 import { Text, TextInput, Button, Card, HelperText, useTheme, SegmentedButtons } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { UserRole } from '../../lib/data-manager';
+import { supabase } from '../../lib/supabase';
 
 export const ProfileCompletionScreen: React.FC = () => {
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, signOut } = useAuth();
   const theme = useTheme();
+
+  const [societyCode, setSocietyCode] = useState('');
+  const [societyValidated, setSocietyValidated] = useState(false);
+  const [validatingCode, setValidatingCode] = useState(false);
+  const [societyDetails, setSocietyDetails] = useState<{ id: string; name: string; city: string; state: string } | null>(null);
 
   const [fullName, setFullName] = useState('');
   const [wing, setWing] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
   const [phone, setPhone] = useState('');
-  const [societyName, setSocietyName] = useState('SocietySync Co-Op Housing');
   const [role, setRole] = useState<UserRole>('renter');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleValidateCode = async () => {
+    if (!societyCode.trim()) {
+      setError('Please enter your society code.');
+      return;
+    }
+    
+    setError(null);
+    setValidatingCode(true);
+
+    try {
+      const { data, error: queryError } = await supabase
+        .from('societies')
+        .select('id, name, status, city, state')
+        .eq('society_code', societyCode.trim().toUpperCase())
+        .single();
+
+      if (queryError || !data) {
+        setError('Society code not found. Please check with your Society Admin.');
+        return;
+      }
+
+      if (data.status !== 'active') {
+        setError('This society is not yet active. Please contact your Society Admin.');
+        return;
+      }
+
+      setSocietyDetails(data);
+      setSocietyValidated(true);
+    } catch (e) {
+      setError('Connection error while validating code.');
+    } finally {
+      setValidatingCode(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!fullName || !wing || !flatNumber || !phone || !societyName) {
+    if (!fullName || !wing || !flatNumber || !phone || !societyDetails) {
       setError('Please fill in all details to complete your profile.');
       return;
     }
@@ -33,14 +73,20 @@ export const ProfileCompletionScreen: React.FC = () => {
     setLoading(true);
     try {
       const { dataManager } = require('../../lib/data-manager');
-      // Save details to public.profiles table
+      
+      // Save details including validated society_id and society_code
       await dataManager.updateProfileDetails(
         user.id,
         fullName,
         phone,
         flatNumber,
         wing.toUpperCase(),
-        societyName
+        societyDetails.name,
+        null,
+        null,
+        null,
+        societyDetails.id,
+        societyCode.trim().toUpperCase()
       );
       
       // Update role in profiles
@@ -55,6 +101,72 @@ export const ProfileCompletionScreen: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (!societyValidated) {
+    return (
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.header}>
+          <Text variant="headlineMedium" style={styles.title}>Join a Housing Complex</Text>
+          <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.outline }]}>
+            Enter your unique 10-character Society Code to connect your profile
+          </Text>
+        </View>
+
+        <Card style={styles.card}>
+          <Card.Content style={styles.cardContent}>
+            {error && (
+              <HelperText type="error" visible={!!error} style={styles.errorText}>
+                {error}
+              </HelperText>
+            )}
+
+            <TextInput
+              label="Enter Society Code"
+              placeholder="e.g. SS-MH-2847"
+              value={societyCode}
+              onChangeText={(text) => {
+                const clean = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                let formatted = clean;
+                if (clean.length > 2) {
+                  formatted = clean.substring(0, 2) + '-' + clean.substring(2);
+                }
+                if (clean.length > 4) {
+                  formatted = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 8);
+                }
+                setSocietyCode(formatted);
+                setError(null);
+              }}
+              mode="outlined"
+              style={styles.input}
+              autoCapitalize="characters"
+              left={<TextInput.Icon icon="key" />}
+            />
+
+            <Button
+              mode="contained"
+              onPress={handleValidateCode}
+              loading={validatingCode}
+              disabled={validatingCode}
+              style={styles.button}
+              icon="check-decagram"
+            >
+              Validate Code
+            </Button>
+
+            <Button
+              mode="text"
+              onPress={signOut}
+              textColor={theme.colors.error}
+              style={{ marginTop: 8 }}
+              icon="logout"
+            >
+              Cancel & Sign Out
+            </Button>
+          </Card.Content>
+        </Card>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -71,6 +183,22 @@ export const ProfileCompletionScreen: React.FC = () => {
             <HelperText type="error" visible={!!error} style={styles.errorText}>
               {error}
             </HelperText>
+          )}
+
+          {societyDetails && (
+            <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer, marginBottom: 16 }]}>
+              <Card.Content style={styles.infoContent}>
+                <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
+                  ✅ Verified Society Details
+                </Text>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', marginTop: 4, color: '#FFFFFF' }}>
+                  {societyDetails.name}
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
+                  {societyDetails.city}, {societyDetails.state}
+                </Text>
+              </Card.Content>
+            </Card>
           )}
 
           <TextInput
@@ -127,15 +255,6 @@ export const ProfileCompletionScreen: React.FC = () => {
             />
           </View>
 
-          <TextInput
-            label="Society Name"
-            value={societyName}
-            onChangeText={setSocietyName}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="city" />}
-          />
-
           <Button
             mode="contained"
             onPress={handleSubmit}
@@ -145,6 +264,29 @@ export const ProfileCompletionScreen: React.FC = () => {
             icon="check-circle"
           >
             Complete Setup & Join
+          </Button>
+
+          <Button
+            mode="text"
+            onPress={() => {
+              setSocietyValidated(false);
+              setSocietyCode('');
+              setSocietyDetails(null);
+            }}
+            textColor={theme.colors.outline}
+            style={{ marginTop: 8 }}
+          >
+            Change Society Code
+          </Button>
+
+          <Button
+            mode="text"
+            onPress={signOut}
+            textColor={theme.colors.error}
+            style={{ marginTop: 4 }}
+            icon="logout"
+          >
+            Cancel & Sign Out
           </Button>
         </Card.Content>
       </Card>
@@ -168,6 +310,7 @@ const styles = StyleSheet.create({
   subtitle: {
     textAlign: 'center',
     paddingHorizontal: 8,
+    marginTop: 4,
   },
   card: {
     borderRadius: 16,
@@ -202,5 +345,14 @@ const styles = StyleSheet.create({
   errorText: {
     textAlign: 'center',
     marginBottom: 8,
+    fontWeight: 'bold',
+  },
+  infoCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1E2F2B',
+  },
+  infoContent: {
+    padding: 12,
   },
 });
