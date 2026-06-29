@@ -7,8 +7,34 @@ import { NotificationProvider } from '../lib/notification-context';
 import { GlobalSOSListener } from '../components/GlobalSOSListener';
 import { FloatingNotificationStack } from '../components/FloatingNotificationStack';
 
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../lib/auth-context';
+
 function AppWithTheme() {
   const { theme } = useThemeContext();
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
+  const [hasLoggedIn, setHasLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (user && profile) {
+      setHasLoggedIn(true);
+      if (profile.role === 'master_admin') {
+        router.replace('/(master)' as any);
+      } else if (profile.role === 'admin') {
+        router.replace('/(admin)' as any);
+      } else if (profile.role === 'resident') {
+        router.replace('/(resident)' as any);
+      }
+    } else if (!user && hasLoggedIn) {
+      setHasLoggedIn(false);
+      router.replace('/(auth)/login' as any);
+    }
+  }, [user, profile, loading, hasLoggedIn]);
+
   return (
     <PaperProvider theme={theme}>
       <NotificationProvider>
