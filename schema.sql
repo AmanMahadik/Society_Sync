@@ -447,7 +447,7 @@ begin
     req.total_units
   );
 
-  -- 5. Insert profile record
+  -- 5. Insert profile record (upsert to handle trigger collisions)
   insert into public.profiles (
     id,
     email,
@@ -464,7 +464,13 @@ begin
     req.admin_name,
     'HQ',
     'Admin'
-  );
+  )
+  on conflict (id) do update
+  set role = 'admin',
+      society_id = new_soc_id,
+      full_name = req.admin_name,
+      wing = 'HQ',
+      flat_number = 'Admin';
 
   -- 6. Insert credentials record into society_admins
   insert into public.society_admins (
