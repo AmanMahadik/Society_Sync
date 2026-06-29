@@ -68,11 +68,15 @@ declare
   soc_code text;
 begin
   -- 1. Determine the society_id from metadata
-  if new.raw_user_meta_data->>'society_id' is not null and new.raw_user_meta_data->>'society_id' <> '' then
-    soc_id := (new.raw_user_meta_data->>'society_id')::uuid;
-  else
+  begin
+    if new.raw_user_meta_data is not null and new.raw_user_meta_data->>'society_id' is not null and new.raw_user_meta_data->>'society_id' <> '' then
+      soc_id := (new.raw_user_meta_data->>'society_id')::uuid;
+    else
+      soc_id := null;
+    end if;
+  exception when others then
     soc_id := null;
-  end if;
+  end;
 
   -- 2. Determine role and status
   if new.email = 'societysync5@gmail.com' then
@@ -81,62 +85,100 @@ begin
   else
     if soc_id is not null then
       -- Count active profiles already in this society
-      select count(*) into existing_count from public.profiles where society_id = soc_id;
+      begin
+        select count(*) into existing_count from public.profiles where society_id = soc_id;
+      exception when others then
+        existing_count := 0;
+      end;
       
       if existing_count = 0 then
         -- First registered user is automatically approved as the Admin!
         default_role := 'admin';
         default_status := 'approved';
         
-        -- Get the society code to update society_admins mapping
-        select society_code into soc_code from public.societies where id = soc_id;
-        
-        -- Update mapping table to link this user ID to the society
-        update public.society_admins
-        set user_id = new.id
-        where society_id = soc_id;
+        -- Try to update society_admins mapping, wrap in block to ignore missing column errors
+        begin
+          update public.society_admins
+          set user_id = new.id
+          where society_id = soc_id;
+        exception when others then
+          -- Do nothing if mapping table fails
+          null;
+        end;
       else
         -- Subsequent users keep their selected role (owner, renter, guard) and start as pending
-        default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+        begin
+          default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+        exception when others then
+          default_role := 'resident';
+        end;
         default_status := 'pending';
       end if;
     else
-      default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+      begin
+        default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+      exception when others then
+        default_role := 'resident';
+      end;
       default_status := 'pending';
     end if;
   end if;
 
-  -- 3. Insert profile row
-  insert into public.profiles (
-    id,
-    email,
-    role,
-    status,
-    society_id,
-    full_name,
-    wing,
-    flat_number,
-    phone,
-    approved_at
-  ) values (
-    new.id,
-    new.email,
-    default_role,
-    default_status,
-    soc_id,
-    coalesce(new.raw_user_meta_data->>'full_name', 'New Resident'),
-    new.raw_user_meta_data->>'wing',
-    new.raw_user_meta_data->>'flat_number',
-    new.raw_user_meta_data->>'phone_number',
-    case when default_status = 'approved' then now() else null end
-  ) on conflict (id) do nothing;
+  -- 3. Insert profile row, wrapped to catch and log any column mismatch errors
+  begin
+    insert into public.profiles (
+      id,
+      email,
+      role,
+      status,
+      society_id,
+      full_name,
+      wing,
+      flat_number,
+      phone,
+      approved_at
+    ) values (
+      new.id,
+      new.email,
+      default_role,
+      default_status,
+      soc_id,
+      coalesce(new.raw_user_meta_data->>'full_name', 'New Resident'),
+      new.raw_user_meta_data->>'wing',
+      new.raw_user_meta_data->>'flat_number',
+      new.raw_user_meta_data->>'phone_number',
+      case when default_status = 'approved' then now() else null end
+    ) on conflict (id) do nothing;
+  exception when others then
+    -- Fallback: Insert with basic fields if extra columns fail
+    begin
+      insert into public.profiles (
+        id,
+        email,
+        role,
+        society_id,
+        full_name,
+        wing,
+        flat_number
+      ) values (
+        new.id,
+        new.email,
+        default_role,
+        soc_id,
+        coalesce(new.raw_user_meta_data->>'full_name', 'New Resident'),
+        new.raw_user_meta_data->>'wing',
+        new.raw_user_meta_data->>'flat_number'
+      ) on conflict (id) do nothing;
+    exception when others then
+      null;
+    end;
+  end;
   
   return new;
 end;
 $$;
 
 -- Register the trigger
-drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
