@@ -35,6 +35,7 @@ export default function ResidentLayout() {
           else if (route.name === 'announcements') iconName = 'bullhorn';
           else if (route.name === 'complaints') iconName = 'message-alert';
           else if (route.name === 'sos') iconName = 'alert-octagon';
+          else if (route.name === 'profile') iconName = 'account-circle';
           return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
         },
       })}
@@ -43,6 +44,7 @@ export default function ResidentLayout() {
       <Tabs.Screen name="announcements" options={{ tabBarLabel: 'Bulletins' }} />
       <Tabs.Screen name="complaints" options={{ tabBarLabel: 'Complaints' }} />
       <Tabs.Screen name="sos" options={{ tabBarLabel: 'SOS Trigger' }} />
+      <Tabs.Screen name="profile" options={{ tabBarLabel: 'Profile' }} />
     </Tabs>
   );
 }

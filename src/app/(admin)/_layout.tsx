@@ -35,6 +35,7 @@ export default function AdminLayout() {
           else if (route.name === 'residents') iconName = 'account-group';
           else if (route.name === 'announcements') iconName = 'bullhorn';
           else if (route.name === 'sos') iconName = 'alert-decagram';
+          else if (route.name === 'profile') iconName = 'account-circle';
           return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
         },
       })}
@@ -43,6 +44,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="residents" options={{ tabBarLabel: 'Residents' }} />
       <Tabs.Screen name="announcements" options={{ tabBarLabel: 'Announcements' }} />
       <Tabs.Screen name="sos" options={{ tabBarLabel: 'SOS' }} />
+      <Tabs.Screen name="profile" options={{ tabBarLabel: 'Profile' }} />
     </Tabs>
   );
 }
