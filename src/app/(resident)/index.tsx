@@ -18,8 +18,8 @@ export default function ResidentHomeScreen() {
   
   const [society, setSociety] = useState<SocietyDetails | null>(null);
   const [counts, setCounts] = useState({
-    activeBulletins: 0,
-    myComplaints: 0
+    activeThreads: 0,
+    myDues: 0
   });
 
   const fetchResidentData = async () => {
@@ -33,21 +33,24 @@ export default function ResidentHomeScreen() {
         .single();
       if (soc) setSociety(soc);
 
-      // 2. Fetch announcements count
-      const { count: annCount } = await supabase
-        .from('announcements')
+      // 2. Fetch chat threads count
+      const { count: threadCount } = await supabase
+        .from('chat_threads')
         .select('*', { count: 'exact', head: true })
         .eq('society_id', profile.society_id);
       
-      // 3. Fetch user complaints count
-      const { count: compCount } = await supabase
-        .from('complaints')
+      // 3. Fetch user's unpaid maintenance dues count
+      const { count: duesCount } = await supabase
+        .from('maintenance')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', profile.id);
+        .eq('society_id', profile.society_id)
+        .eq('flat_number', profile.flat_number || '')
+        .eq('wing', profile.wing || '')
+        .eq('status', 'unpaid');
 
       setCounts({
-        activeBulletins: annCount || 0,
-        myComplaints: compCount || 0
+        activeThreads: threadCount || 0,
+        myDues: duesCount || 0
       });
     } catch (e) {
       console.error(e);
@@ -108,19 +111,19 @@ export default function ResidentHomeScreen() {
 
       {/* STATS MATRIX */}
       <View style={styles.grid}>
-        <Card style={styles.gridCard} onPress={() => router.push('/(resident)/announcements')}>
+        <Card style={styles.gridCard} onPress={() => router.push('/(resident)/chat')}>
           <Card.Content style={styles.gridContent}>
-            <Avatar.Icon size={32} icon="bullhorn" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
-            <Text variant="headlineMedium" style={styles.gridNumber}>{counts.activeBulletins}</Text>
-            <Text variant="labelSmall" style={{ color: theme.colors.outline }}>Active Bulletins</Text>
+            <Avatar.Icon size={32} icon="forum" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
+            <Text variant="headlineMedium" style={styles.gridNumber}>{counts.activeThreads}</Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.outline }}>Council Threads</Text>
           </Card.Content>
         </Card>
 
-        <Card style={styles.gridCard} onPress={() => router.push('/(resident)/complaints')}>
+        <Card style={styles.gridCard} onPress={() => router.push('/(resident)/finances')}>
           <Card.Content style={styles.gridContent}>
-            <Avatar.Icon size={32} icon="message-alert" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
-            <Text variant="headlineMedium" style={styles.gridNumber}>{counts.myComplaints}</Text>
-            <Text variant="labelSmall" style={{ color: theme.colors.outline }}>My Complaints</Text>
+            <Avatar.Icon size={32} icon="cash-multiple" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
+            <Text variant="headlineMedium" style={styles.gridNumber}>{counts.myDues}</Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.outline }}>Pending Dues</Text>
           </Card.Content>
         </Card>
       </View>
@@ -142,26 +145,26 @@ export default function ResidentHomeScreen() {
       {/* QUICK LINKS SECTION */}
       <Text variant="titleMedium" style={styles.sectionTitle}>Quick Services</Text>
 
-      <Card style={styles.actionCard} onPress={() => router.push('/(resident)/announcements')}>
+      <Card style={styles.actionCard} onPress={() => router.push('/(resident)/chat')}>
         <Card.Content style={styles.actionContent}>
           <View style={styles.actionLeft}>
-            <Avatar.Icon size={36} icon="bulletin-board" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
+            <Avatar.Icon size={36} icon="forum" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
             <View>
-              <Text variant="titleMedium" style={styles.boldText}>Bulletin Board</Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Read notices from society management</Text>
+              <Text variant="titleMedium" style={styles.boldText}>Council Discussions</Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Participate in debates and vote on proposals</Text>
             </View>
           </View>
           <IconButton icon="chevron-right" size={24} />
         </Card.Content>
       </Card>
 
-      <Card style={styles.actionCard} onPress={() => router.push('/(resident)/complaints')}>
+      <Card style={styles.actionCard} onPress={() => router.push('/(resident)/finances')}>
         <Card.Content style={styles.actionContent}>
           <View style={styles.actionLeft}>
-            <Avatar.Icon size={36} icon="file-document-edit" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
+            <Avatar.Icon size={36} icon="cash-multiple" style={{ backgroundColor: '#1A1A1A' }} color={theme.colors.primary} />
             <View>
-              <Text variant="titleMedium" style={styles.boldText}>Lodge Complaint</Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.outline }}>File and track structural complaints</Text>
+              <Text variant="titleMedium" style={styles.boldText}>Finances & Dues</Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Track transactions, receipts, and maintenance fees</Text>
             </View>
           </View>
           <IconButton icon="chevron-right" size={24} />

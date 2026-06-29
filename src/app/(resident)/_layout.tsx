@@ -11,8 +11,14 @@ export default function ResidentLayout() {
 
   if (loading) return null;
 
-  // Protect route
-  if (!user || profile?.role !== 'resident') {
+  // Protect route - allow all authenticated society roles to enter
+  if (!user || (
+    profile?.role !== 'admin' &&
+    profile?.role !== 'owner' &&
+    profile?.role !== 'renter' &&
+    profile?.role !== 'guard' &&
+    profile?.role !== 'resident'
+  )) {
     return <Redirect href="/(auth)/login" />;
   }
 
@@ -32,8 +38,8 @@ export default function ResidentLayout() {
         tabBarIcon: ({ color, size }) => {
           let iconName: any = 'home';
           if (route.name === 'index') iconName = 'home-city';
-          else if (route.name === 'announcements') iconName = 'bullhorn';
-          else if (route.name === 'complaints') iconName = 'message-alert';
+          else if (route.name === 'chat') iconName = 'forum';
+          else if (route.name === 'finances') iconName = 'cash-multiple';
           else if (route.name === 'sos') iconName = 'alert-octagon';
           else if (route.name === 'profile') iconName = 'account-circle';
           return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
@@ -41,8 +47,8 @@ export default function ResidentLayout() {
       })}
     >
       <Tabs.Screen name="index" options={{ tabBarLabel: 'Home' }} />
-      <Tabs.Screen name="announcements" options={{ tabBarLabel: 'Bulletins' }} />
-      <Tabs.Screen name="complaints" options={{ tabBarLabel: 'Complaints' }} />
+      <Tabs.Screen name="chat" options={{ tabBarLabel: 'Council' }} />
+      <Tabs.Screen name="finances" options={{ tabBarLabel: 'Finances' }} />
       <Tabs.Screen name="sos" options={{ tabBarLabel: 'SOS Trigger' }} />
       <Tabs.Screen name="profile" options={{ tabBarLabel: 'Profile' }} />
     </Tabs>
