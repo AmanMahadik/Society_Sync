@@ -96,21 +96,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
         }
       }
 
-      // 2. Check if email matches society.admin_email to auto-assign 'admin' role
-      const { data: society } = await supabase
-        .from('societies')
-        .select('admin_email')
-        .eq('id', societyDetails.id)
-        .single();
-
-      const isPortalAdmin = society?.admin_email === email.trim().toLowerCase();
-      const assignedRole = isPortalAdmin ? 'admin' : role;
-
+      // 2. SignUp directly with selected role (the DB trigger will override to 'admin' if first user)
       const { error: signUpError } = await signUp(
         email, 
         password, 
         fullName, 
-        assignedRole, 
+        role, 
         wing, 
         flatNumber, 
         phone,
@@ -121,15 +112,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
 
       if (signUpError) {
         setError(signUpError);
-      } else if (isPortalAdmin) {
-        // Double check updates
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await supabase
-            .from('profiles')
-            .update({ role: 'admin', status: 'approved' })
-            .eq('id', session.user.id);
-        }
       }
     } catch (e: any) {
       setError(e.message || 'An error occurred during registration.');

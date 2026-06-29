@@ -39,11 +39,18 @@ create table public.societies (
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
-  role text not null check (role in ('master_admin', 'admin', 'resident')),
+  role text not null check (role in ('master_admin', 'admin', 'owner', 'renter', 'guard', 'resident')),
   society_id uuid references public.societies(id) on delete set null, -- Null for master_admin
   full_name text,
   wing text,
   flat_number text,
+  phone text,
+  status text default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  approved_at timestamp with time zone,
+  google_picture_url text,
+  vehicle_number text,
+  bio text,
+  notification_token text,
   created_at timestamp with time zone default now()
 );
 
@@ -55,34 +62,75 @@ security definer
 as $$
 declare
   default_role text;
+  default_status text;
+  soc_id uuid;
+  existing_count integer;
+  soc_code text;
 begin
-  if new.email = 'societysync5@gmail.com' then
-    default_role := 'master_admin';
+  -- 1. Determine the society_id from metadata
+  if new.raw_user_meta_data->>'society_id' is not null and new.raw_user_meta_data->>'society_id' <> '' then
+    soc_id := (new.raw_user_meta_data->>'society_id')::uuid;
   else
-    default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+    soc_id := null;
   end if;
 
+  -- 2. Determine role and status
+  if new.email = 'societysync5@gmail.com' then
+    default_role := 'master_admin';
+    default_status := 'approved';
+  else
+    if soc_id is not null then
+      -- Count active profiles already in this society
+      select count(*) into existing_count from public.profiles where society_id = soc_id;
+      
+      if existing_count = 0 then
+        -- First registered user is automatically approved as the Admin!
+        default_role := 'admin';
+        default_status := 'approved';
+        
+        -- Get the society code to update society_admins mapping
+        select society_code into soc_code from public.societies where id = soc_id;
+        
+        -- Update mapping table to link this user ID to the society
+        update public.society_admins
+        set user_id = new.id
+        where society_id = soc_id;
+      else
+        -- Subsequent users keep their selected role (owner, renter, guard) and start as pending
+        default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+        default_status := 'pending';
+      end if;
+    else
+      default_role := coalesce(new.raw_user_meta_data->>'role', 'resident');
+      default_status := 'pending';
+    end if;
+  end if;
+
+  -- 3. Insert profile row
   insert into public.profiles (
     id,
     email,
     role,
+    status,
     society_id,
     full_name,
     wing,
-    flat_number
+    flat_number,
+    phone,
+    approved_at
   ) values (
     new.id,
     new.email,
     default_role,
-    case 
-      when new.raw_user_meta_data->>'society_id' is not null and new.raw_user_meta_data->>'society_id' <> '' 
-      then (new.raw_user_meta_data->>'society_id')::uuid 
-      else null 
-    end,
+    default_status,
+    soc_id,
     coalesce(new.raw_user_meta_data->>'full_name', 'New Resident'),
     new.raw_user_meta_data->>'wing',
-    new.raw_user_meta_data->>'flat_number'
+    new.raw_user_meta_data->>'flat_number',
+    new.raw_user_meta_data->>'phone_number',
+    case when default_status = 'approved' then now() else null end
   ) on conflict (id) do nothing;
+  
   return new;
 end;
 $$;
@@ -115,6 +163,7 @@ create table public.society_requests (
 create table public.society_admins (
   id bigint primary key generated always as identity,
   society_id uuid references public.societies(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade, -- Link to authed user
   admin_email text not null,
   generated_password text not null,
   society_code text not null,
@@ -363,7 +412,6 @@ security definer
 as $$
 declare
   req record;
-  new_user_id uuid;
   new_soc_id uuid;
 begin
   -- 1. Verify caller is master_admin
@@ -377,56 +425,7 @@ begin
     raise exception 'Society request not found.';
   end if;
 
-  -- 3. Create the auth user in auth.users
-  new_user_id := gen_random_uuid();
-  insert into auth.users (
-    instance_id,
-    id,
-    aud,
-    role,
-    email,
-    encrypted_password,
-    email_confirmed_at,
-    raw_app_meta_data,
-    raw_user_meta_data,
-    created_at,
-    updated_at
-  ) values (
-    '00000000-0000-0000-0000-000000000000',
-    new_user_id,
-    'authenticated',
-    'authenticated',
-    req.admin_email,
-    crypt(gen_password, gen_salt('bf')),
-    now(),
-    '{"provider":"email","providers":["email"]}',
-    jsonb_build_object('full_name', req.admin_name),
-    now(),
-    now()
-  );
-
-  -- Create the identity link in auth.identities
-  insert into auth.identities (
-    id,
-    user_id,
-    identity_data,
-    provider,
-    provider_id,
-    last_sign_in_at,
-    created_at,
-    updated_at
-  ) values (
-    new_user_id,
-    new_user_id,
-    jsonb_build_object('sub', new_user_id, 'email', req.admin_email),
-    'email',
-    new_user_id::text,
-    now(),
-    now(),
-    now()
-  );
-
-  -- 4. Create the society record
+  -- 3. Create the society record
   new_soc_id := gen_random_uuid();
   insert into public.societies (
     id,
@@ -452,32 +451,7 @@ begin
     req.total_units
   );
 
-  -- 5. Insert profile record (upsert to handle trigger collisions)
-  insert into public.profiles (
-    id,
-    email,
-    role,
-    society_id,
-    full_name,
-    wing,
-    flat_number
-  ) values (
-    new_user_id,
-    req.admin_email,
-    'admin',
-    new_soc_id,
-    req.admin_name,
-    'HQ',
-    'Admin'
-  )
-  on conflict (id) do update
-  set role = 'admin',
-      society_id = new_soc_id,
-      full_name = req.admin_name,
-      wing = 'HQ',
-      flat_number = 'Admin';
-
-  -- 6. Insert credentials record into society_admins
+  -- 4. Pre-create society_admins mapping with placeholder
   insert into public.society_admins (
     society_id,
     admin_email,
@@ -486,16 +460,16 @@ begin
   ) values (
     new_soc_id,
     req.admin_email,
-    gen_password,
+    'Self Registered via Mobile App',
     gen_code
   );
 
-  -- 7. Update request status
+  -- 5. Update request status
   update public.society_requests
   set status = 'approved'
   where id = req_id;
 
-  return new_user_id;
+  return new_soc_id;
 end;
 $$;
 

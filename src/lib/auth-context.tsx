@@ -213,14 +213,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // Update the newly created profile row with society ID
-        await supabase
+        // Check the newly created profile row (created by the database trigger)
+        const { data: existingProfile } = await supabase
           .from('profiles')
-          .update({
-            society_id: societyId || null,
-            role: isPortalAdmin ? 'admin' : role
-          })
-          .eq('id', data.user.id);
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (existingProfile && existingProfile.role === 'admin') {
+          // Keep admin role, ensure society_id is linked and status is approved
+          await supabase
+            .from('profiles')
+            .update({
+              society_id: societyId || null,
+              status: 'approved'
+            })
+            .eq('id', data.user.id);
+        } else {
+          // Keep user's chosen role (owner, renter, guard) and set society_id
+          await supabase
+            .from('profiles')
+            .update({
+              society_id: societyId || null,
+              role: role
+            })
+            .eq('id', data.user.id);
+        }
 
         const prof = await dataManager.getProfile(data.user.id);
         setProfile(prof);
