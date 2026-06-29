@@ -26,7 +26,8 @@ function AppWithTheme() {
         router.replace('/(master)' as any);
       } else if (profile.role === 'admin') {
         router.replace('/(admin)' as any);
-      } else if (profile.role === 'resident') {
+      } else {
+        // Redirect owners, renters, guards, and default residents to (resident) workspace
         router.replace('/(resident)' as any);
       }
     } else if (!user && hasLoggedIn) {

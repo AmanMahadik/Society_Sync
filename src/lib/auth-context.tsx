@@ -189,7 +189,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             wing,
             flat_number: flatNumber,
             phone_number: phone,
-            society_name: societyName || 'SocietySync Co-Op Housing'
+            society_name: societyName || 'SocietySync Co-Op Housing',
+            society_id: societyId || null
           }
         }
       });
