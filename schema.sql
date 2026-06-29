@@ -242,6 +242,11 @@ create policy "Societies isolation and master admin access" on public.societies
     or public.is_master_admin(auth.uid())
   );
 
+-- Allow public read access to societies for registration code validation
+create policy "Allow public read access to societies for registration" on public.societies
+  for select to anon, authenticated
+  using (true);
+
 -- 2. Profiles
 create policy "Profiles isolation and master admin access" on public.profiles
   for all to authenticated
