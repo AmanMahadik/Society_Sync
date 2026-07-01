@@ -16,6 +16,7 @@ interface SocietyRequest {
   admin_name: string;
   admin_email: string;
   admin_phone: string;
+  admin_password?: string;
   total_units: number;
   document_url?: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -115,10 +116,9 @@ export default function ReviewRequestPage() {
 
     setSubmitting(true);
     try {
-      // 1. Generate Society Code & Admin Password
+      // 1. Generate Society Code and use applicant's password
       const code = await generateUniqueSocietyCode(request.state);
-      const random4Digits = Math.floor(1000 + Math.random() * 9000).toString();
-      const adminPassword = `SocAdmin@${random4Digits}`;
+      const adminPassword = request.admin_password || 'Admin@123';
 
       // 2. Call Transactional Database RPC function
       const { data: adminUserId, error: rpcError } = await supabase.rpc('approve_society_request', {

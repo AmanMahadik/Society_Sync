@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!error && (url.includes('change-password') || type === 'recovery')) {
             setTimeout(() => {
               try {
-                router.replace('/change-password?recovery=true');
+                router.replace('/change-password?recovery=true' as any);
               } catch (e) {
                 console.error('Deep link navigation error:', e);
               }
@@ -98,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const prof = await dataManager.getProfile(session.user.id);
           dataManager.societyId = prof?.society_id || null;
           setProfile(prof);
+          registerPushNotificationToken(session.user.id);
         }
       } catch (e) {
         console.error('Session check error', e);
@@ -113,6 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const prof = await dataManager.getProfile(session.user.id);
           dataManager.societyId = prof?.society_id || null;
           setProfile(prof);
+          registerPushNotificationToken(session.user.id);
         } else {
           setUser(null);
           dataManager.societyId = null;
@@ -156,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       setUser(data.user);
       const prof = await dataManager.getProfile(data.user!.id);
+      dataManager.societyId = prof?.society_id || null;
       setProfile(prof);
       setLoading(false);
       return { error: null };
@@ -360,3 +363,79 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Set up the foreground notification handler dynamically (safeguarded for missing imports)
+if (Platform.OS !== 'web') {
+  try {
+    const Notifications = require('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch (e) {
+    console.warn('Failed to set notification handler:', e);
+  }
+}
+
+async function registerForPushNotificationsAsync() {
+  if (Platform.OS === 'web') return null;
+
+  try {
+    const Constants = require('expo-constants').default;
+    const Device = require('expo-device');
+    if (!Device.isDevice) {
+      console.log('Must use physical device for Push Notifications.');
+      return null;
+    }
+
+    const Notifications = require('expo-notifications');
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      console.log('Failed to get push token for push notification!');
+      return null;
+    }
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+
+    if (!projectId) {
+      console.warn('EAS Project ID not found in app.json.');
+      return null;
+    }
+
+    const token = (
+      await Notifications.getExpoPushTokenAsync({
+        projectId,
+      })
+    ).data;
+
+    return token;
+  } catch (e) {
+    console.error('Error registering for push notifications:', e);
+    return null;
+  }
+}
+
+export async function registerPushNotificationToken(userId: string) {
+  try {
+    const token = await registerForPushNotificationsAsync();
+    if (token) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notification_token: token })
+        .eq('id', userId);
+      if (error) console.error('Error saving notification token:', error);
+    }
+  } catch (e) {
+    console.warn('Failed to register push token:', e);
+  }
+}

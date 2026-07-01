@@ -3,10 +3,12 @@ import { useAuth } from '../lib/auth-context';
 import { useNotifications } from '../lib/notification-context';
 import { supabase } from '../lib/supabase';
 import { dataManager } from '../lib/data-manager';
+import { useRouter } from 'expo-router';
 
 export const GlobalSOSListener: React.FC = () => {
   const { user, profile } = useAuth();
   const { addNotification, refreshSOSCount } = useNotifications();
+  const router = useRouter();
 
   // 1. Supabase Realtime Listeners (Insert / Update)
   useEffect(() => {
@@ -92,8 +94,46 @@ export const GlobalSOSListener: React.FC = () => {
       )
       .subscribe();
 
+    const parkingChannel = supabase
+      .channel(`parking-alerts-${profile.society_id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'parking_requests', filter: `society_id=eq.${profile.society_id}` },
+        async (payload) => {
+          const newRecord = payload.new;
+
+          // Guard gets floating toast for new visitor parking request
+          if (profile.role === 'guard' && newRecord.status === 'pending') {
+            let applicantName = newRecord.visitor_name || 'Resident';
+            
+            const { data: userProfile } = await supabase
+              .from('profiles')
+              .select('full_name, wing, flat_number')
+              .eq('id', newRecord.user_id)
+              .single();
+
+            const displayName = userProfile?.full_name || applicantName;
+            const locationStr = userProfile ? ` (${userProfile.wing}-${userProfile.flat_number})` : '';
+
+            addNotification({
+              type: 'parking_alert',
+              message: '🚗 New Parking Booking',
+              subtext: `${displayName}${locationStr} is requesting parking for vehicle ${newRecord.vehicle_number}`,
+              autoDismiss: true,
+              dismissAfterMs: 8000,
+              actionLabel: 'OPEN BOOKINGS',
+              onAction: () => {
+                router.push('/(tabs)/parking' as any);
+              }
+            });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(parkingChannel);
     };
   }, [user, profile, addNotification, refreshSOSCount]);
 
@@ -103,6 +143,7 @@ export const GlobalSOSListener: React.FC = () => {
     if (profile.role !== 'guard' && profile.role !== 'admin') return;
 
     let lastCheckedId = 0;
+    let lastCheckedParkingId = 0;
 
     const performOfflinePollCheck = async () => {
       try {
@@ -163,6 +204,57 @@ export const GlobalSOSListener: React.FC = () => {
               lastCheckedId = Math.max(...allPending.map(d => Number(d.id)));
             } else {
               lastCheckedId = 1;
+            }
+          }
+        }
+
+        // Check pending parking requests (for Guard only)
+        if (profile.role === 'guard') {
+          const { data: parkingData, error: parkingError } = await supabase
+            .from('parking_requests')
+            .select('*')
+            .eq('status', 'pending')
+            .eq('society_id', profile.society_id)
+            .gt('id', lastCheckedParkingId);
+
+          if (!parkingError && parkingData && parkingData.length > 0) {
+            const maxId = Math.max(...parkingData.map(d => Number(d.id)));
+            
+            if (lastCheckedParkingId > 0) {
+              parkingData.forEach(async (newRecord) => {
+                const { data: userProfile } = await supabase
+                  .from('profiles')
+                  .select('full_name, wing, flat_number')
+                  .eq('id', newRecord.user_id)
+                  .single();
+
+                const displayName = userProfile?.full_name || newRecord.visitor_name || 'Resident';
+                const locationStr = userProfile ? ` (${userProfile.wing}-${userProfile.flat_number})` : '';
+
+                addNotification({
+                  type: 'parking_alert',
+                  message: '🚗 New Parking Booking',
+                  subtext: `${displayName}${locationStr} is requesting parking for vehicle ${newRecord.vehicle_number}`,
+                  autoDismiss: true,
+                  dismissAfterMs: 8000,
+                  actionLabel: 'OPEN BOOKINGS',
+                  onAction: () => {
+                    router.push('/(tabs)/parking' as any);
+                  }
+                });
+              });
+            }
+            lastCheckedParkingId = maxId;
+          } else if (!parkingError && lastCheckedParkingId === 0) {
+            const { data: allPendingParking } = await supabase
+              .from('parking_requests')
+              .select('id')
+              .eq('status', 'pending')
+              .eq('society_id', profile.society_id);
+            if (allPendingParking && allPendingParking.length > 0) {
+              lastCheckedParkingId = Math.max(...allPendingParking.map(d => Number(d.id)));
+            } else {
+              lastCheckedParkingId = 1;
             }
           }
         }

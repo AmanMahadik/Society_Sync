@@ -48,6 +48,7 @@ export default function RegisterPage() {
     adminEmail: '',
     adminPhone: '',
     adminAltPhone: '',
+    adminPassword: '',
     authorizedConsent: false
   });
 
@@ -85,6 +86,7 @@ export default function RegisterPage() {
       if (!/\S+@\S+\.\S+/.test(formData.adminEmail)) return 'Please enter a valid email address.';
       if (!formData.adminPhone.trim()) return 'Mobile Number is required.';
       if (!/^\d{10}$/.test(formData.adminPhone.trim())) return 'Mobile Number must be 10 digits.';
+      if (!formData.adminPassword || formData.adminPassword.length < 6) return 'Password must be at least 6 characters.';
       if (!formData.authorizedConsent) return 'You must check the authorization consent checkbox.';
     }
     return null;
@@ -189,6 +191,7 @@ export default function RegisterPage() {
           admin_name: formData.adminName,
           admin_email: formData.adminEmail,
           admin_phone: formData.adminPhone,
+          admin_password: formData.adminPassword,
           total_units: parseInt(formData.totalFlats) || 0,
           document_url: formData.docUrl,
           status: 'pending'
@@ -516,6 +519,19 @@ export default function RegisterPage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 mt-4">
+                <label className="text-xs font-bold text-zinc-400 uppercase">Set Admin Password *</label>
+                <input 
+                  type="password" 
+                  name="adminPassword"
+                  value={formData.adminPassword}
+                  onChange={handleChange}
+                  placeholder="Min 6 characters password" 
+                  className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm focus:outline-none focus:border-[#00d4aa] text-white"
+                  required
+                />
               </div>
 
 

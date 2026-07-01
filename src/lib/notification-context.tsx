@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics';
 
 export interface AppNotification {
   id: string;
-  type: 'sos_full' | 'sos_info' | 'confirmation' | 'status_update';
+  type: 'sos_full' | 'sos_info' | 'confirmation' | 'status_update' | 'parking_alert';
   message: string;
   subtext?: string;
   autoDismiss?: boolean;
@@ -43,7 +43,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       // Remote warning buzzer sound (alarm)
       const { sound } = await Audio.Sound.createAsync(
-        { uri: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav' }
+        { uri: 'https://www.soundjay.com/buttons/sounds/button-10.mp3' }
       );
       await sound.playAsync();
       // Auto unload sound from memory after playing to prevent leaks

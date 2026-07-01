@@ -59,7 +59,8 @@ export const ProfileCompletionScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!fullName || !wing || !flatNumber || !phone || !societyDetails) {
+    const isGuard = role === 'guard';
+    if (!fullName || (!isGuard && (!wing || !flatNumber)) || !phone || !societyDetails) {
       setError('Please fill in all details to complete your profile.');
       return;
     }
@@ -74,13 +75,16 @@ export const ProfileCompletionScreen: React.FC = () => {
     try {
       const { dataManager } = require('../../lib/data-manager');
       
+      const finalWing = isGuard ? 'Gate' : wing.toUpperCase();
+      const finalFlat = isGuard ? 'Guard' : flatNumber;
+
       // Save details including validated society_id and society_code
       await dataManager.updateProfileDetails(
         user.id,
         fullName,
         phone,
-        flatNumber,
-        wing.toUpperCase(),
+        finalFlat,
+        finalWing,
         societyDetails.name,
         null,
         null,
@@ -230,30 +234,33 @@ export const ProfileCompletionScreen: React.FC = () => {
             buttons={[
               { value: 'owner', label: 'Flat Owner', icon: 'home-lock' },
               { value: 'renter', label: 'Renter / Tenant', icon: 'home-account' },
+              { value: 'guard', label: 'Guard', icon: 'shield-account' },
             ]}
             style={styles.segmentedButtons}
           />
 
-          <View style={styles.row}>
-            <TextInput
-              label="Wing"
-              placeholder="e.g. B"
-              value={wing}
-              onChangeText={setWing}
-              mode="outlined"
-              style={[styles.input, styles.halfInput]}
-              autoCapitalize="characters"
-            />
-            <TextInput
-              label="Flat Number"
-              placeholder="e.g. 302"
-              value={flatNumber}
-              onChangeText={setFlatNumber}
-              mode="outlined"
-              keyboardType="numeric"
-              style={[styles.input, styles.halfInput]}
-            />
-          </View>
+          {role !== 'guard' && (
+            <View style={styles.row}>
+              <TextInput
+                label="Wing"
+                placeholder="e.g. B"
+                value={wing}
+                onChangeText={setWing}
+                mode="outlined"
+                style={[styles.input, styles.halfInput]}
+                autoCapitalize="characters"
+              />
+              <TextInput
+                label="Flat Number"
+                placeholder="e.g. 302"
+                value={flatNumber}
+                onChangeText={setFlatNumber}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, styles.halfInput]}
+              />
+            </View>
+          )}
 
           <Button
             mode="contained"

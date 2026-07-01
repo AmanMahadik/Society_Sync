@@ -117,6 +117,14 @@ export const FloatingToast: React.FC<FloatingToastProps> = ({ notification, onDi
           icon: 'check-circle',
           iconColor: '#81C784',
         };
+      case 'parking_alert':
+        return {
+          backgroundColor: '#112233',
+          titleColor: '#0EA5E9',
+          textColor: '#E0F2FE',
+          icon: 'car',
+          iconColor: '#0EA5E9',
+        };
       case 'status_update':
       default:
         return {

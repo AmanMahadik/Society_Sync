@@ -16,7 +16,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('resident');
+  const [role, setRole] = useState<UserRole>('owner');
   const [wing, setWing] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
   const [phone, setPhone] = useState('');
@@ -68,7 +68,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
   };
 
   const handleRegister = async () => {
-    if (!fullName || !email || !password || !wing || !flatNumber || !phone) {
+    const isGuard = role === 'guard';
+    if (!fullName || !email || !password || !phone || (!isGuard && (!wing || !flatNumber))) {
       setError('Please fill in all the fields.');
       return;
     }
@@ -96,14 +97,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
         }
       }
 
+      const finalWing = isGuard ? 'Gate' : wing.trim().toUpperCase();
+      const finalFlat = isGuard ? 'Guard' : flatNumber.trim();
+
       // 2. SignUp directly with selected role (the DB trigger will override to 'admin' if first user)
       const { error: signUpError } = await signUp(
         email, 
         password, 
         fullName, 
         role, 
-        wing, 
-        flatNumber, 
+        finalWing, 
+        finalFlat, 
         phone,
         societyDetails.id,
         societyCode.trim().toUpperCase(),
@@ -268,28 +272,40 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             left={<TextInput.Icon icon="lock" />}
           />
 
+          <Text variant="labelLarge" style={styles.label}>Register As</Text>
+          <SegmentedButtons
+            value={role}
+            onValueChange={(val) => setRole(val as UserRole)}
+            buttons={[
+              { value: 'owner', label: 'Owner', icon: 'home-lock' },
+              { value: 'renter', label: 'Tenant', icon: 'home-account' },
+              { value: 'guard', label: 'Guard', icon: 'shield-account' },
+            ]}
+            style={styles.segmentedButtons}
+          />
 
-
-          <View style={styles.row}>
-            <TextInput
-              label="Wing"
-              placeholder="e.g. E"
-              value={wing}
-              onChangeText={setWing}
-              mode="outlined"
-              style={[styles.input, styles.halfInput]}
-              autoCapitalize="characters"
-            />
-            <TextInput
-              label="Flat Number"
-              placeholder="e.g. 503"
-              value={flatNumber}
-              onChangeText={setFlatNumber}
-              mode="outlined"
-              keyboardType="numeric"
-              style={[styles.input, styles.halfInput]}
-            />
-          </View>
+          {role !== 'guard' && (
+            <View style={styles.row}>
+              <TextInput
+                label="Wing"
+                placeholder="e.g. E"
+                value={wing}
+                onChangeText={setWing}
+                mode="outlined"
+                style={[styles.input, styles.halfInput]}
+                autoCapitalize="characters"
+              />
+              <TextInput
+                label="Flat Number"
+                placeholder="e.g. 503"
+                value={flatNumber}
+                onChangeText={setFlatNumber}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, styles.halfInput]}
+              />
+            </View>
+          )}
 
           <TextInput
             label="Phone Number"

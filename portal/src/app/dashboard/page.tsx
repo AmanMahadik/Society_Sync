@@ -144,27 +144,50 @@ export default function SocietyAdminDashboard() {
 
       let targetSocietyId = '';
 
+      // 1. Try to fetch admin mapping by user_id
       const { data: adminMapping } = await supabase
         .from('society_admins')
         .select('society_id')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (adminMapping) {
         targetSocietyId = adminMapping.society_id;
       } else {
-        // Fallback: check profile society_id
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('society_id')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (!profile || !profile.society_id) {
-          router.push('/login');
-          return;
+        // Fallback A: Try to find mapping by email and auto-link it!
+        if (session.user.email) {
+          const { data: emailMapping } = await supabase
+            .from('society_admins')
+            .select('id, society_id')
+            .eq('admin_email', session.user.email.trim().toLowerCase())
+            .maybeSingle();
+
+          if (emailMapping) {
+            // Auto-link user_id to this mapping row!
+            await supabase
+              .from('society_admins')
+              .update({ user_id: session.user.id })
+              .eq('id', emailMapping.id);
+            
+            targetSocietyId = emailMapping.society_id;
+          }
         }
-        targetSocietyId = profile.society_id;
+
+        // Fallback B: check profile society_id
+        if (!targetSocietyId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('society_id')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          
+          if (!profile || !profile.society_id) {
+            alert('Security Error: Your user account is not associated with any society.');
+            router.push('/login');
+            return;
+          }
+          targetSocietyId = profile.society_id;
+        }
       }
 
       // 2. Fetch society details
@@ -187,8 +210,9 @@ export default function SocietyAdminDashboard() {
       if (profsError) throw profsError;
       setProfiles(profs || []);
 
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('Dashboard load failed:', e);
+      alert(`Dashboard Load Error: ${e.message || JSON.stringify(e)}`);
       router.push('/login');
     } finally {
       setLoading(false);

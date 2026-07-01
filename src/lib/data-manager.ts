@@ -298,9 +298,20 @@ class DataManager {
   // Real Notification helper
   async createNotification(userId: string, title: string, body: string, data: any = {}): Promise<void> {
     try {
+      // 1. Fetch user profile to get society_id and push token
+      const { data: recipientProfile } = await supabase
+        .from('profiles')
+        .select('society_id, notification_token')
+        .eq('id', userId)
+        .single();
+      
+      const societyId = recipientProfile?.society_id;
+
+      // 2. Insert notification with society_id
       const { error } = await supabase
         .from('notifications')
         .insert({
+          society_id: societyId,
           user_id: userId,
           title,
           body,
@@ -309,13 +320,7 @@ class DataManager {
         });
       if (error) console.error('Error inserting notification:', error);
 
-      // Fetch user push token and send system push notification via Expo
-      const { data: recipientProfile } = await supabase
-        .from('profiles')
-        .select('notification_token')
-        .eq('id', userId)
-        .single();
-      
+      // 3. Send system push notification via Expo if token is present
       if (recipientProfile?.notification_token) {
         await fetch('https://exp.host/--/api/v2/push/send', {
           method: 'POST',
@@ -352,6 +357,7 @@ class DataManager {
   }
 
   async getAllProfiles(): Promise<Profile[]> {
+    if (!this.societyId) return [];
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -369,6 +375,7 @@ class DataManager {
   }
 
   async updateProfileApproval(userId: string, approved: boolean): Promise<void> {
+    if (!this.societyId) throw new Error('No society associated with this account.');
     const status: UserStatus = approved ? 'approved' : 'rejected';
     const { error } = await supabase
       .from('profiles')
@@ -432,6 +439,7 @@ class DataManager {
   // 2. FESTIVAL LEDGER EVENTS
   // ==========================================
   async getEvents(): Promise<Event[]> {
+    if (!this.societyId) return [];
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -442,6 +450,7 @@ class DataManager {
   }
 
   async createEvent(name: string, description: string, date: string, creatorId: string): Promise<Event> {
+    if (!this.societyId) throw new Error('No society associated with this account.');
     const newEvent = {
       name,
       description,
@@ -463,6 +472,7 @@ class DataManager {
   // 3. TRANSACTIONS
   // ==========================================
   async getTransactions(eventId: string): Promise<Transaction[]> {
+    if (!this.societyId) return [];
     const { data, error } = await supabase
       .from('transactions')
       .select('*, recorder:profiles(full_name)')
@@ -539,6 +549,7 @@ class DataManager {
   // 4. MAINTENANCE DUES
   // ==========================================
   async getMaintenanceDues(role?: string, wing?: string, flatNumber?: string): Promise<MaintenanceDue[]> {
+    if (!this.societyId) return [];
     let query = supabase.from('maintenance_dues').select('*').eq('society_id', this.societyId);
     if (role !== 'admin' && wing && flatNumber) {
       query = query.eq('wing', wing).eq('flat_number', flatNumber);
@@ -575,6 +586,7 @@ class DataManager {
   }
 
   async addMaintenanceDue(due: Omit<MaintenanceDue, 'id' | 'interest_charged'>): Promise<MaintenanceDue> {
+    if (!this.societyId) throw new Error('No society associated with this account.');
     const newDue = {
       ...due,
       interest_charged: 0,
@@ -637,6 +649,7 @@ class DataManager {
   // 5. SMART PARKING
   // ==========================================
   async getParkingBookings(date: string): Promise<ParkingRequest[]> {
+    if (!this.societyId) return [];
     const { data, error } = await supabase
       .from('parking_requests')
       .select('*, user:profiles!parking_requests_user_id_fkey(full_name, flat_number, wing), slot:parking_slots(slot_number)')
@@ -653,6 +666,7 @@ class DataManager {
   }
 
   async requestParkingBooking(user_id: string, slotNum: string, date: string, time_slot: ParkingTimeSlot, vehicle: string, visitor: string): Promise<ParkingRequest> {
+    if (!this.societyId) throw new Error('No society associated with this account.');
     const { data: slotData } = await supabase.from('parking_slots').select('id').eq('slot_number', slotNum).eq('society_id', this.societyId).single();
     if (!slotData) throw new Error('Slot does not exist!');
 
@@ -732,6 +746,7 @@ class DataManager {
   // 6. SOS COMPLAINTS
   // ==========================================
   async getComplaints(role?: string, userId?: string): Promise<Complaint[]> {
+    if (!this.societyId) return [];
     let query = supabase
       .from('complaints')
       .select('*, user:profiles!complaints_user_id_fkey(full_name)')
@@ -752,6 +767,7 @@ class DataManager {
   }
 
   async raiseComplaint(userId: string, type: 'water_low' | 'motor_off' | 'electricity' | 'security' | 'other', wing: string, flat: string, description: string): Promise<Complaint> {
+    if (!this.societyId) throw new Error('No society associated with this account.');
     const newComplaint: any = {
       user_id: userId,
       type,
@@ -867,6 +883,7 @@ class DataManager {
   // 7. CHAT & VOTING POLLS
   // ==========================================
   async getChatThreads(): Promise<ChatThread[]> {
+    if (!this.societyId) return [];
     const { data, error } = await supabase
       .from('chat_threads')
       .select('*')
@@ -878,6 +895,7 @@ class DataManager {
   }
 
   async createChatThread(title: string, category: any, creatorId: string): Promise<ChatThread> {
+    if (!this.societyId) throw new Error('No society associated with this account.');
     const newThread = {
       title,
       category,
@@ -896,6 +914,7 @@ class DataManager {
   }
 
   async getChatMessages(threadId: string): Promise<ChatMessage[]> {
+    if (!this.societyId) return [];
     const { data, error } = await supabase
       .from('chat_messages')
       .select('*, sender:profiles(full_name, role, flat_number, wing, google_picture_url)')
@@ -921,6 +940,7 @@ class DataManager {
   }
 
   async sendChatMessage(threadId: string, userId: string, content: string): Promise<ChatMessage> {
+    if (!this.societyId) throw new Error('No society associated with this account.');
     const newMsg = {
       thread_id: threadId,
       user_id: userId,
@@ -950,6 +970,7 @@ class DataManager {
   // 8. VOTING POLLS
   // ==========================================
   async getPolls(threadId: string, userId: string): Promise<Poll[]> {
+    if (!this.societyId) return [];
     const { data: pollsData, error: pollsError } = await supabase
       .from('polls')
       .select('*')

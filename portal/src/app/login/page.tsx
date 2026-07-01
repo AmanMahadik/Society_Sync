@@ -41,14 +41,15 @@ export default function LoginPage() {
         throw new Error('User profile not registered or access denied.');
       }
 
-      // Restrict access to Admins/Master Admins only
-      if (profile.role !== 'admin' && profile.role !== 'master_admin') {
+      // Restrict access to Admins/Master Admins only (case-insensitive)
+      const roleLower = (profile.role || '').toLowerCase();
+      if (roleLower !== 'admin' && roleLower !== 'master_admin') {
         await supabase.auth.signOut();
         throw new Error('Access Denied. Only Society Administrators can access this portal.');
       }
 
       // Check society status if user is an admin
-      if (profile.role === 'admin' && profile.society_id) {
+      if (roleLower === 'admin' && profile.society_id) {
         const { data: society, error: socError } = await supabase
           .from('societies')
           .select('status')
@@ -72,7 +73,9 @@ export default function LoginPage() {
 
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || 'Invalid email or password.');
+      const msg = err.message || 'Invalid email or password.';
+      setErrorMsg(msg);
+      alert(`Login Failed: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -98,7 +101,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} method="POST" className="space-y-6">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-zinc-400 uppercase">Email Address</label>
             <div className="relative">
