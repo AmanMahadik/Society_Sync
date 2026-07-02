@@ -86,14 +86,16 @@ export default function MasterRegisterPage() {
           <p className="text-zinc-500 text-xs mt-1">Setup Authorised Superuser Credentials</p>
         </div>
 
-        {/* ERROR DISPLAY */}
-        {errorMsg && (
-          <div className="mb-6 p-4 bg-[#351515] border border-red-500/30 rounded-xl text-red-400 text-xs flex items-start gap-3">
-            <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
+        {/* REGISTRATION CLOSED CARD */}
+        <div className="mb-6 p-6 bg-red-500/10 border border-red-500/20 rounded-xl text-center space-y-3">
+          <ShieldAlert className="h-10 w-10 text-red-500 mx-auto animate-pulse" />
+          <h3 className="text-sm font-bold text-white uppercase">Registration Closed</h3>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            New Master Admin registration is restricted. The system account has already been initialized. If you need access, please use the existing Master Admin credentials.
+          </p>
+        </div>
 
+        {/* Registration form disabled as request
         <form onSubmit={handleRegister} className="space-y-6">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-zinc-400 uppercase">Full Name</label>
@@ -149,9 +151,10 @@ export default function MasterRegisterPage() {
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>
+        */}
 
         <div className="text-center mt-6">
-          <Link href="/master/login" className="text-xs text-zinc-400 hover:text-red-400 transition-colors">
+          <Link href="/master/login" className="text-xs text-zinc-450 hover:text-red-400 transition-colors">
             Already have an account? Log in
           </Link>
         </div>

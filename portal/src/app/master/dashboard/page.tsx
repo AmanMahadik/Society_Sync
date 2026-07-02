@@ -200,7 +200,7 @@ export default function MasterDashboard() {
 
         {/* TABS */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-          <div className="flex border-b border-zinc-800 bg-zinc-950 px-4 pt-3 gap-2 overflow-x-auto">
+          <div className="flex border-b border-zinc-800 bg-zinc-950 px-4 pt-3 gap-2 overflow-x-auto scrollbar-thin">
             {(['pending', 'active', 'rejected', 'suspended', 'all_societies'] as const).map((tab) => {
               const label = tab === 'pending' ? 'Pending Requests' : 
                             tab === 'active' ? 'Active Societies' : 
@@ -212,7 +212,7 @@ export default function MasterDashboard() {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 ${
+                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                     isSelected ? 'border-red-500 text-red-500' : 'border-transparent text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
@@ -227,130 +227,265 @@ export default function MasterDashboard() {
             })}
           </div>
 
-          {/* TABLE DISPLAY */}
+          {/* TABLE & CARD DISPLAY */}
           {loading ? (
             <div className="p-12 text-center text-zinc-500 text-sm">
               Retrieving database registries...
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               {/* PENDING / REJECTED REQUESTS */}
               {(activeTab === 'pending' || activeTab === 'rejected') && (
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
-                      <th className="p-4">Society Request</th>
-                      <th className="p-4">Location</th>
-                      <th className="p-4">Admin Details</th>
-                      <th className="p-4 text-center">Units</th>
-                      <th className="p-4">Submitted At</th>
-                      {activeTab === 'rejected' && <th className="p-4">Rejection Reason</th>}
-                      <th className="p-4 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800">
+                <>
+                  {/* Desktop view */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+                          <th className="p-4">Society Request</th>
+                          <th className="p-4">Location</th>
+                          <th className="p-4">Admin Details</th>
+                          <th className="p-4 text-center">Units</th>
+                          <th className="p-4">Submitted At</th>
+                          {activeTab === 'rejected' && <th className="p-4">Rejection Reason</th>}
+                          <th className="p-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800">
+                        {requests
+                          .filter(r => r.status === activeTab)
+                          .map((req) => (
+                            <tr key={req.id} className="hover:bg-zinc-955/20 transition-colors">
+                              <td className="p-4 font-bold text-white">{req.name}</td>
+                              <td className="p-4 text-zinc-400">{req.city}, {req.state}</td>
+                              <td className="p-4">
+                                <span className="block text-zinc-300 font-medium">{req.admin_name}</span>
+                                <span className="block text-[11px] text-zinc-500">{req.admin_email}</span>
+                              </td>
+                              <td className="p-4 text-center text-zinc-300">{req.total_units}</td>
+                              <td className="p-4 text-zinc-500">{new Date(req.created_at).toLocaleDateString()}</td>
+                              {activeTab === 'rejected' && <td className="p-4 text-red-400 text-xs">{req.rejection_reason || 'N/A'}</td>}
+                              <td className="p-4 text-center">
+                                <Link 
+                                  href={`/master/requests/${req.id}`}
+                                  className="inline-flex px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-xs transition-all"
+                                >
+                                  Review Request
+                                </Link>
+                              </td>
+                            </tr>
+                          ))}
+                        {requests.filter(r => r.status === activeTab).length === 0 && (
+                          <tr>
+                            <td colSpan={activeTab === 'rejected' ? 7 : 6} className="p-8 text-center text-zinc-500">
+                              No requests found under this filter.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile view */}
+                  <div className="block md:hidden divide-y divide-zinc-800">
                     {requests
                       .filter(r => r.status === activeTab)
                       .map((req) => (
-                        <tr key={req.id} className="hover:bg-zinc-950/40 transition-colors">
-                          <td className="p-4 font-bold text-white">{req.name}</td>
-                          <td className="p-4 text-zinc-400">{req.city}, {req.state}</td>
-                          <td className="p-4">
-                            <span className="block text-zinc-300 font-medium">{req.admin_name}</span>
-                            <span className="block text-[11px] text-zinc-500">{req.admin_email}</span>
-                          </td>
-                          <td className="p-4 text-center text-zinc-300">{req.total_units}</td>
-                          <td className="p-4 text-zinc-500">{new Date(req.created_at).toLocaleDateString()}</td>
-                          {activeTab === 'rejected' && <td className="p-4 text-red-400 text-xs">{req.rejection_reason || 'N/A'}</td>}
-                          <td className="p-4 text-center">
+                        <div key={req.id} className="p-4 space-y-3 bg-zinc-950/20">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-bold text-white text-sm leading-tight">{req.name}</h4>
+                            <span className="text-[10px] text-zinc-500">{new Date(req.created_at).toLocaleDateString()}</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-zinc-500 block">Location:</span>
+                              <span className="text-zinc-300">{req.city}, {req.state}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500 block">Units / Flats:</span>
+                              <span className="text-zinc-300">{req.total_units}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-xs border-t border-zinc-850 pt-2">
+                            <span className="text-zinc-500 block">Admin Representative:</span>
+                            <span className="text-zinc-300 font-medium block">{req.admin_name}</span>
+                            <span className="text-zinc-500 block mt-0.5">{req.admin_email}</span>
+                          </div>
+
+                          {activeTab === 'rejected' && (
+                            <div className="p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                              <span className="font-bold block">Rejection Reason:</span>
+                              {req.rejection_reason || 'N/A'}
+                            </div>
+                          )}
+
+                          <div className="pt-1">
                             <Link 
                               href={`/master/requests/${req.id}`}
-                              className="inline-flex px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-xs transition-all"
+                              className="block text-center py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-xs transition-all w-full"
                             >
                               Review Request
                             </Link>
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       ))}
                     {requests.filter(r => r.status === activeTab).length === 0 && (
-                      <tr>
-                        <td colSpan={activeTab === 'rejected' ? 7 : 6} className="p-8 text-center text-zinc-500">
-                          No requests found under this filter.
-                        </td>
-                      </tr>
+                      <div className="p-8 text-center text-zinc-500 text-sm">
+                        No requests found under this filter.
+                      </div>
                     )}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
 
               {/* ACTIVE / SUSPENDED / ALL SOCIETIES */}
               {(activeTab === 'active' || activeTab === 'suspended' || activeTab === 'all_societies') && (
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
-                      <th className="p-4">Society Name</th>
-                      <th className="p-4">Location</th>
-                      <th className="p-4">Admin Email</th>
-                      <th className="p-4 text-center">Society Code</th>
-                      <th className="p-4 text-center">Units</th>
-                      <th className="p-4">Approved On</th>
-                      <th className="p-4 text-center">Status</th>
-                      <th className="p-4 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800">
+                <>
+                  {/* Desktop view */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+                          <th className="p-4">Society Name</th>
+                          <th className="p-4">Location</th>
+                          <th className="p-4">Admin Email</th>
+                          <th className="p-4 text-center">Society Code</th>
+                          <th className="p-4 text-center">Units</th>
+                          <th className="p-4">Approved On</th>
+                          <th className="p-4 text-center">Status</th>
+                          <th className="p-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800">
+                        {societies
+                          .filter(s => {
+                            if (activeTab === 'all_societies') return true;
+                            return s.status === activeTab;
+                          })
+                          .map((soc) => (
+                            <tr key={soc.id} className="hover:bg-zinc-955/20 transition-colors">
+                              <td className="p-4 font-bold text-white">{soc.name}</td>
+                              <td className="p-4 text-zinc-400">{soc.city}, {soc.state}</td>
+                              <td className="p-4 text-zinc-300">{soc.admin_email}</td>
+                              <td className="p-4 text-center font-mono text-xs text-[#00d4aa]">{soc.society_code}</td>
+                              <td className="p-4 text-center text-zinc-300">{soc.total_units}</td>
+                              <td className="p-4 text-zinc-500">{new Date(soc.created_at).toLocaleDateString()}</td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                  soc.status === 'active' ? 'bg-[#00d4aa]/15 text-[#00d4aa] border border-[#00d4aa]/30' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                }`}>
+                                  {soc.status}
+                                </span>
+                              </td>
+                              <td className="p-4 text-center">
+                                <div className="flex justify-center gap-3">
+                                  <button
+                                    onClick={() => handleToggleSuspension(soc.id, soc.status)}
+                                    className={`px-2 py-1 rounded text-xs font-bold transition-all border ${
+                                      soc.status === 'active' ? 'bg-zinc-900 border-zinc-800 hover:border-red-500/30 text-red-400' : 'bg-[#00d4aa]/10 border-[#00d4aa]/20 text-[#00d4aa] hover:border-[#00d4aa]'
+                                    }`}
+                                  >
+                                    {soc.status === 'active' ? 'Suspend' : 'Activate'}
+                                  </button>
+                                  <Link
+                                    href={`/master/credentials/${soc.id}`}
+                                    className="px-2 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold"
+                                  >
+                                    Credentials
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        {societies.filter(s => {
+                          if (activeTab === 'all_societies') return true;
+                          return s.status === activeTab;
+                        }).length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-zinc-500">
+                              No societies found under this filter.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile view */}
+                  <div className="block md:hidden divide-y divide-zinc-800">
                     {societies
                       .filter(s => {
                         if (activeTab === 'all_societies') return true;
                         return s.status === activeTab;
                       })
                       .map((soc) => (
-                        <tr key={soc.id} className="hover:bg-zinc-950/40 transition-colors">
-                          <td className="p-4 font-bold text-white">{soc.name}</td>
-                          <td className="p-4 text-zinc-400">{soc.city}, {soc.state}</td>
-                          <td className="p-4 text-zinc-300">{soc.admin_email}</td>
-                          <td className="p-4 text-center font-mono text-xs text-[#00d4aa]">{soc.society_code}</td>
-                          <td className="p-4 text-center text-zinc-300">{soc.total_units}</td>
-                          <td className="p-4 text-zinc-500">{new Date(soc.created_at).toLocaleDateString()}</td>
-                          <td className="p-4 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        <div key={soc.id} className="p-4 space-y-3 bg-zinc-955/10">
+                          <div className="flex justify-between items-start gap-2">
+                            <h4 className="font-bold text-white text-sm leading-tight">{soc.name}</h4>
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${
                               soc.status === 'active' ? 'bg-[#00d4aa]/15 text-[#00d4aa] border border-[#00d4aa]/30' : 'bg-red-500/10 text-red-500 border border-red-500/20'
                             }`}>
                               {soc.status}
                             </span>
-                          </td>
-                          <td className="p-4 text-center">
-                            <div className="flex justify-center gap-3">
-                              <button
-                                onClick={() => handleToggleSuspension(soc.id, soc.status)}
-                                className={`px-2 py-1 rounded text-xs font-bold transition-all border ${
-                                  soc.status === 'active' ? 'bg-zinc-900 border-zinc-800 hover:border-red-500/30 text-red-400' : 'bg-[#00d4aa]/10 border-[#00d4aa]/20 text-[#00d4aa] hover:border-[#00d4aa]'
-                                }`}
-                              >
-                                {soc.status === 'active' ? 'Suspend' : 'Activate'}
-                              </button>
-                              <Link
-                                href={`/master/credentials/${soc.id}`}
-                                className="px-2 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold"
-                              >
-                                Credentials
-                              </Link>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-zinc-500 block">Location:</span>
+                              <span className="text-zinc-300">{soc.city}, {soc.state}</span>
                             </div>
-                          </td>
-                        </tr>
+                            <div>
+                              <span className="text-zinc-500 block">Units / Flats:</span>
+                              <span className="text-zinc-300">{soc.total_units}</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-zinc-850 pt-2">
+                            <div>
+                              <span className="text-zinc-500 block">Society Code:</span>
+                              <span className="font-mono font-bold text-[#00d4aa]">{soc.society_code}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500 block">Approved On:</span>
+                              <span className="text-zinc-400">{new Date(soc.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-xs pt-1">
+                            <span className="text-zinc-500 block font-semibold">Admin Contact Email:</span>
+                            <span className="text-zinc-300">{soc.admin_email}</span>
+                          </div>
+
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => handleToggleSuspension(soc.id, soc.status)}
+                              className={`flex-1 py-2 rounded text-xs font-bold transition-all border text-center ${
+                                soc.status === 'active' ? 'bg-zinc-950 border-zinc-800 hover:border-red-500/30 text-red-400' : 'bg-[#00d4aa]/10 border-[#00d4aa]/20 text-[#00d4aa] hover:border-[#00d4aa]'
+                              }`}
+                            >
+                              {soc.status === 'active' ? 'Suspend' : 'Activate'}
+                            </button>
+                            <Link
+                              href={`/master/credentials/${soc.id}`}
+                              className="flex-1 py-2 rounded bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-350 text-xs font-bold text-center block"
+                            >
+                              Credentials
+                            </Link>
+                          </div>
+                        </div>
                       ))}
                     {societies.filter(s => {
                       if (activeTab === 'all_societies') return true;
                       return s.status === activeTab;
                     }).length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="p-8 text-center text-zinc-500">
-                          No societies found under this filter.
-                        </td>
-                      </tr>
+                      <div className="p-8 text-center text-zinc-500 text-sm">
+                        No societies found under this filter.
+                      </div>
                     )}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
           )}

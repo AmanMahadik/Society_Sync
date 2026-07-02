@@ -222,10 +222,11 @@ export default function RegisterPage() {
       <header className="border-b border-zinc-800 bg-[#09090b]/80 backdrop-blur-md px-6 py-4 flex justify-between items-center max-w-7xl w-full mx-auto">
         <Link href="/" className="flex items-center gap-2.5">
           <img src="/logo.png" alt="SocietySync Logo" className="h-8 w-8 rounded-lg object-contain" />
-          <span className="font-bold text-lg tracking-tight">SocietySync</span>
+          <span className="font-bold text-base sm:text-lg tracking-tight">SocietySync</span>
         </Link>
-        <Link href="/login" className="text-sm text-zinc-400 hover:text-[#00d4aa] transition-colors">
-          Already registered? Login here
+        <Link href="/login" className="text-xs sm:text-sm text-zinc-400 hover:text-[#00d4aa] transition-colors">
+          <span className="hidden sm:inline">Already registered? Login here</span>
+          <span className="inline sm:hidden">Login</span>
         </Link>
       </header>
 

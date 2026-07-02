@@ -129,6 +129,36 @@ export default function ReviewRequestPage() {
 
       if (rpcError) throw rpcError;
 
+      // 3. Trigger approval email notification via API
+      try {
+        console.log('Sending approval notification email to', request.admin_email);
+        const emailResponse = await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: request.admin_email,
+            adminName: request.admin_name,
+            societyName: request.name,
+            societyCode: code
+          })
+        });
+        
+        if (!emailResponse.ok) {
+          console.warn('API email response not OK:', emailResponse.status);
+        } else {
+          const emailData = await emailResponse.json();
+          if (emailData.warning) {
+            console.info('Email service warning:', emailData.warning);
+          } else {
+            console.log('Approval notification email sent successfully!');
+          }
+        }
+      } catch (emailErr) {
+        console.error('Failed to trigger email API:', emailErr);
+      }
+
       alert('Society has been approved successfully! Proceeding to view credentials.');
       
       // Redirect directly to credentials retrieval page

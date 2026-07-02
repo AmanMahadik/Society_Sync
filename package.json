@@ -57,7 +57,11 @@
     "build_android_production": "eas build --platform android --profile production",
     "build_ios": "eas build --platform ios",
     "build_web": "expo export --platform web",
-    "run_production": "npx serve dist -s"
+    "run_production": "npx serve dist -s",
+    "portal:dev": "npm --prefix portal run dev",
+    "portal:build": "npm --prefix portal run build",
+    "portal:start": "npm --prefix portal run start",
+    "portal:lint": "npm --prefix portal run lint"
   },
   "private": true
 }

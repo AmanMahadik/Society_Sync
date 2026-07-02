@@ -491,58 +491,103 @@ export default function SocietyAdminDashboard() {
                 No residents found matching search criteria.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-850 bg-zinc-950/40 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
-                      <th className="p-4">Resident Name</th>
-                      <th className="p-4">Wing / Flat</th>
-                      <th className="p-4">Community Role</th>
-                      <th className="p-4 text-center">Joined On</th>
-                      <th className="p-4 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-850">
-                    {filteredRoster.map((prof) => (
-                      <tr key={prof.id} className="hover:bg-zinc-955/20 transition-colors">
-                        <td className="p-4 font-bold text-white">
-                          {prof.full_name}
-                          {prof.phone && (
-                            <span className="block text-zinc-500 font-mono text-[10px] mt-0.5">{prof.phone}</span>
-                          )}
-                        </td>
-                        <td className="p-4 text-zinc-300 font-medium">
-                          {prof.wing} — Flat {prof.flat_number}
-                        </td>
-                        <td className="p-4">
-                          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            prof.role === 'admin' ? 'bg-[#00d4aa]/10 text-[#00d4aa] border border-[#00d4aa]/20' :
-                            (prof.role === 'guard' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-zinc-800 text-zinc-300')
-                          }`}>
-                            {prof.role}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center text-zinc-500 text-xs">
-                          {new Date(prof.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="p-4 text-center">
-                          {prof.role !== 'admin' ? (
-                            <button
-                              onClick={() => handleRemoveMember(prof.id, prof.full_name)}
-                              className="p-1 rounded bg-zinc-950 border border-zinc-850 hover:border-red-500/30 text-zinc-500 hover:text-red-500 transition-all"
-                              title="Remove Resident"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <span className="text-zinc-650 text-xs">-</span>
-                          )}
-                        </td>
+              <>
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-850 bg-zinc-950/40 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+                        <th className="p-4">Resident Name</th>
+                        <th className="p-4">Wing / Flat</th>
+                        <th className="p-4">Community Role</th>
+                        <th className="p-4 text-center">Joined On</th>
+                        <th className="p-4 text-center">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-850">
+                      {filteredRoster.map((prof) => (
+                        <tr key={prof.id} className="hover:bg-zinc-955/20 transition-colors">
+                          <td className="p-4 font-bold text-white">
+                            {prof.full_name}
+                            {prof.phone && (
+                              <span className="block text-zinc-500 font-mono text-[10px] mt-0.5">{prof.phone}</span>
+                            )}
+                          </td>
+                          <td className="p-4 text-zinc-300 font-medium">
+                            {prof.wing} — Flat {prof.flat_number}
+                          </td>
+                          <td className="p-4">
+                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              prof.role === 'admin' ? 'bg-[#00d4aa]/10 text-[#00d4aa] border border-[#00d4aa]/20' :
+                              (prof.role === 'guard' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-zinc-800 text-zinc-300')
+                            }`}>
+                              {prof.role}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center text-zinc-500 text-xs">
+                            {new Date(prof.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="p-4 text-center">
+                            {prof.role !== 'admin' ? (
+                              <button
+                                onClick={() => handleRemoveMember(prof.id, prof.full_name)}
+                                className="p-1 rounded bg-zinc-950 border border-zinc-850 hover:border-red-500/30 text-zinc-500 hover:text-red-500 transition-all"
+                                title="Remove Resident"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <span className="text-zinc-650 text-xs">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden divide-y divide-zinc-850">
+                  {filteredRoster.map((prof) => (
+                    <div key={prof.id} className="p-4 space-y-3 bg-zinc-950/20 hover:bg-zinc-900/20 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-white text-sm">{prof.full_name}</h4>
+                          {prof.phone && (
+                            <span className="text-zinc-500 font-mono text-xs block mt-0.5">{prof.phone}</span>
+                          )}
+                        </div>
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                          prof.role === 'admin' ? 'bg-[#00d4aa]/10 text-[#00d4aa] border border-[#00d4aa]/20' :
+                          (prof.role === 'guard' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-zinc-800 text-zinc-300')
+                        }`}>
+                          {prof.role}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-xs text-zinc-400">
+                        <div>
+                          <span className="text-zinc-500">Unit:</span> {prof.wing} - {prof.flat_number}
+                        </div>
+                        <div>
+                          <span className="text-zinc-500">Joined:</span> {new Date(prof.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      {prof.role !== 'admin' && (
+                        <div className="flex justify-end pt-1">
+                          <button
+                            onClick={() => handleRemoveMember(prof.id, prof.full_name)}
+                            className="px-3 py-2 rounded bg-zinc-950 border border-zinc-850 hover:border-red-500/30 text-red-400 text-xs font-bold flex items-center gap-1.5 transition-all w-full justify-center"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Remove Resident
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 

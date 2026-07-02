@@ -31,17 +31,22 @@ echo      - Instantly pushes code updates (like our avatar/settings fixes)
 echo        directly to users who already have the app installed.
 echo      - Bypasses rebuild and re-installation.
 echo.
-echo  [6] Exit Deployment Panel
+echo  [6] Build Next.js Portal (Admin Portal under /portal)
+echo      - Compiles and builds the production Next.js admin portal.
+echo      - Ready to deploy to Vercel or Netlify.
+echo.
+echo  [7] Exit Deployment Panel
 echo.
 echo =====================================================================
-set /p choice="Enter your selection (1-6): "
+set /p choice="Enter your selection (1-7): "
 
 if "%choice%"=="1" goto build_apk
 if "%choice%"=="2" goto build_aab
 if "%choice%"=="3" goto build_ios
 if "%choice%"=="4" goto build_web
 if "%choice%"=="5" goto ota_update
-if "%choice%"=="6" goto exit
+if "%choice%"=="6" goto build_portal
+if "%choice%"=="7" goto exit
 goto menu
 
 :build_apk
@@ -118,6 +123,20 @@ if "%update_msg%"=="" set update_msg="Hotfix deployment"
 echo.
 echo  Running: npx eas update --auto --message "%update_msg%"
 call npx eas update --auto --message "%update_msg%"
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto menu
+
+:build_portal
+cls
+echo =====================================================================
+echo  [6] Building Next.js Portal...
+echo =====================================================================
+echo.
+call npm run portal:build
+echo.
+echo  Build completed! Optimized files are placed in "portal/.next".
 echo.
 echo Press any key to return to menu...
 pause >nul

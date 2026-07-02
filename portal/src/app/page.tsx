@@ -21,12 +21,14 @@ export default function LandingPage() {
           <a href="#faq" className="hover:text-[#00d4aa] transition-colors">FAQs</a>
           <Link href="/master/login" className="hover:text-[#00d4aa] transition-colors">Master Portal</Link>
         </nav>
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm font-medium px-4 py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition-all">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link href="/login" className="text-xs sm:text-sm font-medium px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition-all">
             Login
           </Link>
-          <Link href="/register" className="text-sm font-bold bg-[#00d4aa] text-zinc-950 px-4 py-2 rounded-lg hover:bg-[#00b390] transition-all flex items-center gap-1.5 glow-hover">
-            Register Society <ArrowRight className="h-4 w-4" />
+          <Link href="/register" className="text-xs sm:text-sm font-bold bg-[#00d4aa] text-zinc-950 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-[#00b390] transition-all flex items-center gap-1.5 glow-hover shrink-0">
+            <span className="hidden sm:inline">Register Society</span>
+            <span className="inline sm:hidden">Register</span>
+            <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Link>
         </div>
       </header>

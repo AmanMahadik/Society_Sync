@@ -126,9 +126,11 @@ export default function MasterLoginPage() {
         </form>
 
         <div className="mt-8 border-t border-zinc-800 pt-6 flex flex-col gap-3 text-center text-xs">
+          {/* Master Admin Registration is disabled
           <Link href="/master/register" className="text-red-500/80 hover:text-red-400 font-semibold transition-colors">
             Register Master Account
           </Link>
+          */}
           <Link href="/" className="text-zinc-500 hover:text-zinc-300">
             Return to Public Homepage
           </Link>
