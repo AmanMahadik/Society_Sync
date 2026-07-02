@@ -10,11 +10,11 @@
 
 <br/>
 
-[![Repo Size](https://img.shields.io/github/repo-size/your-org/societysync?style=flat-square&color=6C5CE7)](https://github.com/your-org/societysync)
-[![Last Commit](https://img.shields.io/github/last-commit/your-org/societysync?style=flat-square&color=6C5CE7)](https://github.com/your-org/societysync/commits)
-[![Stars](https://img.shields.io/github/stars/your-org/societysync?style=flat-square&color=yellow)](https://github.com/your-org/societysync/stargazers)
-[![Forks](https://img.shields.io/github/forks/your-org/societysync?style=flat-square&color=blue)](https://github.com/your-org/societysync/network/members)
-[![Issues](https://img.shields.io/github/issues/your-org/societysync?style=flat-square&color=orange)](https://github.com/your-org/societysync/issues)
+[![Repo Size](https://img.shields.io/github/repo-size/AmanMahadik/Society_Sync?style=flat-square&color=6C5CE7)](https://github.com/AmanMahadik/Society_Sync)
+[![Last Commit](https://img.shields.io/github/last-commit/AmanMahadik/Society_Sync?style=flat-square&color=6C5CE7)](https://github.com/AmanMahadik/Society_Sync/commits)
+[![Stars](https://img.shields.io/github/stars/AmanMahadik/Society_Sync?style=flat-square&color=yellow)](https://github.com/AmanMahadik/Society_Sync/stargazers)
+[![Forks](https://img.shields.io/github/forks/AmanMahadik/Society_Sync?style=flat-square&color=blue)](https://github.com/AmanMahadik/Society_Sync/network/members)
+[![Issues](https://img.shields.io/github/issues/AmanMahadik/Society_Sync?style=flat-square&color=orange)](https://github.com/AmanMahadik/Society_Sync/issues)
 
 ### 🏢 A premium, secure digital society manager that helps Admins, Owners, Tenants, and Guards **run residential life — from one app, in real time.**
 
@@ -136,7 +136,7 @@ Wing/flat-organized resident directory, role cycling for Admins, Dark/Light/Syst
 ## 🏗️ System Architecture
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/your-org/societysync/main/docs/architecture-diagram.png" width="650" alt="System architecture diagram"/>
+<img src="https://raw.githubusercontent.com/AmanMahadik/Society_Sync/main/docs/architecture-diagram.png" width="650" alt="System architecture diagram"/>
 
 <sub>📌 <i>Export the Mermaid diagram below as a PNG into <code>docs/architecture-diagram.png</code> so this image renders — see note below.</i></sub>
 </div>
@@ -423,7 +423,7 @@ Contributions, forks, and pull requests are welcome! 🎉
 ```bash
 # 1. Fork the repo
 # 2. Clone your fork
-git clone https://github.com/<your-username>/societysync.git
+git clone https://github.com/AmanMahadik/Society_Sync.git
 
 # 3. Create your feature branch
 git checkout -b feature/amazing-feature
@@ -453,9 +453,9 @@ This project is **Proprietary**. All rights reserved. Redistribution, modificati
 
 <div align="center">
 
-**Your Name Here**
+**Aman Mahadik**
 
-[![GitHub](https://img.shields.io/badge/GitHub-your--org-181717?style=for-the-badge&logo=github)](https://github.com/your-org)
+[![GitHub](https://img.shields.io/badge/GitHub-AmanMahadik-181717?style=for-the-badge&logo=github)](https://github.com/AmanMahadik)
 
 <br/>
 

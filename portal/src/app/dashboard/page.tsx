@@ -4,8 +4,13 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
-import { Document, Page, Text, View, StyleSheet, PDFDownloadLink } from '@react-pdf/renderer';
 import { Building2, Copy, Users, FileText, CheckCircle, Share2, LogOut, Trash2, Search, Filter } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const PDFPosterButton = dynamic(
+  () => import('./PDFPosterButton'),
+  { ssr: false, loading: () => <div className="w-full py-3 text-zinc-500 text-center text-xs">Loading PDF Generator...</div> }
+);
 
 interface Profile {
   id: string;
@@ -27,101 +32,7 @@ interface Society {
   status: string;
 }
 
-// PDF Document Stylesheet
-const pdfStyles = StyleSheet.create({
-  page: {
-    padding: 50,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    fontFamily: 'Helvetica',
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#0f172a',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subHeader: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  card: {
-    borderWidth: 2,
-    borderColor: '#00a383',
-    borderRadius: 12,
-    padding: 30,
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    width: '100%',
-    marginBottom: 30,
-  },
-  codeLabel: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  code: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#00a383',
-    letterSpacing: 3,
-  },
-  box: {
-    marginTop: 20,
-    padding: 20,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    width: '100%',
-  },
-  boxTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#0f172a',
-    marginBottom: 10,
-  },
-  step: {
-    fontSize: 11,
-    color: '#334155',
-    marginBottom: 6,
-    lineHeight: 1.4,
-  },
-  footer: {
-    marginTop: 'auto',
-    fontSize: 9,
-    color: '#94a3b8',
-    textAlign: 'center',
-  }
-});
-
-// A4 Poster Document Generator
-const PosterDocument = ({ societyName, societyCode }: { societyName: string; societyCode: string }) => (
-  <Document>
-    <Page size="A4" style={pdfStyles.page}>
-      <Text style={pdfStyles.header}>{societyName}</Text>
-      <Text style={pdfStyles.subHeader}>Welcome to the Digital Housing Community</Text>
-      
-      <View style={pdfStyles.card}>
-        <Text style={pdfStyles.codeLabel}>Our Official Society Code</Text>
-        <Text style={pdfStyles.code}>{societyCode}</Text>
-      </View>
-
-      <View style={pdfStyles.box}>
-        <Text style={pdfStyles.boxTitle}>Quick Onboarding Instructions:</Text>
-        <Text style={pdfStyles.step}>1. Download the SocietySync mobile app from the Play Store or App Store.</Text>
-        <Text style={pdfStyles.step}>2. Open the app, tap Sign Up, and enter the unique Society Code above.</Text>
-        <Text style={pdfStyles.step}>3. Enter your flat coordinates and complete your profile authentication.</Text>
-      </View>
-
-      <Text style={pdfStyles.footer}>Powered by SocietySync © {new Date().getFullYear()}</Text>
-    </Page>
-  </Document>
-);
+// PDF Document Generator moved to PDFPosterButton.tsx to prevent SSR/navigation crashes
 
 export default function SocietyAdminDashboard() {
   const router = useRouter();
@@ -134,10 +45,14 @@ export default function SocietyAdminDashboard() {
   const [roleFilter, setRoleFilter] = useState('all');
 
   const fetchDashboardData = async () => {
+    console.log('fetchDashboardData: Component mounted, starting to fetch dashboard data...');
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('fetchDashboardData: supabase.auth.getSession() returned session:', session ? `User ID: ${session.user.id}` : 'null');
+      
       if (!session) {
+        console.warn('fetchDashboardData: No session found. Redirecting to /login...');
         router.push('/login');
         return;
       }
@@ -145,6 +60,7 @@ export default function SocietyAdminDashboard() {
       let targetSocietyId = '';
 
       // 1. Try to fetch admin mapping by user_id
+      console.log('fetchDashboardData: Fetching society_admins mapping by user_id...');
       const { data: adminMapping } = await supabase
         .from('society_admins')
         .select('society_id')
@@ -152,8 +68,10 @@ export default function SocietyAdminDashboard() {
         .maybeSingle();
 
       if (adminMapping) {
+        console.log('fetchDashboardData: Found mapping by user_id. Society ID:', adminMapping.society_id);
         targetSocietyId = adminMapping.society_id;
       } else {
+        console.log('fetchDashboardData: No mapping found by user_id. Trying fallback by email...');
         // Fallback A: Try to find mapping by email and auto-link it!
         if (session.user.email) {
           const { data: emailMapping } = await supabase
@@ -163,6 +81,7 @@ export default function SocietyAdminDashboard() {
             .maybeSingle();
 
           if (emailMapping) {
+            console.log('fetchDashboardData: Found mapping by email. Auto-linking user_id to society_admins ID:', emailMapping.id);
             // Auto-link user_id to this mapping row!
             await supabase
               .from('society_admins')
@@ -175,6 +94,7 @@ export default function SocietyAdminDashboard() {
 
         // Fallback B: check profile society_id
         if (!targetSocietyId) {
+          console.log('fetchDashboardData: No mapping found by email. Trying fallback by profiles society_id...');
           const { data: profile } = await supabase
             .from('profiles')
             .select('society_id')
@@ -182,39 +102,52 @@ export default function SocietyAdminDashboard() {
             .maybeSingle();
           
           if (!profile || !profile.society_id) {
+            console.error('fetchDashboardData: Security Error - No society associated with user account.');
             alert('Security Error: Your user account is not associated with any society.');
             router.push('/login');
             return;
           }
+          console.log('fetchDashboardData: Found society_id in user profile:', profile.society_id);
           targetSocietyId = profile.society_id;
         }
       }
 
       // 2. Fetch society details
+      console.log('fetchDashboardData: Fetching society details for ID:', targetSocietyId);
       const { data: soc, error: socError } = await supabase
         .from('societies')
         .select('*')
         .eq('id', targetSocietyId)
         .single();
 
-      if (socError || !soc) throw new Error('Society profile mismatch.');
+      if (socError || !soc) {
+        console.error('fetchDashboardData: Society fetch error:', socError);
+        throw new Error('Society profile mismatch.');
+      }
+      console.log('fetchDashboardData: Society details successfully fetched:', soc.name);
       setSociety(soc);
 
       // 3. Fetch community members
+      console.log('fetchDashboardData: Fetching community members...');
       const { data: profs, error: profsError } = await supabase
         .from('profiles')
         .select('*')
         .eq('society_id', soc.id)
         .order('created_at', { ascending: false });
 
-      if (profsError) throw profsError;
+      if (profsError) {
+        console.error('fetchDashboardData: Profiles fetch error:', profsError);
+        throw profsError;
+      }
+      console.log('fetchDashboardData: Members count fetched:', profs ? profs.length : 0);
       setProfiles(profs || []);
 
     } catch (e: any) {
-      console.error('Dashboard load failed:', e);
+      console.error('fetchDashboardData: Dashboard load failed with exception:', e);
       alert(`Dashboard Load Error: ${e.message || JSON.stringify(e)}`);
       router.push('/login');
     } finally {
+      console.log('fetchDashboardData: Finally block, setting loading to false.');
       setLoading(false);
     }
   };
@@ -240,6 +173,7 @@ export default function SocietyAdminDashboard() {
   }, []);
 
   const handleSignOut = async () => {
+    document.cookie = 'sb-auth-token=; path=/; max-age=0; SameSite=Lax';
     await supabase.auth.signOut();
     router.push('/login');
   };
@@ -425,13 +359,7 @@ export default function SocietyAdminDashboard() {
 
             {/* DOWNLOAD PDF poster */}
             <div className="pt-2 border-t border-zinc-850">
-              <PDFDownloadLink
-                document={<PosterDocument societyName={society.name} societyCode={society.society_code} />}
-                fileName={`${society.name.replace(/\s+/g, '_')}_SocietyCode_Poster.pdf`}
-                className="w-full py-3 bg-[#00d4aa]/15 border border-[#00d4aa]/30 hover:border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/25 text-center font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-2"
-              >
-                {({ loading: pdfLoading }) => (pdfLoading ? 'Preparing PDF...' : 'DOWNLOAD PRINTABLE A4 POSTER')}
-              </PDFDownloadLink>
+              <PDFPosterButton societyName={society.name} societyCode={society.society_code} />
             </div>
           </div>
 

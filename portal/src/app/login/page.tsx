@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Lock, Mail, ArrowRight, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,16 +21,31 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMsg(null);
 
+    console.log('Login attempt started for:', email);
+
     try {
+      console.log('1. Calling supabase.auth.signInWithPassword...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
-      if (!data.user) throw new Error('Failed to sign in. User session is invalid.');
+      if (error) {
+        console.error('Supabase Auth error:', error);
+        throw error;
+      }
+      if (!data.user) {
+        throw new Error('Failed to sign in. User session is invalid.');
+      }
+      console.log('2. Supabase Auth successful. User ID:', data.user.id);
+
+      if (data.session) {
+        document.cookie = `sb-auth-token=${data.session.access_token}; path=/; max-age=${data.session.expires_in}; SameSite=Lax`;
+        console.log('Set sb-auth-token cookie for middleware.');
+      }
 
       // Check user role from profiles table
+      console.log('3. Fetching user profile from profiles table...');
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, status, society_id')
@@ -38,29 +53,40 @@ export default function LoginPage() {
         .single();
 
       if (profileError || !profile) {
+        console.error('Profile fetch error:', profileError);
         throw new Error('User profile not registered or access denied.');
       }
+      console.log('4. Profile details fetched successfully:', profile);
 
       // Restrict access to Admins/Master Admins only (case-insensitive)
       const roleLower = (profile.role || '').toLowerCase();
       if (roleLower !== 'admin' && roleLower !== 'master_admin') {
+        console.warn('Access denied: Role is not Admin or Master Admin. Logging out...');
         await supabase.auth.signOut();
         throw new Error('Access Denied. Only Society Administrators can access this portal.');
       }
 
       // Check society status if user is an admin
       if (roleLower === 'admin' && profile.society_id) {
+        console.log('5. User is Admin. Checking society status...');
         const { data: society, error: socError } = await supabase
           .from('societies')
           .select('status')
           .eq('id', profile.society_id)
           .single();
 
+        if (socError) {
+          console.error('Society fetch error:', socError);
+        }
+
         if (!socError && society) {
+          console.log('6. Society status retrieved:', society.status);
           if (society.status === 'pending_verification') {
+            console.log('Redirecting to /register/success...');
             router.push('/register/success');
             return;
           } else if (society.status === 'rejected') {
+            console.log('Society is rejected.');
             setErrorMsg('Your society registration was rejected. Please contact support.');
             setLoading(false);
             return;
@@ -69,14 +95,18 @@ export default function LoginPage() {
       }
 
       // Redirect to Admin dashboard
+      console.log('7. Redirecting to /dashboard...');
       router.push('/dashboard');
+      console.log('8. router.push(/dashboard) called.');
+      
 
     } catch (err: any) {
-      console.error(err);
+      console.error('Login process caught exception:', err);
       const msg = err.message || 'Invalid email or password.';
       setErrorMsg(msg);
       alert(`Login Failed: ${msg}`);
     } finally {
+      console.log('Login attempt finally block executed.');
       setLoading(false);
     }
   };
