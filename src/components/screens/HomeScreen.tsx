@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity } from 'react-native';
-import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip } from 'react-native-paper';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated } from 'react-native';
+import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
-import { dataManager, Complaint } from '../../lib/data-manager';
+import { dataManager, Complaint, Announcement } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../lib/notification-context';
 
@@ -22,6 +22,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const [sosDescription, setSosDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activeAlarm, setActiveAlarm] = useState<Complaint | null>(null);
+
+  // Notice board / announcements state
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [noticeModalVisible, setNoticeModalVisible] = useState(false);
+  const [newNoticeTitle, setNewNoticeTitle] = useState('');
+  const [newNoticeContent, setNewNoticeContent] = useState('');
+  const [newNoticePinned, setNewNoticePinned] = useState(false);
+  const [isSubmittingNotice, setIsSubmittingNotice] = useState(false);
+
+  // Loop pulse & ring animation refs
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const bellRotation = useRef(new Animated.Value(0)).current;
 
   // Summary Card Statistics State
   const [summaryData, setSummaryData] = useState({
@@ -87,10 +99,129 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     }
   };
 
+  const fetchAnnouncementsData = async () => {
+    try {
+      const list = await dataManager.getAnnouncements();
+      setAnnouncements(list);
+    } catch (e) {
+      console.error('Error fetching announcements', e);
+    }
+  };
+
+  const handleCreateAnnouncement = async () => {
+    if (!newNoticeTitle.trim() || !newNoticeContent.trim() || !user) return;
+    setIsSubmittingNotice(true);
+    try {
+      await dataManager.createAnnouncement(
+        newNoticeTitle.trim(),
+        newNoticeContent.trim(),
+        newNoticePinned,
+        null,
+        user.id
+      );
+      setNoticeModalVisible(false);
+      setNewNoticeTitle('');
+      setNewNoticeContent('');
+      setNewNoticePinned(false);
+      addNotification({
+        type: 'confirmation',
+        message: '📢 Notice Published',
+        subtext: 'Your announcement has been posted successfully.',
+        autoDismiss: true,
+        dismissAfterMs: 4000
+      });
+      fetchAnnouncementsData();
+    } catch (e) {
+      console.error('Error publishing notice', e);
+    } finally {
+      setIsSubmittingNotice(false);
+    }
+  };
+
+  const handleDeleteNotice = async (id: string) => {
+    try {
+      await dataManager.deleteAnnouncement(id);
+      addNotification({
+        type: 'confirmation',
+        message: '🗑️ Notice Deleted',
+        subtext: 'The announcement has been deleted successfully.',
+        autoDismiss: true,
+        dismissAfterMs: 4000
+      });
+      fetchAnnouncementsData();
+    } catch (e) {
+      console.error('Error deleting notice', e);
+    }
+  };
+
+  const handleTogglePin = async (id: string, isPinned: boolean) => {
+    try {
+      await dataManager.togglePinAnnouncement(id, isPinned);
+      addNotification({
+        type: 'confirmation',
+        message: isPinned ? '📌 Notice Pinned' : '📌 Notice Unpinned',
+        subtext: isPinned ? 'Notice pinned to top.' : 'Notice unpinned.',
+        autoDismiss: true,
+        dismissAfterMs: 3000
+      });
+      fetchAnnouncementsData();
+    } catch (e) {
+      console.error('Error toggling notice pin', e);
+    }
+  };
+
   const loadAllData = async () => {
     await fetchComplaints();
     await fetchSummaryData();
+    await fetchAnnouncementsData();
   };
+
+  // Loop pulse animation
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.12,
+          duration: 950,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 950,
+          useNativeDriver: true,
+        })
+      ])
+    );
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, []);
+
+  // Alarm ringing shake animation
+  useEffect(() => {
+    let bellLoop: Animated.CompositeAnimation | null = null;
+    if (activeAlarm) {
+      bellLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(bellRotation, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bellRotation, {
+            toValue: -1,
+            duration: 100,
+            useNativeDriver: true,
+          })
+        ])
+      );
+      bellLoop.start();
+    } else {
+      bellRotation.setValue(0);
+    }
+    return () => {
+      if (bellLoop) bellLoop.stop();
+    };
+  }, [activeAlarm]);
 
   // Poll for complaints and summary statistics every 4 seconds
   useEffect(() => {
@@ -200,7 +331,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
       {activeAlarm && (
         <Card style={[styles.alarmCard, { backgroundColor: theme.colors.errorContainer }]}>
           <Card.Content style={styles.alarmContent}>
-            <IconButton icon="bell-ring" iconColor={theme.colors.error} size={32} style={styles.flashingBell} />
+            <Animated.View style={{
+              transform: [{
+                rotate: bellRotation.interpolate({
+                  inputRange: [-1, 1],
+                  outputRange: ['-18deg', '18deg']
+                })
+              }]
+            }}>
+              <IconButton icon="bell-ring" iconColor={theme.colors.error} size={32} style={styles.flashingBell} />
+            </Animated.View>
             <View style={styles.alarmTextContainer}>
               <Text variant="titleMedium" style={{ color: theme.colors.onErrorContainer, fontWeight: 'bold', fontSize: 13 }}>
                 🚨 LOUD SOS ALERT!
@@ -306,7 +446,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
             )}
           </TouchableOpacity>
         </View>
- 
+
+        {/* Pinned Announcements Carousel */}
+        {(() => {
+          const pinnedNotices = announcements.filter(n => n.is_pinned);
+          if (pinnedNotices.length === 0) return null;
+          return (
+            <View style={styles.pinnedContainer}>
+              {pinnedNotices.map((notice) => (
+                <Card key={notice.id} style={[styles.pinnedCard, { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error, borderWidth: 0.5 }]}>
+                  <Card.Content style={styles.pinnedContent}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        backgroundColor: theme.colors.error, 
+                        borderRadius: 12, 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 4,
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                          📌 Pinned Notice
+                        </Text>
+                      </View>
+                      {profile?.role === 'admin' && (
+                        <IconButton 
+                          icon="pin-off" 
+                          size={16} 
+                          iconColor={theme.colors.error}
+                          onPress={() => handleTogglePin(notice.id, false)} 
+                          style={{ margin: 0 }}
+                        />
+                      )}
+                    </View>
+                    <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onErrorContainer }}>
+                      {notice.title}
+                    </Text>
+                    <Text variant="bodyMedium" style={{ marginTop: 4, color: theme.colors.onErrorContainer }}>
+                      {notice.body}
+                    </Text>
+                    <Text variant="bodySmall" style={{ marginTop: 8, fontStyle: 'italic', color: theme.colors.outline }}>
+                      Posted by {notice.creator_name} on {new Date(notice.created_at).toLocaleDateString()}
+                    </Text>
+                  </Card.Content>
+                </Card>
+              ))}
+            </View>
+          );
+        })()}
+
         {/* 3. HOME SUMMARY CARDS GRID */}
         <View style={styles.summaryRow}>
           {profile?.role === 'admin' && (
@@ -348,8 +536,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               Tap the Red Shield to trigger a persistent alarm on the Guard Desk and Admin panels instantly.
             </Text>
  
-            <View style={styles.sosRippleOuter}>
-              <View style={styles.sosRippleInner}>
+            <Animated.View style={[styles.sosRippleOuter, { transform: [{ scale: pulseAnim }] }]}>
+              <Animated.View style={[styles.sosRippleInner, { transform: [{ scale: pulseAnim }] }]}>
                 <IconButton
                   icon="shield-alert"
                   iconColor="#FFFFFF"
@@ -357,8 +545,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                   style={[styles.giantSosButton, { backgroundColor: '#FF3B30', margin: 0 }]}
                   onPress={() => setSosModalVisible(true)}
                 />
-              </View>
-            </View>
+              </Animated.View>
+            </Animated.View>
  
             <Text variant="labelLarge" style={{ color: '#FF3B30', fontWeight: 'bold', marginTop: 12, letterSpacing: 0.5 }}>
               TAP TO TRIGGER SOS SHIELD
@@ -452,6 +640,79 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
             </Card>
           ))
         )}
+
+        {/* 4.5. GENERAL NOTICE BOARD */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>
+            📢 Notice Board ({announcements.length})
+          </Text>
+          {profile?.role === 'admin' && (
+            <Button 
+              mode="contained" 
+              icon="plus" 
+              onPress={() => setNoticeModalVisible(true)}
+              style={{ borderRadius: 8 }}
+              labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+              compact
+            >
+              Add Notice
+            </Button>
+          )}
+        </View>
+
+        {announcements.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Card.Content style={{ alignItems: 'center', padding: 20 }}>
+              <IconButton icon="bullhorn-outline" size={40} iconColor={theme.colors.outline} />
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>No announcements posted yet.</Text>
+            </Card.Content>
+          </Card>
+        ) : (
+          announcements.map((notice) => (
+            <Card key={notice.id} style={[styles.noticeCard, { backgroundColor: theme.colors.elevation.level1 }]}>
+              <Card.Content>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                      {notice.title}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 4 }}>
+                    {profile?.role === 'admin' && (
+                      <>
+                        <IconButton 
+                          icon={notice.is_pinned ? "pin" : "pin-outline"} 
+                          size={18} 
+                          iconColor={notice.is_pinned ? theme.colors.primary : theme.colors.outline}
+                          onPress={() => handleTogglePin(notice.id, !notice.is_pinned)}
+                          style={{ margin: 0 }}
+                        />
+                        <IconButton 
+                          icon="delete" 
+                          size={18} 
+                          iconColor={theme.colors.error}
+                          onPress={() => handleDeleteNotice(notice.id)}
+                          style={{ margin: 0 }}
+                        />
+                      </>
+                    )}
+                  </View>
+                </View>
+                <Text variant="bodyMedium" style={{ marginTop: 6, color: theme.colors.onSurfaceVariant }}>
+                  {notice.body}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                    By {notice.creator_name}
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                    {new Date(notice.created_at).toLocaleDateString()}
+                  </Text>
+                </View>
+              </Card.Content>
+            </Card>
+          ))
+        )}
       </ScrollView>
 
       {/* SOS MODAL PANEL */}
@@ -502,6 +763,68 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               icon="bell-ring"
             >
               TRIGGER SOS
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* WRITE ANNOUNCEMENT MODAL */}
+      <Portal>
+        <Modal
+          visible={noticeModalVisible}
+          onDismiss={() => setNoticeModalVisible(false)}
+          contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.elevation.level3 }]}
+        >
+          <Text variant="titleLarge" style={styles.modalTitle}>📢 Publish New Notice</Text>
+          <Text variant="bodySmall" style={styles.modalSubtitle}>
+            Broadcast official society-wide news or announcements to all residents.
+          </Text>
+
+          <TextInput
+            label="Notice Title"
+            value={newNoticeTitle}
+            onChangeText={setNewNoticeTitle}
+            mode="outlined"
+            placeholder="e.g. Water Tank Maintenance"
+            style={{ marginBottom: 12 }}
+          />
+
+          <TextInput
+            label="Notice Content"
+            value={newNoticeContent}
+            onChangeText={setNewNoticeContent}
+            mode="outlined"
+            multiline
+            numberOfLines={4}
+            placeholder="Type details of the announcement here..."
+            style={{ marginBottom: 12 }}
+          />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <Text variant="bodyMedium">Pin to Top of Feed?</Text>
+            <Button
+              mode={newNoticePinned ? 'contained' : 'outlined'}
+              onPress={() => setNewNoticePinned(!newNoticePinned)}
+              icon="pin"
+              compact
+            >
+              {newNoticePinned ? 'Pinned' : 'Not Pinned'}
+            </Button>
+          </View>
+
+          <View style={styles.modalActions}>
+            <Button mode="outlined" onPress={() => setNoticeModalVisible(false)} style={{ flex: 1 }}>
+              Cancel
+            </Button>
+            <Button 
+              mode="contained" 
+              onPress={handleCreateAnnouncement} 
+              loading={isSubmittingNotice}
+              disabled={isSubmittingNotice || !newNoticeTitle.trim() || !newNoticeContent.trim()}
+              style={{ flex: 1 }}
+              icon="send"
+            >
+              PUBLISH
             </Button>
           </View>
         </Modal>
@@ -726,5 +1049,21 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  pinnedContainer: {
+    marginBottom: 16,
+  },
+  pinnedCard: {
+    borderRadius: 12,
+    elevation: 3,
+    marginBottom: 8,
+  },
+  pinnedContent: {
+    padding: 12,
+  },
+  noticeCard: {
+    marginBottom: 10,
+    borderRadius: 12,
+    elevation: 2,
   },
 });

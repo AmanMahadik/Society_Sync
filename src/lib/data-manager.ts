@@ -29,6 +29,19 @@ export interface Profile {
   society_code?: string | null;
 }
 
+// 1.5 Announcements / Notices
+export interface Announcement {
+  id: number;
+  society_id: string;
+  created_by: string | null;
+  title: string;
+  body: string;
+  attachment_url?: string | null;
+  is_pinned: boolean;
+  created_at: string;
+  creator_name?: string;
+}
+
 // 2. Events (Festival Ledger)
 export interface Event {
   id: string;
@@ -352,7 +365,20 @@ class DataManager {
       .select('*')
       .eq('id', userId)
       .single();
-    if (error) return null;
+    if (error || !data) return null;
+
+    // Dynamically fetch society details (name and code) if society_id is linked
+    if (data.society_id) {
+      const { data: socData } = await supabase
+        .from('societies')
+        .select('name, society_code')
+        .eq('id', data.society_id)
+        .single();
+      if (socData) {
+        data.society_name = socData.name;
+        data.society_code = socData.society_code;
+      }
+    }
     return data;
   }
 
@@ -419,14 +445,12 @@ class DataManager {
       full_name: fullName, 
       phone, 
       flat_number: flat, 
-      wing, 
-      society_name: society 
+      wing
     };
     if (vehicleNumber !== undefined) updateData.vehicle_number = vehicleNumber;
     if (bio !== undefined) updateData.bio = bio;
     if (avatarUrl !== undefined) updateData.google_picture_url = avatarUrl;
     if (societyId !== undefined) updateData.society_id = societyId;
-    if (societyCode !== undefined) updateData.society_code = societyCode;
 
     const { error } = await supabase
       .from('profiles')
@@ -1053,6 +1077,67 @@ class DataManager {
         .insert(settings);
       if (error) throw error;
     }
+  }
+
+  // ==========================================
+  // 10. ANNOUNCEMENTS / NOTICE BOARD
+  // ==========================================
+  async getAnnouncements(): Promise<Announcement[]> {
+    if (!this.societyId) return [];
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*, creator:profiles(full_name)')
+      .eq('society_id', this.societyId)
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map((item: any) => ({
+      ...item,
+      creator_name: item.creator?.full_name || 'System / Secretary'
+    }));
+  }
+
+  async createAnnouncement(
+    title: string,
+    body: string,
+    isPinned: boolean = false,
+    attachmentUrl?: string | null,
+    creatorId?: string
+  ): Promise<Announcement> {
+    if (!this.societyId) throw new Error('No active society session');
+    const { data, error } = await supabase
+      .from('announcements')
+      .insert({
+        society_id: this.societyId,
+        created_by: creatorId || null,
+        title,
+        body,
+        attachment_url: attachmentUrl || null,
+        is_pinned: isPinned
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteAnnouncement(announcementId: string): Promise<void> {
+    const { error } = await supabase
+      .from('announcements')
+      .delete()
+      .eq('id', announcementId);
+    if (error) throw error;
+  }
+
+  async togglePinAnnouncement(announcementId: string, isPinned: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('announcements')
+      .update({ is_pinned: isPinned })
+      .eq('id', announcementId);
+    if (error) throw error;
   }
 }
 

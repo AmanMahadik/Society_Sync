@@ -7,12 +7,81 @@ import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { NotificationProvider } from '@/lib/notification-context';
 import { GlobalSOSListener } from '@/components/GlobalSOSListener';
 import { FloatingNotificationStack } from '@/components/FloatingNotificationStack';
+import * as LocalAuthentication from 'expo-local-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, AppStateStatus, View, Text, StyleSheet, Animated } from 'react-native';
+import { Button } from 'react-native-paper';
+import { supabase } from '@/lib/supabase';
 
 function AppWithTheme() {
   const { theme } = useThemeContext();
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+
+  // Biometric App Lock state
+  const [isUnlocked, setIsUnlocked] = React.useState(false);
+  const appState = React.useRef(AppState.currentState);
+
+  const authenticate = async () => {
+    try {
+      const enabled = await AsyncStorage.getItem('biometrics_enabled');
+      if (enabled === 'true') {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+        if (hasHardware && isEnrolled) {
+          const result = await LocalAuthentication.authenticateAsync({
+            promptMessage: 'Unlock SocietySync',
+            fallbackLabel: 'Use PIN/Password',
+          });
+          if (result.success) {
+            setIsUnlocked(true);
+          } else {
+            setIsUnlocked(false);
+          }
+        } else {
+          setIsUnlocked(true);
+        }
+      } else {
+        setIsUnlocked(true);
+      }
+    } catch (e) {
+      console.warn('Biometric auth failed:', e);
+      setIsUnlocked(true); // Fail-safe fallback
+    }
+  };
+
+  useEffect(() => {
+    if (user && profile && profile.status === 'approved') {
+      authenticate();
+    } else {
+      setIsUnlocked(true);
+    }
+  }, [user, profile]);
+
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        const enabled = await AsyncStorage.getItem('biometrics_enabled');
+        if (enabled === 'true' && user && profile && profile.status === 'approved') {
+          setIsUnlocked(false);
+          setTimeout(() => {
+            authenticate();
+          }, 300);
+        }
+      }
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, [user, profile]);
 
   useEffect(() => {
     if (loading) return;
@@ -44,6 +113,47 @@ function AppWithTheme() {
     }
   }, [user, profile, loading, segments]);
 
+  if (user && profile && profile.status === 'approved' && !isUnlocked) {
+    return (
+      <PaperProvider theme={theme}>
+        <View style={[styles.lockContainer, { backgroundColor: theme.colors.background }]}>
+          <Animated.Image
+            source={require('@/assets/images/logo.png')}
+            style={styles.lockLogo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.lockTitle, { color: theme.colors.onBackground }]}>
+            SocietySync Locked
+          </Text>
+          <Text style={[styles.lockSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+            Authenticate with biometrics to unlock the app and access your society dashboard.
+          </Text>
+          <Button 
+            mode="contained" 
+            onPress={authenticate} 
+            style={styles.unlockButton}
+            labelStyle={styles.unlockButtonText}
+            buttonColor={theme.colors.primary}
+          >
+            Unlock App
+          </Button>
+          <Button 
+            mode="text" 
+            onPress={async () => {
+              await supabase.auth.signOut();
+              await AsyncStorage.removeItem('biometrics_enabled');
+              setIsUnlocked(true);
+            }} 
+            textColor={theme.colors.error}
+            style={styles.logoutButton}
+          >
+            Sign Out
+          </Button>
+        </View>
+      </PaperProvider>
+    );
+  }
+
   return (
     <PaperProvider theme={theme}>
       <NotificationProvider>
@@ -72,3 +182,42 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  lockContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  lockLogo: {
+    width: 90,
+    height: 90,
+    marginBottom: 24,
+  },
+  lockTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  lockSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 32,
+    maxWidth: 280,
+    lineHeight: 20,
+  },
+  unlockButton: {
+    width: '100%',
+    maxWidth: 260,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  unlockButtonText: {
+    fontWeight: 'bold',
+  },
+  logoutButton: {
+    marginTop: 8,
+  },
+});

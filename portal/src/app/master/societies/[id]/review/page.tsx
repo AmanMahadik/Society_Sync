@@ -142,8 +142,6 @@ export default function ReviewSocietyPage() {
           email: society.admin_email,
           role: 'admin',
           society_id: society.id,
-          society_code: code,
-          society_name: society.name,
           status: 'approved',
           full_name: society.admin_name,
           wing: 'HQ',

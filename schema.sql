@@ -469,6 +469,8 @@ create table public.announcements (
   society_id uuid references public.societies(id) on delete cascade,
   title text not null,
   body text not null,
+  attachment_url text,
+  is_pinned boolean default false not null,
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamp with time zone default now()
 );
@@ -643,8 +645,14 @@ create policy "Visitors isolation" on public.visitors for all to authenticated
 create policy "SOS alerts isolation" on public.sos_alerts for all to authenticated 
   using (society_id = public.get_user_society_id(auth.uid()) or public.is_master_admin(auth.uid()));
 
-create policy "Announcements isolation" on public.announcements for all to authenticated 
+create policy "Announcements select" on public.announcements for select to authenticated 
   using (society_id = public.get_user_society_id(auth.uid()) or public.is_master_admin(auth.uid()));
+
+create policy "Announcements write" on public.announcements for all to authenticated 
+  using (
+    (society_id = public.get_user_society_id(auth.uid()) and public.is_admin(auth.uid()))
+    or public.is_master_admin(auth.uid())
+  );
 
 -- =======================================================
 -- 5. INDEXES FOR HIGH PERFORMANCE

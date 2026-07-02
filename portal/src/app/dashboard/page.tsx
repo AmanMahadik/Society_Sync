@@ -44,6 +44,13 @@ export default function SocietyAdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
+  // Announcements / Notice Board states
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [noticeTitle, setNoticeTitle] = useState('');
+  const [noticeContent, setNoticeContent] = useState('');
+  const [noticePinned, setNoticePinned] = useState(false);
+  const [noticeModal, setNoticeModal] = useState(false);
+
   const fetchDashboardData = async () => {
     console.log('fetchDashboardData: Component mounted, starting to fetch dashboard data...');
     try {
@@ -142,6 +149,18 @@ export default function SocietyAdminDashboard() {
       console.log('fetchDashboardData: Members count fetched:', profs ? profs.length : 0);
       setProfiles(profs || []);
 
+      // 3.5. Fetch Announcements
+      const { data: notices, error: noticesErr } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('society_id', soc.id)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
+      
+      if (!noticesErr) {
+        setAnnouncements(notices || []);
+      }
+
     } catch (e: any) {
       console.error('fetchDashboardData: Dashboard load failed with exception:', e);
       alert(`Dashboard Load Error: ${e.message || JSON.stringify(e)}`);
@@ -202,8 +221,6 @@ export default function SocietyAdminDashboard() {
         .from('profiles')
         .update({
           society_id: null,
-          society_code: null,
-          society_name: null,
           status: 'pending',
           role: 'owner'
         })
@@ -229,6 +246,69 @@ export default function SocietyAdminDashboard() {
     } catch (e) {
       console.error(e);
       alert('Error removing resident profile.');
+    }
+  };
+
+  const handleCreateNotice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!society || !noticeTitle.trim() || !noticeContent.trim()) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { error } = await supabase
+        .from('announcements')
+        .insert({
+          society_id: society.id,
+          created_by: session.user.id,
+          title: noticeTitle.trim(),
+          body: noticeContent.trim(),
+          is_pinned: noticePinned
+        });
+
+      if (error) throw error;
+
+      alert('Notice published successfully!');
+      setNoticeTitle('');
+      setNoticeContent('');
+      setNoticePinned(false);
+      setNoticeModal(false);
+      fetchDashboardData();
+    } catch (e: any) {
+      alert(`Error publishing notice: ${e.message}`);
+    }
+  };
+
+  const handleDeleteNotice = async (id: string) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this notice?');
+    if (!confirmDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('announcements')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      alert('Notice deleted.');
+      fetchDashboardData();
+    } catch (e: any) {
+      alert(`Error deleting notice: ${e.message}`);
+    }
+  };
+
+  const handleTogglePinNotice = async (id: string, currentPin: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('announcements')
+        .update({ is_pinned: !currentPin })
+        .eq('id', id);
+
+      if (error) throw error;
+      fetchDashboardData();
+    } catch (e: any) {
+      alert(`Error toggling pin: ${e.message}`);
     }
   };
 
@@ -465,9 +545,139 @@ export default function SocietyAdminDashboard() {
               </div>
             )}
           </div>
+
+          {/* NOTICE BOARD MANAGER CARD */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="p-4 bg-zinc-950/80 border-b border-zinc-800 flex justify-between items-center">
+              <h3 className="font-extrabold text-sm text-zinc-300 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-[#00d4aa]" /> Digital Notice Board ({announcements.length})
+              </h3>
+              <button 
+                onClick={() => setNoticeModal(true)}
+                className="text-xs font-bold px-3 py-1.5 rounded bg-[#00d4aa] text-[#09090b] hover:bg-[#00b390] transition-all"
+              >
+                Add Notice
+              </button>
+            </div>
+
+            {announcements.length === 0 ? (
+              <div className="p-12 text-center text-zinc-500 text-sm">
+                No active announcements posted yet. Click "Add Notice" to broadcast.
+              </div>
+            ) : (
+              <div className="divide-y divide-zinc-850">
+                {announcements.map((notice) => (
+                  <div key={notice.id} className="p-4 hover:bg-zinc-955/10 transition-all flex justify-between items-start gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2">
+                        {notice.is_pinned && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            Pinned
+                          </span>
+                        )}
+                        <h4 className="font-bold text-white text-sm">{notice.title}</h4>
+                      </div>
+                      <p className="text-zinc-400 text-xs leading-relaxed">{notice.body}</p>
+                      <span className="text-[10px] text-zinc-500 block">
+                        Published on {new Date(notice.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleTogglePinNotice(notice.id, notice.is_pinned)}
+                        className={`p-1.5 rounded border text-xs font-medium transition-all ${
+                          notice.is_pinned 
+                            ? 'bg-amber-500/10 border-amber-500/20 text-amber-500 hover:bg-amber-500/20' 
+                            : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-300'
+                        }`}
+                        title={notice.is_pinned ? "Unpin from App" : "Pin to App Top"}
+                      >
+                        Pin
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteNotice(notice.id)}
+                        className="p-1.5 rounded bg-zinc-950 border border-zinc-850 hover:border-red-500/30 text-zinc-500 hover:text-red-500 transition-all"
+                        title="Delete Notice"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
       </main>
+
+      {/* NOTICE PUBLISH MODAL overlay */}
+      {noticeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 max-w-md w-full rounded-xl overflow-hidden shadow-2xl p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-white">Publish New Notice</h3>
+              <p className="text-zinc-400 text-xs">This notice will appear instantly in the residents' mobile app notice board feed.</p>
+            </div>
+
+            <form onSubmit={handleCreateNotice} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">Notice Title</label>
+                <input 
+                  type="text" 
+                  value={noticeTitle}
+                  onChange={(e) => setNoticeTitle(e.target.value)}
+                  placeholder="e.g. Phase 2 Water Outage"
+                  required
+                  className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00d4aa] w-full"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">Notice Content / Details</label>
+                <textarea 
+                  value={noticeContent}
+                  onChange={(e) => setNoticeContent(e.target.value)}
+                  placeholder="Provide all relevant details here..."
+                  rows={4}
+                  required
+                  className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00d4aa] w-full resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2 border-y border-zinc-850">
+                <div>
+                  <span className="text-xs font-bold text-white block">Pin Notice?</span>
+                  <span className="text-[10px] text-zinc-500 block">Pinned notices appear highlighted at the very top.</span>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={noticePinned}
+                  onChange={(e) => setNoticePinned(e.target.checked)}
+                  className="h-4 w-4 rounded accent-[#00d4aa] cursor-pointer"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setNoticeModal(false)}
+                  className="text-xs font-bold px-4 py-2 rounded bg-zinc-950 border border-zinc-850 hover:bg-zinc-900 transition-all text-zinc-300"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="text-xs font-bold px-4 py-2 rounded bg-[#00d4aa] text-[#09090b] hover:bg-[#00b390] transition-all"
+                >
+                  Publish Notice
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

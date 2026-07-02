@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, Image } from 'react-native';
 import { Text, TextInput, Button, Card, Divider, useTheme, SegmentedButtons, HelperText, IconButton, Portal, Dialog, Snackbar } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
+import * as LocalAuthentication from 'expo-local-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface LoginScreenProps {
   onNavigateToRegister: () => void;
@@ -15,6 +17,60 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Biometrics login state
+  const [hasBiometrics, setHasBiometrics] = useState(false);
+
+  React.useEffect(() => {
+    const checkBiometrics = async () => {
+      try {
+        const enabled = await AsyncStorage.getItem('biometrics_enabled');
+        const savedEmail = await AsyncStorage.getItem('saved_email');
+        const savedPassword = await AsyncStorage.getItem('saved_password');
+        if (enabled === 'true' && savedEmail && savedPassword) {
+          const hasHardware = await LocalAuthentication.hasHardwareAsync();
+          const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+          if (hasHardware && isEnrolled) {
+            setHasBiometrics(true);
+          }
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+    checkBiometrics();
+  }, []);
+
+  const triggerBiometricLogin = async () => {
+    try {
+      const savedEmail = await AsyncStorage.getItem('saved_email');
+      const savedPassword = await AsyncStorage.getItem('saved_password');
+      if (savedEmail && savedPassword) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Sign in to SocietySync',
+          fallbackLabel: 'Use PIN/Password',
+        });
+        if (result.success) {
+          setEmail(savedEmail);
+          setPassword(savedPassword);
+          setLoading(true);
+          const { error: signInError } = await signIn(savedEmail, savedPassword);
+          setLoading(false);
+          if (signInError) {
+            showError(getErrorMessage(signInError));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Biometric sign-in error:', e);
+    }
+  };
+
+  const handleEmailFocus = () => {
+    if (hasBiometrics && !email && !password) {
+      triggerBiometricLogin();
+    }
+  };
 
   // Forgot password state
   const [resetDialogVisible, setResetDialogVisible] = useState(false);
@@ -47,6 +103,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     setLoading(false);
     if (signInError) {
       showError(getErrorMessage(signInError));
+    } else {
+      try {
+        await AsyncStorage.setItem('saved_email', email);
+        await AsyncStorage.setItem('saved_password', password);
+      } catch (e) {
+        console.warn('Failed to save credentials:', e);
+      }
     }
   };
 
@@ -108,6 +171,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               autoCapitalize="none"
               style={styles.input}
               left={<TextInput.Icon icon="email" />}
+              right={hasBiometrics ? <TextInput.Icon icon="fingerprint" onPress={triggerBiometricLogin} /> : undefined}
+              onFocus={handleEmailFocus}
             />
 
             <TextInput
