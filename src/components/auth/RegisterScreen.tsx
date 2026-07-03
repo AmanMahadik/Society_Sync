@@ -16,6 +16,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<UserRole>('owner');
   const [wing, setWing] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
@@ -69,8 +70,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
 
   const handleRegister = async () => {
     const isGuard = role === 'guard';
-    if (!fullName || !email || !password || !phone || (!isGuard && (!wing || !flatNumber))) {
+    if (!fullName || !email || !password || !confirmPassword || !phone || (!isGuard && (!wing || !flatNumber))) {
       setError('Please fill in all the fields.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
     if (!societyDetails) {
@@ -270,6 +275,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             mode="outlined"
             style={styles.input}
             left={<TextInput.Icon icon="lock" />}
+          />
+
+          <TextInput
+            label="Confirm Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            mode="outlined"
+            style={styles.input}
+            left={<TextInput.Icon icon="lock-check" />}
           />
 
           <Text variant="labelLarge" style={styles.label}>Register As</Text>
