@@ -461,9 +461,9 @@ class DataManager {
   async updateProfileDetails(
     userId: string, 
     fullName: string, 
-    phone: string, 
-    flat: string, 
-    wing: string, 
+    phone: string | null, 
+    flat: string | null, 
+    wing: string | null, 
     society: string,
     vehicleNumber?: string | null,
     bio?: string | null,

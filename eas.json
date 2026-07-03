@@ -5,7 +5,8 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -15,7 +16,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://nqpxlvbgzcfguijouhgl.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_wbaNcYnzSZ_VT1bf0lPdKA_5SSl5aeO"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "android": {
@@ -24,7 +26,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://nqpxlvbgzcfguijouhgl.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_wbaNcYnzSZ_VT1bf0lPdKA_5SSl5aeO"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

@@ -45,9 +45,9 @@ export default function EditProfileScreen() {
 
   // Validation
   const isNameValid = fullName.trim().length >= 3;
-  const isPhoneValid = /^\d{10}$/.test(phone.trim());
-  const isWingValid = (profile?.role === 'admin' || profile?.role === 'guard') ? true : wing.trim().length > 0;
-  const isFlatValid = (profile?.role === 'admin' || profile?.role === 'guard') ? true : flatNumber.trim().length > 0;
+  const isPhoneValid = phone.trim() === '' || /^\d{10}$/.test(phone.trim());
+  const isWingValid = (profile?.role === 'resident' || profile?.role === 'owner' || profile?.role === 'renter') ? wing.trim().length > 0 : true;
+  const isFlatValid = (profile?.role === 'resident' || profile?.role === 'owner' || profile?.role === 'renter') ? flatNumber.trim().length > 0 : true;
   
   const isFormValid = isNameValid && isPhoneValid && isWingValid && isFlatValid;
 
@@ -157,9 +157,9 @@ export default function EditProfileScreen() {
       await dataManager.updateProfileDetails(
         user.id,
         fullName.trim(),
-        phone.trim(),
-        flatNumber.trim(),
-        wing.trim().toUpperCase(),
+        phone.trim() || null,
+        flatNumber.trim() || null,
+        wing.trim().toUpperCase() || null,
         profile.society_name || 'SocietySync Co-Op',
         vehicleNumber.trim() || null,
         bio.trim() || null,
