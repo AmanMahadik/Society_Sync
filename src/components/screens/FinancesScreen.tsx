@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image, Alert, Linking } from 'react-native';
+import { StyleSheet, View, ScrollView, Image, Alert, Linking, BackHandler } from 'react-native';
 import { Text, Card, Button, TextInput, SegmentedButtons, IconButton, Portal, Modal, useTheme, Chip, Snackbar, Avatar, List, Divider } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Event, Transaction, MaintenanceDue } from '../../lib/data-manager';
@@ -9,6 +9,7 @@ import { supabase, uriToArrayBuffer } from '../../lib/supabase';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { getReportTemplate } from '../../lib/report-template';
+import { useNavigation } from 'expo-router';
 
 export const FinancesScreen: React.FC = () => {
   const { profile, user } = useAuth();
@@ -20,6 +21,34 @@ export const FinancesScreen: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [maintenanceDues, setMaintenanceDues] = useState<MaintenanceDue[]>([]);
+
+  const navigation = useNavigation();
+
+  // Reset selected event when screen blurs (navigating away from tab)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setSelectedEvent(null);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Handle hardware back press on Android to close event details
+  useEffect(() => {
+    const backAction = () => {
+      if (selectedEvent) {
+        setSelectedEvent(null);
+        return true; // prevent default
+      }
+      return false; // propagate
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [selectedEvent]);
 
   // Modals visibility
   const [eventModalVisible, setEventModalVisible] = useState(false);
