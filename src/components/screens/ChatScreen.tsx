@@ -609,7 +609,7 @@ export const ChatScreen: React.FC = () => {
                       <Card.Content style={styles.bubbleContent}>
                         <Text 
                           style={{ 
-                            color: '#FFFFFF',
+                            color: isMe ? '#FFFFFF' : theme.colors.onSurface,
                             fontSize: 13.5,
                           }}
                         >
