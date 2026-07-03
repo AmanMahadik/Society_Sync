@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useTheme } from 'react-native-paper';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -152,6 +153,7 @@ const TabButton = memo(({
 });
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const theme = useTheme();
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const containerWidth = useSharedValue(0);
@@ -237,6 +239,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         styles.tabBarContainer,
         {
           bottom: bottomInset,
+          backgroundColor: theme.dark ? '#181818' : '#FFFFFF',
+          borderColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)',
+          shadowColor: theme.dark ? '#000000' : '#000000',
         },
       ]}
     >
