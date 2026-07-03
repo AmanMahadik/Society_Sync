@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, ScrollView, View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Appbar, TextInput, Button, Text, Avatar, Card, Snackbar, useTheme, Dialog, Portal } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -30,9 +30,11 @@ export default function EditProfileScreen() {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '', error: false });
 
+  const isInitialized = useRef(false);
+
   // Load current profile data
   useEffect(() => {
-    if (profile) {
+    if (profile && !isInitialized.current) {
       setFullName(profile.full_name || '');
       setPhone(profile.phone || '');
       setWing(profile.wing || '');
@@ -40,6 +42,7 @@ export default function EditProfileScreen() {
       setVehicleNumber(profile.vehicle_number || '');
       setBio(profile.bio || '');
       setAvatarUri(profile.google_picture_url || null);
+      isInitialized.current = true;
     }
   }, [profile]);
 
