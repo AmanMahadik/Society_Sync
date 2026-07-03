@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView, Image, Alert, Linking, BackHandler } from 'react-native';
 import { Text, Card, Button, TextInput, SegmentedButtons, IconButton, Portal, Modal, useTheme, Chip, Snackbar, Avatar, List, Divider } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
@@ -76,6 +76,12 @@ export const FinancesScreen: React.FC = () => {
 
   const [submitting, setSubmitting] = useState(false);
 
+  // Synchronize ref with selectedEvent state to prevent async stale closures
+  const selectedEventRef = useRef(selectedEvent);
+  useEffect(() => {
+    selectedEventRef.current = selectedEvent;
+  }, [selectedEvent]);
+
   // Snackbar Toast
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -90,11 +96,12 @@ export const FinancesScreen: React.FC = () => {
       const eventList = await dataManager.getEvents();
       setEvents(eventList);
 
-      // If an event is currently selected, refresh its transactions
-      if (selectedEvent) {
-        const refreshedEvent = eventList.find(e => e.id === selectedEvent.id);
+      // Check current value of selectedEventRef instead of stale closure selectedEvent
+      const currentSelectedEvent = selectedEventRef.current;
+      if (currentSelectedEvent) {
+        const refreshedEvent = eventList.find(e => e.id === currentSelectedEvent.id);
         if (refreshedEvent) setSelectedEvent(refreshedEvent);
-        const txList = await dataManager.getTransactions(selectedEvent.id);
+        const txList = await dataManager.getTransactions(currentSelectedEvent.id);
         setTransactions(txList);
       }
 
