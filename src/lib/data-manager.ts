@@ -27,6 +27,7 @@ export interface Profile {
   bio?: string | null;
   society_id?: string | null;
   society_code?: string | null;
+  society_status?: string | null;
 }
 
 // 1.5 Announcements / Notices
@@ -395,16 +396,17 @@ class DataManager {
       .single();
     if (error || !data) return null;
 
-    // Dynamically fetch society details (name and code) if society_id is linked
+    // Dynamically fetch society details (name, code, status) if society_id is linked
     if (data.society_id) {
       const { data: socData } = await supabase
         .from('societies')
-        .select('name, society_code')
+        .select('name, society_code, status')
         .eq('id', data.society_id)
         .single();
       if (socData) {
         data.society_name = socData.name;
         data.society_code = socData.society_code;
+        data.society_status = socData.status;
       }
     }
     return data;

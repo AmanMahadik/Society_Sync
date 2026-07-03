@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated, Share } from 'react-native';
+import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated, Share, Alert } from 'react-native';
 import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint, Announcement, VisitorPreApproval, Visitor } from '../../lib/data-manager';
@@ -7,16 +7,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../lib/notification-context';
 // @ts-ignore
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
 
 interface HomeScreenProps {
   jumpTo?: (key: string) => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
-  const { profile, user } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   const { addNotification } = useNotifications();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+
+  // Refresh profile on screen focus to check society status dynamically
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (refreshProfile) {
+        refreshProfile();
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [sosModalVisible, setSosModalVisible] = useState(false);
@@ -215,6 +227,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const handleCreatePreApproval = async () => {
+    if (profile?.society_status === 'suspended') {
+      Alert.alert('Suspended', 'Visitor features are disabled because your society has been suspended.');
+      return;
+    }
     if (!visitorName.trim() || !user) return;
     setSubmittingVisitor(true);
     try {
@@ -247,6 +263,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const handleRevokePreApproval = async (id: string) => {
+    if (profile?.society_status === 'suspended') return;
     try {
       await dataManager.revokePreApproval(id);
       fetchPreApprovals();
@@ -276,6 +293,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const handleVerifyPasscode = async () => {
+    if (profile?.society_status === 'suspended') {
+      Alert.alert('Suspended', 'This feature is disabled because your society has been suspended.');
+      return;
+    }
     if (!passcodeInput.trim() || passcodeInput.trim().length !== 6) {
       addNotification({
         type: 'status_update',
@@ -314,6 +335,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const handleCheckInVerifiedGuest = async () => {
+    if (profile?.society_status === 'suspended') return;
     if (!verifiedGuest) return;
     try {
       await dataManager.checkInPreApprovedVisitor(verifiedGuest.id);
@@ -333,6 +355,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const handleCheckInManualGuest = async () => {
+    if (profile?.society_status === 'suspended') {
+      Alert.alert('Suspended', 'Visitor features are disabled because your society has been suspended.');
+      return;
+    }
     if (!manualVisitorName.trim() || !manualVisitorFlat.trim()) return;
     setSubmittingManualVisitor(true);
     try {
@@ -362,6 +388,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const handleCheckOutVisitor = async (id: string) => {
+    if (profile?.society_status === 'suspended') return;
     try {
       await dataManager.checkOutVisitor(id);
       fetchRecentVisitors();
@@ -378,6 +405,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const loadAllData = async () => {
+    if (refreshProfile) {
+      try {
+        await refreshProfile();
+      } catch (e) {
+        console.error('Error refreshing profile in loadAllData:', e);
+      }
+    }
+    if (profile?.society_status === 'suspended') return;
     await fetchComplaints();
     await fetchSummaryData();
     await fetchAnnouncementsData();
@@ -744,27 +779,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 🔑 Visitor Gate Passcodes
               </Text>
-              <Button
-                mode="contained"
-                icon="key-plus"
-                buttonColor="#00D4AA"
-                textColor="#0F0F0F"
-                onPress={() => {
-                  setGeneratedPasscode('');
-                  setVisitorName('');
-                  setVisitorVehicle('');
-                  setVisitorPurpose('Delivery');
-                  setVisitorModalVisible(true);
-                }}
-                style={{ borderRadius: 8 }}
-                labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
-                compact
-              >
-                Create Pass
-              </Button>
+              {profile?.society_status !== 'suspended' && (
+                <Button
+                  mode="contained"
+                  icon="key-plus"
+                  buttonColor="#00D4AA"
+                  textColor="#0F0F0F"
+                  onPress={() => {
+                    setGeneratedPasscode('');
+                    setVisitorName('');
+                    setVisitorVehicle('');
+                    setVisitorPurpose('Delivery');
+                    setVisitorModalVisible(true);
+                  }}
+                  style={{ borderRadius: 8 }}
+                  labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+                  compact
+                >
+                  Create Pass
+                </Button>
+              )}
             </View>
 
-            {preApprovals.filter(p => p.status === 'pending').length === 0 ? (
+            {profile?.society_status === 'suspended' ? (
+              <Card style={[styles.passcodeEmptyCard, { backgroundColor: theme.colors.elevation.level1, borderWidth: 0.5, borderColor: theme.colors.error }]}>
+                <Card.Content style={{ alignItems: 'center', paddingVertical: 16 }}>
+                  <IconButton icon="lock" size={24} iconColor={theme.colors.error} style={{ margin: 0 }} />
+                  <Text variant="bodyMedium" style={{ color: theme.colors.error, fontWeight: 'bold', marginTop: 4, textAlign: 'center' }}>
+                    Feature Disabled
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, textAlign: 'center', marginTop: 4 }}>
+                    Visitor passcodes are disabled because your society has been suspended.
+                  </Text>
+                </Card.Content>
+              </Card>
+            ) : preApprovals.filter(p => p.status === 'pending').length === 0 ? (
               <Card style={[styles.passcodeEmptyCard, { backgroundColor: theme.colors.elevation.level1, borderWidth: 0.5, borderColor: '#333' }]}>
                 <Card.Content style={{ alignItems: 'center', paddingVertical: 16 }}>
                   <Text variant="bodySmall" style={{ color: theme.colors.outline, textAlign: 'center' }}>
@@ -828,28 +877,43 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               <Text variant="titleMedium" style={[styles.sectionTitle, { color: '#06B6D4' }]}>
                 🛡️ Gate Control Console
               </Text>
-              <Button
-                mode="contained"
-                icon="plus"
-                buttonColor="#0EA5E9"
-                textColor="#FFFFFF"
-                onPress={() => {
-                  setManualVisitorName('');
-                  setManualVisitorVehicle('');
-                  setManualVisitorFlat('');
-                  setManualVisitorPurpose('Delivery');
-                  setManualVisitorModalVisible(true);
-                }}
-                style={{ borderRadius: 8 }}
-                labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
-                compact
-              >
-                Manual Entry
-              </Button>
+              {profile?.society_status !== 'suspended' && (
+                <Button
+                  mode="contained"
+                  icon="plus"
+                  buttonColor="#0EA5E9"
+                  textColor="#FFFFFF"
+                  onPress={() => {
+                    setManualVisitorName('');
+                    setManualVisitorVehicle('');
+                    setManualVisitorFlat('');
+                    setManualVisitorPurpose('Delivery');
+                    setManualVisitorModalVisible(true);
+                  }}
+                  style={{ borderRadius: 8 }}
+                  labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+                  compact
+                >
+                  Manual Entry
+                </Button>
+              )}
             </View>
 
-            {/* Passcode Verification Card */}
-            <Card style={[styles.consoleCard, { backgroundColor: theme.colors.elevation.level2, borderColor: '#06B6D4', borderWidth: 1, marginBottom: 16 }]}>
+            {profile?.society_status === 'suspended' ? (
+              <Card style={[styles.consoleCard, { backgroundColor: theme.colors.elevation.level2, borderColor: theme.colors.error, borderWidth: 1, marginBottom: 16 }]}>
+                <Card.Content style={{ alignItems: 'center', paddingVertical: 24 }}>
+                  <IconButton icon="lock" size={32} iconColor={theme.colors.error} style={{ margin: 0 }} />
+                  <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.error, marginTop: 8 }}>
+                    Console Suspended
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, textAlign: 'center', marginTop: 4, paddingHorizontal: 16 }}>
+                    This console is disabled because the society's account has been suspended. Please contact the administrator.
+                  </Text>
+                </Card.Content>
+              </Card>
+            ) : (
+              /* Passcode Verification Card */
+              <Card style={[styles.consoleCard, { backgroundColor: theme.colors.elevation.level2, borderColor: '#06B6D4', borderWidth: 1, marginBottom: 16 }]}>
               <Card.Content style={{ padding: 12 }}>
                 <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 8, color: '#E2E8F0', fontSize: 13 }}>
                   🔑 Scan/Verify Guest Passcode
@@ -911,6 +975,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                 )}
               </Card.Content>
             </Card>
+            )}
 
             {/* Active Visitors Log */}
             <Text variant="titleMedium" style={[styles.sectionTitle, { marginBottom: 8, fontWeight: 'bold', fontSize: 14 }]}>

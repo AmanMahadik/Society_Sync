@@ -12,7 +12,7 @@ import { getReportTemplate } from '../../lib/report-template';
 import { useNavigation } from 'expo-router';
 
 export const FinancesScreen: React.FC = () => {
-  const { profile, user } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -28,6 +28,14 @@ export const FinancesScreen: React.FC = () => {
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
       setSelectedEvent(null);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Refresh profile on screen focus to check society status dynamically
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      refreshProfile();
     });
     return unsubscribe;
   }, [navigation]);
@@ -92,6 +100,7 @@ export const FinancesScreen: React.FC = () => {
   };
 
   const loadAllData = async () => {
+    if (profile?.society_status === 'suspended') return;
     try {
       const eventList = await dataManager.getEvents();
       setEvents(eventList);
@@ -587,6 +596,37 @@ export const FinancesScreen: React.FC = () => {
   const isCurrentUserFlat = (wing: string, flat: string) => {
     return profile?.wing === wing && profile?.flat_number === flat;
   };
+
+  if (profile?.society_status === 'suspended') {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+        <View style={styles.screenHeader}>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={[styles.screenHeaderLogo, { borderColor: '#FFD700' }]} 
+            resizeMode="contain"
+          />
+          <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+            SocietySync Finances
+          </Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <IconButton
+            icon="lock-alert"
+            size={72}
+            iconColor={theme.colors.error}
+            style={{ marginBottom: 16 }}
+          />
+          <Text variant="headlineSmall" style={{ fontWeight: 'bold', color: theme.colors.onSurface, textAlign: 'center', marginBottom: 12 }}>
+            Society Suspended
+          </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', lineHeight: 22, maxWidth: 300 }}>
+            The Finance features have been disabled because this society has been suspended by the Master Administrator. Please contact your society administration or SocietySync support for details.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>

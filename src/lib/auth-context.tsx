@@ -1,11 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from './supabase';
-import { dataManager, Profile, UserRole } from './data-manager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { Platform } from 'react-native';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import { dataManager, Profile, UserRole } from './data-manager';
+import { supabase } from './supabase';
 
 // Complete the OAuth session redirect in WebBrowser on native platforms
 if (Platform.OS !== 'web') {
