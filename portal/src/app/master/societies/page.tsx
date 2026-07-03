@@ -87,6 +87,40 @@ export default function SocietiesListPage() {
     }
   };
 
+  const handleDeleteSociety = async (societyCode: string, name: string) => {
+    const confirmationCode = window.prompt(
+      `WARNING: This will permanently delete the society "${name}" along with ALL its residents, admins, guards, bills, complaints, settings, and visitor history.\n\nTo confirm, type the society code "${societyCode}":`
+    );
+
+    if (confirmationCode === null) return; // user cancelled
+
+    if (confirmationCode.trim() !== societyCode) {
+      alert("Invalid society code entered. Deletion cancelled.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('delete_society_cascade', {
+        target_society_code: societyCode
+      });
+
+      if (error) throw error;
+
+      if (data === true) {
+        alert(`Society "${name}" and all its users have been permanently deleted.`);
+        fetchSocieties();
+      } else {
+        alert("Could not delete society. Check if the society code is correct.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(`Error deleting society: ${e.message || e}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filtered = societies.filter(s => 
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     s.society_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -186,10 +220,16 @@ export default function SocietiesListPage() {
                           </button>
                           <Link
                             href={`/master/credentials/${soc.id}`}
-                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold"
+                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold flex items-center justify-center"
                           >
-                            View Credentials
+                            Credentials
                           </Link>
+                          <button
+                            onClick={() => handleDeleteSociety(soc.society_code, soc.name)}
+                            className="px-2.5 py-1 rounded bg-red-950/20 border border-red-500/20 hover:border-red-500 hover:bg-red-500/10 text-red-500 text-xs font-bold transition-all"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>

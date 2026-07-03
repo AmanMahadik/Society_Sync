@@ -1,19 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, Card, TextInput, IconButton, Button, Avatar, useTheme, Chip, SegmentedButtons, Portal, Modal, ProgressBar, Snackbar, Divider, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, ChatMessage, ChatThread, Poll, PollOption } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export const ChatScreen: React.FC = () => {
   const { profile, user } = useAuth();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThread, setActiveThread] = useState<ChatThread | null>(null);
   const [threadTab, setThreadTab] = useState<'chat' | 'polls'>('chat');
+
+  // Hide tab bar when inside a specific thread details view
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: {
+        display: activeThread ? 'none' : 'flex'
+      }
+    });
+  }, [activeThread, navigation]);
 
   // Messages State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -435,15 +447,53 @@ export const ChatScreen: React.FC = () => {
 
       {/* Segmented Controller for Chat vs. Polls */}
       <View style={styles.toggleBar}>
-        <SegmentedButtons
-          value={threadTab}
-          onValueChange={(val) => setThreadTab(val as any)}
-          buttons={[
-            { value: 'chat', label: 'Debate Messages', icon: 'forum-outline' },
-            { value: 'polls', label: 'Voting Polls', icon: 'chat-processing' },
-          ]}
-          style={{ width: '100%' }}
-        />
+        <View style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.tabItem, 
+              threadTab === 'chat' && styles.tabItemActive
+            ]} 
+            onPress={() => setThreadTab('chat')}
+          >
+            <MaterialCommunityIcons 
+              name="forum-outline" 
+              size={18} 
+              color={threadTab === 'chat' ? '#0F0F0F' : '#8A8A8A'} 
+              style={{ marginRight: 6 }} 
+            />
+            <Text 
+              style={[
+                styles.tabText, 
+                threadTab === 'chat' ? styles.tabTextActive : styles.tabTextInactive
+              ]}
+            >
+              Debate Messages
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.tabItem, 
+              threadTab === 'polls' && styles.tabItemActive
+            ]} 
+            onPress={() => setThreadTab('polls')}
+          >
+            <MaterialCommunityIcons 
+              name="chat-processing-outline" 
+              size={18} 
+              color={threadTab === 'polls' ? '#0F0F0F' : '#8A8A8A'} 
+              style={{ marginRight: 6 }} 
+            />
+            <Text 
+              style={[
+                styles.tabText, 
+                threadTab === 'polls' ? styles.tabTextActive : styles.tabTextInactive
+              ]}
+            >
+              Voting Polls
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Pinned Message Banner */}
@@ -671,7 +721,7 @@ export const ChatScreen: React.FC = () => {
 
       {/* Role-Gated Footer Input for Messages */}
       {threadTab === 'chat' && (
-        <View style={[styles.inputFooter, { backgroundColor: theme.colors.surface }]}>
+        <View style={[styles.inputFooter, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom > 0 ? insets.bottom + 4 : 8 }]}>
           {isRenter ? (
             <Card style={[styles.disabledCard, { backgroundColor: theme.colors.errorContainer }]}>
               <Card.Content style={{ padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -844,7 +894,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 130,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -888,6 +938,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 0.5,
     borderBottomColor: '#E0E0E0',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 4,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  tabItemActive: {
+    backgroundColor: '#06B6D4',
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  tabTextActive: {
+    color: '#0F0F0F',
+  },
+  tabTextInactive: {
+    color: '#8A8A8A',
   },
   pinnedBanner: {
     marginHorizontal: 16,

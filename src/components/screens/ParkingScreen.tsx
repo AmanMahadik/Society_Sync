@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 80,
+    paddingBottom: 130,
   },
   infoCard: {
     borderRadius: 16,

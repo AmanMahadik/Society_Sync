@@ -128,10 +128,10 @@ export const FloatingToast: React.FC<FloatingToastProps> = ({ notification, onDi
       case 'status_update':
       default:
         return {
-          backgroundColor: color ? `${color}25` : theme.colors.elevation.level3,
+          backgroundColor: '#1C1C1E',
           titleColor: color || theme.colors.primary,
-          textColor: theme.colors.onSurface,
-          icon: 'information-outline',
+          textColor: '#E2E8F0',
+          icon: color ? 'forum-outline' : 'information-outline',
           iconColor: color || theme.colors.primary,
         };
     }
@@ -156,8 +156,8 @@ export const FloatingToast: React.FC<FloatingToastProps> = ({ notification, onDi
           styles.container,
           {
             backgroundColor: config.backgroundColor,
-            borderColor: type === 'sos_full' ? pulseBorderColor : (type === 'sos_info' ? '#FFD700' : 'transparent'),
-            borderWidth: type === 'sos_full' || type === 'sos_info' ? 1.5 : 0,
+            borderColor: type === 'sos_full' ? pulseBorderColor : (type === 'sos_info' ? '#FFD700' : (color || 'rgba(255, 255, 255, 0.08)')),
+            borderWidth: 1.2,
           },
         ]}
       >

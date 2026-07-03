@@ -491,7 +491,51 @@ export const ProfileScreen: React.FC = () => {
               {/* WebView Map Embed */}
               <View style={{ height: 180, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.outlineVariant, marginBottom: 16 }}>
                 <WebView
-                  source={{ uri: societyDetails.maps_embed_url || `https://maps.google.com/maps?q=${societyDetails.lat},${societyDetails.lng}&t=&z=15&ie=UTF8&iwloc=&output=embed` }}
+                  source={{ 
+                    html: `
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                        <style>
+                          html, body, #map {
+                            height: 100%;
+                            margin: 0;
+                            padding: 0;
+                            background-color: #09090b;
+                          }
+                          .leaflet-tile {
+                            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div id="map"></div>
+                        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                        <script>
+                          var lat = ${parseFloat(societyDetails.lat) || 19.0760};
+                          var lng = ${parseFloat(societyDetails.lng) || 72.8777};
+                          var map = L.map('map', {
+                            zoomControl: false,
+                            attributionControl: false
+                          }).setView([lat, lng], 15);
+                          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                          
+                          var myIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: "<div style='background-color:#06B6D4; width:12px; height:12px; border-radius:50%; border:2px solid #onSurface; box-shadow: 0 0 4px rgba(0,0,0,0.5);'></div>",
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6]
+                          });
+                          
+                          L.marker([lat, lng], {icon: myIcon}).addTo(map);
+                        </script>
+                      </body>
+                      </html>
+                    `
+                  }}
                   style={{ flex: 1 }}
                   scrollEnabled={false}
                 />
@@ -1068,7 +1112,51 @@ export const ProfileScreen: React.FC = () => {
                 {/* WebView Map */}
                 <View style={{ height: 220, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.outlineVariant, marginTop: 8 }}>
                   <WebView
-                    source={{ uri: `https://www.google.com/maps/search/?api=1&query=${societyDetails.lat},${societyDetails.lng}` }}
+                    source={{ 
+                      html: `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <meta charset="utf-8" />
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                          <style>
+                            html, body, #map {
+                              height: 100%;
+                              margin: 0;
+                              padding: 0;
+                              background-color: #09090b;
+                            }
+                            .leaflet-tile {
+                              filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+                            }
+                          </style>
+                        </head>
+                        <body>
+                          <div id="map"></div>
+                          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                          <script>
+                            var lat = ${parseFloat(societyDetails.lat) || 19.0760};
+                            var lng = ${parseFloat(societyDetails.lng) || 72.8777};
+                            var map = L.map('map', {
+                              zoomControl: false,
+                              attributionControl: false
+                            }).setView([lat, lng], 15);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                            
+                            var myIcon = L.divIcon({
+                              className: 'custom-div-icon',
+                              html: "<div style='background-color:#06B6D4; width:12px; height:12px; border-radius:50%; border:2px solid #onSurface; box-shadow: 0 0 4px rgba(0,0,0,0.5);'></div>",
+                              iconSize: [12, 12],
+                              iconAnchor: [6, 6]
+                            });
+                            
+                            L.marker([lat, lng], {icon: myIcon}).addTo(map);
+                          </script>
+                        </body>
+                        </html>
+                      `
+                    }}
                     style={{ flex: 1 }}
                   />
                 </View>
@@ -1148,7 +1236,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 80,
+    paddingBottom: 130,
   },
   profileCard: {
     borderRadius: 20,

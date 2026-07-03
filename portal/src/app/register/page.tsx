@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
@@ -55,6 +55,11 @@ export default function RegisterPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(false);
 
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+
   // Form Field change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -86,7 +91,6 @@ export default function RegisterPage() {
       if (!/\S+@\S+\.\S+/.test(formData.adminEmail)) return 'Please enter a valid email address.';
       if (!formData.adminPhone.trim()) return 'Mobile Number is required.';
       if (!/^\d{10}$/.test(formData.adminPhone.trim())) return 'Mobile Number must be 10 digits.';
-      if (!formData.adminPassword || formData.adminPassword.length < 6) return 'Password must be at least 6 characters.';
       if (!formData.authorizedConsent) return 'You must check the authorization consent checkbox.';
     }
     return null;
@@ -149,6 +153,152 @@ export default function RegisterPage() {
     }
   };
 
+  // Load Leaflet resources dynamically on client side
+  useEffect(() => {
+    if (step === 2 && typeof window !== 'undefined') {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      if (!(window as any).L) {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.async = true;
+        script.onload = () => {
+          setMapLoaded(true);
+        };
+        document.body.appendChild(script);
+      } else {
+        setMapLoaded(true);
+      }
+    }
+  }, [step]);
+
+  // Initialize and update Leaflet Map
+  useEffect(() => {
+    if (mapLoaded && step === 2 && typeof window !== 'undefined' && (window as any).L) {
+      const L = (window as any).L;
+      const initialLat = parseFloat(formData.lat) || 19.0760;
+      const initialLng = parseFloat(formData.lng) || 72.8777;
+
+      // Make sure the container is ready
+      const container = document.getElementById('leaflet-map');
+      if (!container) return;
+
+      if (!mapRef.current) {
+        const map = L.map('leaflet-map').setView([initialLat, initialLng], 15);
+        mapRef.current = map;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Define a custom marker icon if default icons have path resolution issues in Next.js
+        const defaultIcon = L.icon({
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        });
+
+        const marker = L.marker([initialLat, initialLng], { 
+          draggable: true,
+          icon: defaultIcon
+        }).addTo(map);
+        markerRef.current = marker;
+
+        marker.on('dragend', () => {
+          const position = marker.getLatLng();
+          setFormData(prev => ({
+            ...prev,
+            lat: position.lat.toFixed(6),
+            lng: position.lng.toFixed(6)
+          }));
+        });
+
+        map.on('click', (e: any) => {
+          const { lat, lng } = e.latlng;
+          marker.setLatLng([lat, lng]);
+          setFormData(prev => ({
+            ...prev,
+            lat: lat.toFixed(6),
+            lng: lng.toFixed(6)
+          }));
+        });
+      } else {
+        // Map is already initialized, just update marker and view if different
+        if (markerRef.current) {
+          const markerLatLng = markerRef.current.getLatLng();
+          if (Math.abs(markerLatLng.lat - initialLat) > 0.0001 || Math.abs(markerLatLng.lng - initialLng) > 0.0001) {
+            mapRef.current.setView([initialLat, initialLng]);
+            markerRef.current.setLatLng([initialLat, initialLng]);
+          }
+        }
+      }
+    }
+
+    return () => {
+      if (step !== 2 && mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [mapLoaded, step, formData.lat, formData.lng]);
+
+  // Geocode address using OpenStreetMap Nominatim API
+  const locateAddressOnMap = async () => {
+    const address = `${formData.addressLine1}, ${formData.city}, ${formData.state}, ${formData.pincode}`.trim();
+    if (!address) {
+      alert('Please fill out the address fields first.');
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
+        {
+          headers: {
+            'Accept-Language': 'en'
+          }
+        }
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const newLat = parseFloat(lat);
+        const newLng = parseFloat(lon);
+
+        setFormData(prev => ({
+          ...prev,
+          lat: newLat.toFixed(6),
+          lng: newLng.toFixed(6)
+        }));
+
+        if (mapRef.current) {
+          mapRef.current.setView([newLat, newLng], 16);
+          if (markerRef.current) {
+            markerRef.current.setLatLng([newLat, newLng]);
+          }
+        }
+      } else {
+        alert('Could not find this address coordinates on the map. You can still manually drag the marker to your location.');
+      }
+    } catch (err) {
+      console.error('Error finding address coordinates:', err);
+      alert('Error searching for address. Please try manual coordinates.');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   // Handle Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,10 +341,12 @@ export default function RegisterPage() {
           admin_name: formData.adminName,
           admin_email: formData.adminEmail,
           admin_phone: formData.adminPhone,
-          admin_password: formData.adminPassword,
+          admin_password: '',
           total_units: parseInt(formData.totalFlats) || 0,
           document_url: formData.docUrl,
-          status: 'pending'
+          status: 'pending',
+          lat: parseFloat(formData.lat) || 19.0760,
+          lng: parseFloat(formData.lng) || 72.8777
         });
 
       if (reqError) throw reqError;
@@ -243,11 +395,39 @@ export default function RegisterPage() {
               {step === 4 && 'Review Details'}
             </span>
           </div>
-          <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden mb-3">
             <div 
               className="h-full bg-[#00d4aa] transition-all duration-300"
               style={{ width: `${(step / 4) * 100}%` }}
             />
+          </div>
+          {/* Quick jump to previously completed steps */}
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            {[1, 2, 3, 4].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  if (s < step) {
+                    setStep(s);
+                    setErrorMsg(null);
+                  }
+                }}
+                disabled={s >= step}
+                className={`text-[10px] px-2 py-1 rounded transition-all font-semibold ${
+                  s === step
+                    ? 'bg-[#00d4aa]/25 text-[#00d4aa] border border-[#00d4aa]/30'
+                    : s < step
+                    ? 'bg-zinc-800/60 text-zinc-400 hover:text-white border border-zinc-700/40 hover:bg-zinc-700 cursor-pointer'
+                    : 'bg-zinc-900/20 text-zinc-700 border border-transparent cursor-not-allowed'
+                }`}
+              >
+                {s === 1 && '1. Details'}
+                {s === 2 && '2. Location'}
+                {s === 3 && '3. Admin'}
+                {s === 4 && '4. Review'}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -440,35 +620,62 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Google Maps Fallback Note + Lat/Lng inputs */}
+              {/* Live OpenStreetMap Interactive Map */}
               <div className="border border-zinc-800 bg-zinc-950 p-4 rounded-lg space-y-3">
                 <div className="flex items-start gap-2.5">
                   <MapPin className="h-5 w-5 text-[#00d4aa] shrink-0" />
                   <div>
-                    <h4 className="text-xs font-bold text-zinc-300">Map location picker (Google Maps fallback)</h4>
-                    <p className="text-xs text-zinc-500 mt-0.5">Please specify the latitude and longitude coordinates of your main entrance gate. In production, these are auto-filled via Google Places Autocomplete.</p>
+                    <h4 className="text-xs font-bold text-zinc-300">Interactive Location Picker (OpenStreetMap)</h4>
+                    <p className="text-xs text-zinc-500 mt-0.5">Drag the marker or click on the map to pin your society's main entrance. Or click the button below to search by the address you typed.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Latitude</label>
-                    <input 
-                      type="text" 
-                      name="lat"
-                      value={formData.lat}
-                      onChange={handleChange}
-                      className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white"
-                    />
+
+                <div className="w-full h-64 rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900 relative">
+                  {!mapLoaded && (
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-500 bg-zinc-950/80 z-[1000]">
+                      Loading OpenStreetMap...
+                    </div>
+                  )}
+                  <div id="leaflet-map" className="w-full h-full" style={{ minHeight: '256px', zIndex: 1 }} />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={locateAddressOnMap}
+                    disabled={searchLoading}
+                    className="w-full py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all disabled:opacity-50"
+                  >
+                    {searchLoading ? 'Locating Address...' : '🔍 Locate Address on Map'}
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-zinc-900/60 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase">Entrance Coordinates</span>
+                    <span className="text-[10px] text-zinc-500">(Drag marker to auto-fill)</span>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Longitude</label>
-                    <input 
-                      type="text" 
-                      name="lng"
-                      value={formData.lng}
-                      onChange={handleChange}
-                      className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase">Latitude</label>
+                      <input 
+                        type="text" 
+                        name="lat"
+                        value={formData.lat}
+                        onChange={handleChange}
+                        className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase">Longitude</label>
+                      <input 
+                        type="text" 
+                        name="lng"
+                        value={formData.lng}
+                        onChange={handleChange}
+                        className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -522,18 +729,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5 mt-4">
-                <label className="text-xs font-bold text-zinc-400 uppercase">Set Admin Password *</label>
-                <input 
-                  type="password" 
-                  name="adminPassword"
-                  value={formData.adminPassword}
-                  onChange={handleChange}
-                  placeholder="Min 6 characters password" 
-                  className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm focus:outline-none focus:border-[#00d4aa] text-white"
-                  required
-                />
-              </div>
+
 
 
 
@@ -603,7 +799,12 @@ export default function RegisterPage() {
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
             ) : (
-              <div />
+              <Link 
+                href="/"
+                className="px-5 py-2.5 border border-zinc-800 hover:bg-zinc-800 rounded-lg text-sm text-zinc-400 hover:text-white transition-all flex items-center gap-1.5"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to Home
+              </Link>
             )}
 
             {step < 4 ? (

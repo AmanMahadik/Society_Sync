@@ -193,6 +193,34 @@ export interface SocietySettings {
   admin_contact?: string;
 }
 
+// 14. Visitor Pre-approvals (Guest Passcodes)
+export interface VisitorPreApproval {
+  id: string;
+  society_id: string;
+  user_id: string;
+  name: string;
+  vehicle_number?: string;
+  purpose?: string;
+  passcode: string;
+  status: 'pending' | 'used' | 'expired';
+  expires_at: string;
+  created_at: string;
+}
+
+// 15. Visitors Log (Check-in / Check-out records)
+export interface Visitor {
+  id: string;
+  society_id: string;
+  user_id?: string;
+  name: string;
+  vehicle_number?: string;
+  flat_number: string;
+  purpose?: string;
+  check_in: string;
+  check_out?: string;
+  pre_approval_id?: string;
+}
+
 // Helper: Check if Supabase project keys are configured
 const isRealSupabaseConfigured = () => {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -1138,6 +1166,185 @@ class DataManager {
       .update({ is_pinned: isPinned })
       .eq('id', announcementId);
     if (error) throw error;
+  }
+
+  // ==========================================
+  // 10. GUEST PASSCODES & VISITOR REGISTRY
+  // ==========================================
+  async createPreApproval(
+    userId: string,
+    name: string,
+    vehicleNumber: string,
+    purpose: string,
+    expiryHours: number = 24
+  ): Promise<VisitorPreApproval> {
+    if (!this.societyId) throw new Error('No active society session');
+
+    // Generate random 6-digit numeric passcode
+    const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + expiryHours);
+
+    const { data, error } = await supabase
+      .from('visitor_pre_approvals')
+      .insert({
+        society_id: this.societyId,
+        user_id: userId,
+        name,
+        vehicle_number: vehicleNumber || null,
+        purpose: purpose || null,
+        passcode,
+        status: 'pending',
+        expires_at: expiresAt.toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getPreApprovals(userId: string): Promise<VisitorPreApproval[]> {
+    if (!this.societyId) return [];
+    
+    const { data, error } = await supabase
+      .from('visitor_pre_approvals')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return data;
+  }
+
+  async revokePreApproval(preApprovalId: string): Promise<void> {
+    const { error } = await supabase
+      .from('visitor_pre_approvals')
+      .update({ status: 'expired' })
+      .eq('id', preApprovalId);
+    if (error) throw error;
+  }
+
+  async verifyPasscode(passcode: string): Promise<VisitorPreApproval | null> {
+    if (!this.societyId) return null;
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('visitor_pre_approvals')
+      .select('*')
+      .eq('society_id', this.societyId)
+      .eq('passcode', passcode)
+      .eq('status', 'pending')
+      .gt('expires_at', now)
+      .single();
+
+    if (error || !data) return null;
+    return data;
+  }
+
+  async checkInPreApprovedVisitor(preApprovalId: string): Promise<Visitor> {
+    if (!this.societyId) throw new Error('No active society session');
+
+    // 1. Fetch pre-approval details
+    const { data: preApproval, error: fetchErr } = await supabase
+      .from('visitor_pre_approvals')
+      .select('*')
+      .eq('id', preApprovalId)
+      .single();
+
+    if (fetchErr || !preApproval) throw new Error('Pre-approval record not found.');
+
+    // 2. Fetch resident's flat details
+    const { data: residentProfile } = await supabase
+      .from('profiles')
+      .select('wing, flat_number')
+      .eq('id', preApproval.user_id)
+      .single();
+
+    const flatNumber = residentProfile ? `${residentProfile.wing}-${residentProfile.flat_number}` : 'Gen';
+
+    // 3. Mark pre-approval as used
+    const { error: updateErr } = await supabase
+      .from('visitor_pre_approvals')
+      .update({ status: 'used' })
+      .eq('id', preApprovalId);
+
+    if (updateErr) throw updateErr;
+
+    // 4. Insert entry in visitors log
+    const { data: visitor, error: insertErr } = await supabase
+      .from('visitors')
+      .insert({
+        society_id: this.societyId,
+        user_id: preApproval.user_id,
+        name: preApproval.name,
+        vehicle_number: preApproval.vehicle_number,
+        flat_number: flatNumber,
+        wing: residentProfile?.wing || 'Gen',
+        purpose: preApproval.purpose,
+        pre_approval_id: preApproval.id,
+        check_in: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (insertErr) throw insertErr;
+    return visitor;
+  }
+
+  async checkInManualVisitor(
+    name: string,
+    vehicleNumber: string,
+    flatNumber: string,
+    purpose: string
+  ): Promise<Visitor> {
+    if (!this.societyId) throw new Error('No active society session');
+
+    // Extract wing from flatNumber if formatted as "E-102"
+    let wing = 'Gen';
+    if (flatNumber.includes('-')) {
+      wing = flatNumber.split('-')[0];
+    }
+
+    const { data, error } = await supabase
+      .from('visitors')
+      .insert({
+        society_id: this.societyId,
+        name,
+        vehicle_number: vehicleNumber || null,
+        flat_number: flatNumber,
+        wing,
+        purpose: purpose || null,
+        check_in: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async checkOutVisitor(visitorId: string): Promise<void> {
+    const { error } = await supabase
+      .from('visitors')
+      .update({ check_out: new Date().toISOString() })
+      .eq('id', visitorId);
+
+    if (error) throw error;
+  }
+
+  async getRecentVisitors(): Promise<Visitor[]> {
+    if (!this.societyId) return [];
+
+    const { data, error } = await supabase
+      .from('visitors')
+      .select('*')
+      .eq('society_id', this.societyId)
+      .order('check_in', { ascending: false })
+      .limit(20);
+
+    if (error) return [];
+    return data;
   }
 }
 

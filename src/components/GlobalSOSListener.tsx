@@ -4,6 +4,7 @@ import { useNotifications } from '../lib/notification-context';
 import { supabase } from '../lib/supabase';
 import { dataManager } from '../lib/data-manager';
 import { useRouter } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 
 export const GlobalSOSListener: React.FC = () => {
   const { user, profile } = useAuth();
@@ -14,6 +15,7 @@ export const GlobalSOSListener: React.FC = () => {
   useEffect(() => {
     if (!user || !profile) return;
 
+    // A. SOS Alerts Realtime Channel
     const channel = supabase
       .channel(`sos-alerts-${profile.society_id}`)
       .on(
@@ -94,6 +96,7 @@ export const GlobalSOSListener: React.FC = () => {
       )
       .subscribe();
 
+    // B. Parking Bookings Realtime Channel (Notify guard for any new parking allocation/request)
     const parkingChannel = supabase
       .channel(`parking-alerts-${profile.society_id}`)
       .on(
@@ -102,8 +105,8 @@ export const GlobalSOSListener: React.FC = () => {
         async (payload) => {
           const newRecord = payload.new;
 
-          // Guard gets floating toast for new visitor parking request
-          if (profile.role === 'guard' && newRecord.status === 'pending') {
+          // Guard gets floating toast for any new parking allocation/request
+          if (profile.role === 'guard') {
             let applicantName = newRecord.visitor_name || 'Resident';
             
             const { data: userProfile } = await supabase
@@ -117,8 +120,8 @@ export const GlobalSOSListener: React.FC = () => {
 
             addNotification({
               type: 'parking_alert',
-              message: '🚗 New Parking Booking',
-              subtext: `${displayName}${locationStr} is requesting parking for vehicle ${newRecord.vehicle_number}`,
+              message: newRecord.status === 'approved' ? '🚗 Parking Allocated' : '🚗 New Parking Booking',
+              subtext: `${displayName}${locationStr} booked vehicle ${newRecord.vehicle_number} on Slot ${newRecord.slot_number || 'Visitor'}`,
               autoDismiss: true,
               dismissAfterMs: 8000,
               actionLabel: 'OPEN BOOKINGS',
@@ -131,69 +134,194 @@ export const GlobalSOSListener: React.FC = () => {
       )
       .subscribe();
 
+    // C. Announcements Realtime Channel (Notify all roles when a new announcement is published)
+    const announcementChannel = supabase
+      .channel(`announcement-alerts-${profile.society_id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'announcements', filter: `society_id=eq.${profile.society_id}` },
+        (payload) => {
+          const newRecord = payload.new;
+          addNotification({
+            type: 'status_update',
+            message: newRecord.is_pinned ? '📌 Pinned Announcement' : '📢 New Announcement',
+            subtext: `${newRecord.title}: ${newRecord.body}`,
+            autoDismiss: true,
+            dismissAfterMs: 10000,
+            color: '#06B6D4',
+            actionLabel: 'VIEW',
+            onAction: () => {
+              router.push('/' as any);
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    // D. Chat Messages Realtime Channel (Notify all users when a new chat message is sent)
+    const chatChannel = supabase
+      .channel(`chat-alerts-${profile.society_id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `society_id=eq.${profile.society_id}` },
+        async (payload) => {
+          const newRecord = payload.new;
+
+          // Do not show notification to the sender of the message
+          if (newRecord.user_id === user.id) return;
+
+          // Fetch sender profile info
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('full_name, wing, flat_number')
+            .eq('id', newRecord.user_id)
+            .single();
+
+          // Fetch thread details
+          const { data: thread } = await supabase
+            .from('chat_threads')
+            .select('title')
+            .eq('id', newRecord.thread_id)
+            .single();
+
+          const senderName = senderProfile?.full_name || 'Resident';
+          const senderLoc = senderProfile ? ` (${senderProfile.wing}-${senderProfile.flat_number})` : '';
+          const threadTitle = thread?.title || 'Chat';
+
+          addNotification({
+            type: 'status_update',
+            message: `💬 ${senderName}${senderLoc} in ${threadTitle}`,
+            subtext: newRecord.content,
+            autoDismiss: true,
+            dismissAfterMs: 6000,
+            color: '#3b82f6',
+            actionLabel: 'OPEN CHAT',
+            onAction: () => {
+              router.push('/(tabs)/chat' as any);
+            }
+          });
+
+          // Trigger native OS heads-up banner notification (WhatsApp style)
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: `💬 ${senderName}${senderLoc} in ${threadTitle}`,
+              body: newRecord.content,
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority.HIGH,
+            },
+            trigger: null,
+          }).catch((err) => console.warn('Error triggering native notification:', err));
+        }
+      )
+      .subscribe();
+
+    // E. Visitors Realtime Channel (Notify resident when their guest checks in)
+    const visitorChannel = supabase
+      .channel(`visitor-alerts-${profile.society_id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'visitors', filter: `society_id=eq.${profile.society_id}` },
+        (payload) => {
+          const newRecord = payload.new;
+
+          // Only notify if the check-in is linked to this resident (user_id matches)
+          if (newRecord.user_id === user.id) {
+            const guestName = newRecord.name || 'Your guest';
+            const purposeStr = newRecord.purpose ? ` (${newRecord.purpose})` : '';
+
+            addNotification({
+              type: 'confirmation',
+              message: `🚪 Guest Arrived${purposeStr}`,
+              subtext: `${guestName} has checked in at the main gate.`,
+              autoDismiss: true,
+              dismissAfterMs: 8000,
+              color: '#388E3C',
+              actionLabel: 'OK',
+              onAction: () => {}
+            });
+
+            // Trigger native OS heads-up banner notification
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: `🚪 Guest Arrived${purposeStr}`,
+                body: `${guestName} has checked in at the main gate.`,
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+              },
+              trigger: null,
+            }).catch((err) => console.warn('Error triggering native guest notification:', err));
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(parkingChannel);
+      supabase.removeChannel(announcementChannel);
+      supabase.removeChannel(chatChannel);
+      supabase.removeChannel(visitorChannel);
     };
   }, [user, profile, addNotification, refreshSOSCount]);
 
   // 2. OFFLINE FALLBACK POLLER (Polls every 30s in case Realtime WebSockets disconnect)
   useEffect(() => {
     if (!user || !profile) return;
-    if (profile.role !== 'guard' && profile.role !== 'admin') return;
 
     let lastCheckedId = 0;
     let lastCheckedParkingId = 0;
+    let lastCheckedAnnouncementId = 0;
 
     const performOfflinePollCheck = async () => {
       try {
-        const { data, error } = await supabase
-          .from('complaints')
-          .select('*')
-          .eq('type', 'security')
-          .eq('status', 'pending')
-          .eq('society_id', profile.society_id)
-          .gt('id', lastCheckedId);
+        // A. SOS Alerts Check (Guard/Admin only)
+        if (profile.role === 'guard' || profile.role === 'admin') {
+          const { data, error } = await supabase
+            .from('complaints')
+            .select('*')
+            .eq('type', 'security')
+            .eq('status', 'pending')
+            .eq('society_id', profile.society_id)
+            .gt('id', lastCheckedId);
 
-        if (!error && data && data.length > 0) {
-          const maxId = Math.max(...data.map(d => Number(d.id)));
-          
-          // Only notify if we already established a baseline to avoid alerts on startup
-          if (lastCheckedId > 0) {
-            data.forEach(newRecord => {
-              if (profile.role === 'guard') {
-                addNotification({
-                  type: 'sos_full',
-                  message: '🚨 SOS ALERT!',
-                  subtext: `Wing ${newRecord.wing} - Flat ${newRecord.flat_number} needs help!`,
-                  complaintId: newRecord.id,
-                  wing: newRecord.wing,
-                  flat_number: newRecord.flat_number,
-                  onAction: async () => {
-                    await dataManager.acknowledgeComplaint(String(newRecord.id), user.id);
-                    await refreshSOSCount();
-                  },
-                  actionLabel: 'ACKNOWLEDGE'
-                });
-              } else if (profile.role === 'admin') {
-                addNotification({
-                  type: 'sos_info',
-                  message: '🔔 SOS Generated',
-                  subtext: `Flat ${newRecord.wing}-${newRecord.flat_number} · ${newRecord.description || 'Emergency alert'}`,
-                  complaintId: newRecord.id,
-                  autoDismiss: true,
-                  dismissAfterMs: 8000,
-                  actionLabel: 'View Details',
-                  wing: newRecord.wing,
-                  flat_number: newRecord.flat_number
-                });
-              }
-            });
-          }
-          lastCheckedId = maxId;
-        } else if (!error) {
-          // Establish baseline on first query if no pending records match
-          if (lastCheckedId === 0) {
+          if (!error && data && data.length > 0) {
+            const maxId = Math.max(...data.map(d => Number(d.id)));
+            
+            // Only notify if we already established a baseline to avoid alerts on startup
+            if (lastCheckedId > 0) {
+              data.forEach(newRecord => {
+                if (profile.role === 'guard') {
+                  addNotification({
+                    type: 'sos_full',
+                    message: '🚨 SOS ALERT!',
+                    subtext: `Wing ${newRecord.wing} - Flat ${newRecord.flat_number} needs help!`,
+                    complaintId: newRecord.id,
+                    wing: newRecord.wing,
+                    flat_number: newRecord.flat_number,
+                    onAction: async () => {
+                      await dataManager.acknowledgeComplaint(String(newRecord.id), user.id);
+                      await refreshSOSCount();
+                    },
+                    actionLabel: 'ACKNOWLEDGE'
+                  });
+                } else if (profile.role === 'admin') {
+                  addNotification({
+                    type: 'sos_info',
+                    message: '🔔 SOS Generated',
+                    subtext: `Flat ${newRecord.wing}-${newRecord.flat_number} · ${newRecord.description || 'Emergency alert'}`,
+                    complaintId: newRecord.id,
+                    autoDismiss: true,
+                    dismissAfterMs: 8000,
+                    actionLabel: 'View Details',
+                    wing: newRecord.wing,
+                    flat_number: newRecord.flat_number
+                  });
+                }
+              });
+            }
+            lastCheckedId = maxId;
+          } else if (!error && lastCheckedId === 0) {
+            // Establish baseline
             const { data: allPending } = await supabase
               .from('complaints')
               .select('id')
@@ -208,12 +336,11 @@ export const GlobalSOSListener: React.FC = () => {
           }
         }
 
-        // Check pending parking requests (for Guard only)
+        // B. Parking Requests Check (Guard only)
         if (profile.role === 'guard') {
           const { data: parkingData, error: parkingError } = await supabase
             .from('parking_requests')
             .select('*')
-            .eq('status', 'pending')
             .eq('society_id', profile.society_id)
             .gt('id', lastCheckedParkingId);
 
@@ -233,8 +360,8 @@ export const GlobalSOSListener: React.FC = () => {
 
                 addNotification({
                   type: 'parking_alert',
-                  message: '🚗 New Parking Booking',
-                  subtext: `${displayName}${locationStr} is requesting parking for vehicle ${newRecord.vehicle_number}`,
+                  message: newRecord.status === 'approved' ? '🚗 Parking Allocated' : '🚗 New Parking Booking',
+                  subtext: `${displayName}${locationStr} booked vehicle ${newRecord.vehicle_number} on Slot ${newRecord.slot_number || 'Visitor'}`,
                   autoDismiss: true,
                   dismissAfterMs: 8000,
                   actionLabel: 'OPEN BOOKINGS',
@@ -249,13 +376,51 @@ export const GlobalSOSListener: React.FC = () => {
             const { data: allPendingParking } = await supabase
               .from('parking_requests')
               .select('id')
-              .eq('status', 'pending')
               .eq('society_id', profile.society_id);
             if (allPendingParking && allPendingParking.length > 0) {
               lastCheckedParkingId = Math.max(...allPendingParking.map(d => Number(d.id)));
             } else {
               lastCheckedParkingId = 1;
             }
+          }
+        }
+
+        // C. Announcements Check (All Roles)
+        const { data: announcementData, error: announcementError } = await supabase
+          .from('announcements')
+          .select('*')
+          .eq('society_id', profile.society_id)
+          .gt('id', lastCheckedAnnouncementId);
+
+        if (!announcementError && announcementData && announcementData.length > 0) {
+          const maxId = Math.max(...announcementData.map(d => Number(d.id)));
+          
+          if (lastCheckedAnnouncementId > 0) {
+            announcementData.forEach((newRecord) => {
+              addNotification({
+                type: 'status_update',
+                message: newRecord.is_pinned ? '📌 Pinned Announcement' : '📢 New Announcement',
+                subtext: `${newRecord.title}: ${newRecord.body}`,
+                autoDismiss: true,
+                dismissAfterMs: 10000,
+                color: '#06B6D4',
+                actionLabel: 'VIEW',
+                onAction: () => {
+                  router.push('/' as any);
+                }
+              });
+            });
+          }
+          lastCheckedAnnouncementId = maxId;
+        } else if (!announcementError && lastCheckedAnnouncementId === 0) {
+          const { data: allAnnouncements } = await supabase
+            .from('announcements')
+            .select('id')
+            .eq('society_id', profile.society_id);
+          if (allAnnouncements && allAnnouncements.length > 0) {
+            lastCheckedAnnouncementId = Math.max(...allAnnouncements.map(d => Number(d.id)));
+          } else {
+            lastCheckedAnnouncementId = 1;
           }
         }
       } catch (e) {
