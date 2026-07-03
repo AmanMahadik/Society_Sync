@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint, Announcement, VisitorPreApproval, Visitor } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../lib/notification-context';
+// @ts-ignore
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface HomeScreenProps {
@@ -682,7 +683,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                           icon="pin-off" 
                           size={16} 
                           iconColor={theme.colors.error}
-                          onPress={() => handleTogglePin(notice.id, false)} 
+                          onPress={() => handleTogglePin(notice.id.toString(), false)} 
                           style={{ margin: 0 }}
                         />
                       )}
@@ -789,7 +790,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                             iconColor={theme.colors.error}
                             size={14}
                             style={{ margin: 0 }}
-                            onPress={() => handleRevokePreApproval(pass.id)}
+                            onPress={() => handleRevokePreApproval(pass.id.toString())}
                           />
                         </View>
                         <Text variant="titleMedium" style={{ fontWeight: 'bold', marginTop: 4, fontSize: 13, color: '#FFFFFF' }} numberOfLines={1}>
@@ -912,7 +913,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
             </Card>
 
             {/* Active Visitors Log */}
-            <Text variant="titleMedium" style={[styles.sectionSubtitle, { marginBottom: 8, fontWeight: 'bold', fontSize: 14 }]}>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { marginBottom: 8, fontWeight: 'bold', fontSize: 14 }]}>
               🚗 Active Visitor Logs ({recentVisitors.filter(v => !v.check_out).length})
             </Text>
 
@@ -950,7 +951,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                           mode="contained"
                           buttonColor="#FF3B30"
                           textColor="#FFF"
-                          onPress={() => handleCheckOutVisitor(visitor.id)}
+                          onPress={() => handleCheckOutVisitor(visitor.id.toString())}
                           labelStyle={{ fontSize: 9, fontWeight: 'bold' }}
                           style={{ borderRadius: 6 }}
                           compact
@@ -1123,14 +1124,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                           icon={notice.is_pinned ? "pin" : "pin-outline"} 
                           size={18} 
                           iconColor={notice.is_pinned ? theme.colors.primary : theme.colors.outline}
-                          onPress={() => handleTogglePin(notice.id, !notice.is_pinned)}
+                          onPress={() => handleTogglePin(notice.id.toString(), !notice.is_pinned)}
                           style={{ margin: 0 }}
                         />
                         <IconButton 
                           icon="delete" 
                           size={18} 
                           iconColor={theme.colors.error}
-                          onPress={() => handleDeleteNotice(notice.id)}
+                          onPress={() => handleDeleteNotice(notice.id.toString())}
                           style={{ margin: 0 }}
                         />
                       </>

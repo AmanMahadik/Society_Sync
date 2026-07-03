@@ -13,9 +13,10 @@ import Animated, {
   interpolate,
   interpolateColor,
   Extrapolation,
+  SharedValue,
 } from 'react-native-reanimated';
 
-const AnimatedIcon = Animated.createAnimatedComponent(MaterialCommunityIcons);
+const AnimatedIcon = Animated.createAnimatedComponent(MaterialCommunityIcons) as any;
 
 // Brand colors mapping for active accent
 const getTabActiveColor = (routeName: string) => {
@@ -62,7 +63,7 @@ const TabButton = memo(({
 }: {
   isFocused: boolean;
   index: number;
-  activeIndex: Animated.SharedValue<number>;
+  activeIndex: SharedValue<number>;
   activeColor: string;
   inactiveColor: string;
   label: string;
@@ -167,7 +168,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       }
     }
     
-    return options.href !== null;
+    return (options as any).href !== null;
   });
 
   const activeRoute = state.routes[state.index];

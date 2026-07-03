@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/auth-context';
 import { dataManager, ChatMessage, ChatThread, Poll, PollOption } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
+// @ts-ignore
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export const ChatScreen: React.FC = () => {
