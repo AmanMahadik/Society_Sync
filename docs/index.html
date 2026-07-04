@@ -960,7 +960,16 @@
             event.preventDefault();
             const name = document.getElementById('name').value;
             const flat = document.getElementById('flat').value;
-            alert(`Thank you, ${name} (Flat ${flat})! Your support inquiry has been submitted successfully to the SocietySync Council Desk. We will email you shortly.`);
+            const email = document.getElementById('email').value;
+            const message = document.getElementById('message').value;
+
+            // Generate mailto link to societysync5@gmail.com
+            const subject = encodeURIComponent(`SocietySync Query from ${name} (Flat ${flat})`);
+            const body = encodeURIComponent(`Name: ${name}\nFlat: ${flat}\nEmail: ${email}\n\nMessage:\n${message}`);
+            
+            alert(`Inquiry prepared! We will now open your email client to send this support query directly to societysync5@gmail.com.`);
+            
+            window.location.href = `mailto:societysync5@gmail.com?subject=${subject}&body=${body}`;
             document.getElementById('support-form').reset();
         }
     </script>
