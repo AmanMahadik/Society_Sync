@@ -181,11 +181,18 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-8 border-t border-zinc-800 pt-6 text-center text-xs text-zinc-500">
-          Not yet registered?{' '}
-          <Link href="/register" className="text-[#00d4aa] hover:underline font-medium">
-            Register your society now
-          </Link>
+        <div className="mt-8 border-t border-zinc-800 pt-6 text-center text-xs text-zinc-500 flex flex-col gap-3.5">
+          <div>
+            Not yet registered?{' '}
+            <Link href="/register" className="text-[#00d4aa] hover:underline font-medium">
+              Register your society now
+            </Link>
+          </div>
+          <div>
+            <Link href="/" className="text-zinc-500 hover:text-white transition-colors hover:underline">
+              ← Return to Home Page
+            </Link>
+          </div>
         </div>
 
         {/* Small background glow */}

@@ -172,8 +172,9 @@ export default function SocietiesListPage() {
         {/* SOCIETIES LIST TABLE */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
           {loading ? (
-            <div className="p-12 text-center text-zinc-500 text-sm">
-              Retrieving approved societies...
+            <div className="p-20 flex flex-col items-center justify-center gap-4">
+              <div className="h-10 w-10 rounded-full border-2 border-zinc-800 border-t-[#00d4aa] animate-spin" />
+              <span className="text-zinc-500 text-xs animate-pulse font-medium">Retrieving approved societies...</span>
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center text-zinc-500 text-sm">
@@ -219,8 +220,14 @@ export default function SocietiesListPage() {
                             {soc.status === 'active' ? 'Suspend' : 'Activate'}
                           </button>
                           <Link
+                            href={`/master/societies/${soc.id}/review`}
+                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-[#00d4aa]/40 text-[#00d4aa] text-xs font-bold flex items-center justify-center transition-all"
+                          >
+                            View Info
+                          </Link>
+                          <Link
                             href={`/master/credentials/${soc.id}`}
-                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold flex items-center justify-center"
+                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold flex items-center justify-center transition-all"
                           >
                             Credentials
                           </Link>
