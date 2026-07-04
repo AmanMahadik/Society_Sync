@@ -48,7 +48,9 @@ Welcome to SocietySync!`
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Origin': 'https://society-sync-info.vercel.app',
+          'Referer': 'https://society-sync-info.vercel.app/'
         },
         body: JSON.stringify(payload)
       });
@@ -81,7 +83,9 @@ If you believe this was an error, please verify your registration details and su
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Origin': 'https://society-sync-info.vercel.app',
+          'Referer': 'https://society-sync-info.vercel.app/'
         },
         body: JSON.stringify(payload)
       });
