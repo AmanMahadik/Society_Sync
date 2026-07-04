@@ -420,6 +420,36 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     await fetchRecentVisitors();
   };
 
+  const handleClearComplaints = async () => {
+    Alert.alert(
+      'Clear All Logs',
+      'Are you sure you want to permanently clear all utility & SOS logs for this society?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clear All', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dataManager.clearAllComplaints();
+              loadAllData();
+              addNotification({
+                type: 'confirmation',
+                message: '🧹 Logs Cleared',
+                subtext: 'All utility and SOS logs have been deleted.',
+                autoDismiss: true,
+                dismissAfterMs: 3000
+              });
+            } catch (e) {
+              console.error('Error clearing complaints:', e);
+              Alert.alert('Error', 'Failed to clear complaints log.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Loop pulse animation
   useEffect(() => {
     const pulseLoop = Animated.loop(
@@ -1060,7 +1090,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
         )}
 
         {/* 5. ACTIVE COMPLAINTS SECTION */}
-        <Text variant="titleMedium" style={styles.sectionTitle}>Active Utility & SOS Log ({complaints.length})</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text variant="titleMedium" style={[styles.sectionTitle, { marginBottom: 0 }]}>
+            Active Utility & SOS Log ({complaints.length})
+          </Text>
+          {profile?.role === 'admin' && complaints.length > 0 && (
+            <Button
+              mode="contained"
+              icon="delete-sweep"
+              buttonColor={theme.colors.error}
+              textColor="#FFFFFF"
+              style={{ borderRadius: 8 }}
+              labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+              onPress={handleClearComplaints}
+              compact
+            >
+              Clear Logs
+            </Button>
+          )}
+        </View>
         
         {complaints.length === 0 ? (
           <Card style={styles.emptyCard}>

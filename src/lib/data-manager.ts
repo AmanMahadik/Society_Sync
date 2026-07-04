@@ -801,6 +801,14 @@ class DataManager {
   // ==========================================
   async getComplaints(role?: string, userId?: string): Promise<Complaint[]> {
     if (!this.societyId) return [];
+
+    // Automatically delete logs older than 24 hours
+    try {
+      await this.deleteOldComplaints();
+    } catch (e) {
+      console.error('Error auto-deleting old complaints:', e);
+    }
+
     let query = supabase
       .from('complaints')
       .select('*, user:profiles!complaints_user_id_fkey(full_name)')
@@ -931,6 +939,26 @@ class DataManager {
         }
       }
     }
+  }
+
+  async deleteOldComplaints(): Promise<void> {
+    if (!this.societyId) return;
+    const past24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await supabase
+      .from('complaints')
+      .delete()
+      .eq('society_id', this.societyId)
+      .lt('created_at', past24Hours);
+    if (error) console.error('Error clearing old complaints:', error);
+  }
+
+  async clearAllComplaints(): Promise<void> {
+    if (!this.societyId) return;
+    const { error } = await supabase
+      .from('complaints')
+      .delete()
+      .eq('society_id', this.societyId);
+    if (error) throw error;
   }
 
   // ==========================================
