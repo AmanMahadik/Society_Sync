@@ -73,6 +73,20 @@ export default function ReviewSocietyPage() {
         .single();
       
       if (error) throw error;
+
+      // Fetch the registration document from the original request
+      if (data && data.admin_email) {
+        const { data: reqData } = await supabase
+          .from('society_requests')
+          .select('document_url')
+          .eq('admin_email', data.admin_email)
+          .limit(1);
+        
+        if (reqData && reqData.length > 0) {
+          data.document_url = reqData[0].document_url;
+        }
+      }
+
       setSociety(data);
     } catch (e) {
       console.error('Error loading society details:', e);
