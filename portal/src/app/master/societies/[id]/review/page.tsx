@@ -245,6 +245,9 @@ export default function ReviewSocietyPage() {
   }
 
   const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${society.lat},${society.lng}`;
+  const delta = 0.002;
+  const bbox = `${society.lng - delta},${society.lat - delta},${society.lng + delta},${society.lat + delta}`;
+  const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${society.lat},${society.lng}`;
 
   return (
     <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col selection:bg-[#00d4aa] selection:text-[#09090b]">
@@ -318,13 +321,27 @@ export default function ReviewSocietyPage() {
               {society.address_line1} {society.address_line2 ? `, ${society.address_line2}` : ''}<br />
               {society.city}, {society.state} — {society.pincode}
             </p>
-            {/* Draggable location static map preview simulation */}
-            <div className="h-60 bg-zinc-950 rounded-lg border border-zinc-800 flex items-center justify-center overflow-hidden relative">
-              <div className="absolute inset-0 bg-[#00d4aa]/5" />
-              <div className="text-center p-6 z-10 space-y-3">
-                <Map className="h-8 w-8 text-[#00d4aa] mx-auto" />
-                <p className="text-xs text-zinc-400 max-w-sm">Entrance pinned at latitude: <span className="text-white font-mono">{society.lat}</span>, longitude: <span className="text-white font-mono">{society.lng}</span></p>
-              </div>
+            {/* OpenStreetMap interactive Leaflet preview */}
+            <div className="h-60 bg-zinc-950 rounded-lg border border-zinc-800 overflow-hidden relative">
+              {society.lat && society.lng ? (
+                <iframe
+                  title="Society OpenStreetMap Location"
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  scrolling="no"
+                  src={osmUrl}
+                  style={{ 
+                    border: 0, 
+                    filter: 'invert(90%) hue-rotate(185deg) brightness(85%) contrast(110%)' 
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-2">
+                  <Map className="h-8 w-8 text-zinc-650" />
+                  <p className="text-xs text-zinc-550">No coordinates available.</p>
+                </div>
+              )}
             </div>
           </div>
 
