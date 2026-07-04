@@ -92,6 +92,34 @@ export default function UsersListPage() {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    const confirmDelete = window.confirm(`WARNING: Are you sure you want to permanently delete the user "${userEmail}"? This action CANNOT be undone and will delete all their profile info, flats, and auth data.`);
+    if (!confirmDelete) return;
+
+    const finalConfirm = window.prompt(`To confirm deletion, type the user's email address "${userEmail}":`);
+    if (finalConfirm !== userEmail) {
+      alert("Email mismatch. Deletion cancelled.");
+      return;
+    }
+
+    setUpdatingId(userId);
+    try {
+      const { error } = await supabase.rpc('delete_user_permanently', {
+        target_user_id: userId
+      });
+
+      if (error) throw error;
+
+      alert(`User ${userEmail} and all their associated data have been permanently deleted.`);
+      fetchUsers();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to delete user.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const filtered = users.filter(u => 
     (u.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
     u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -162,6 +190,7 @@ export default function UsersListPage() {
                     <th className="p-4">Registered On</th>
                     <th className="p-4 text-center">User Role</th>
                     <th className="p-4 text-center">Update Role</th>
+                    <th className="p-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
@@ -206,6 +235,15 @@ export default function UsersListPage() {
                           <option value="admin">Admin</option>
                           <option value="master_admin">Master Admin</option>
                         </select>
+                      </td>
+                      <td className="p-4 text-center">
+                        <button
+                          disabled={updatingId === user.id || user.role === 'master_admin'}
+                          onClick={() => handleDeleteUser(user.id, user.email)}
+                          className="px-3 py-1.5 bg-red-950/20 text-red-500 border border-red-500/30 hover:bg-red-950/40 rounded text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}

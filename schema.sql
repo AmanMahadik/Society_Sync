@@ -963,3 +963,26 @@ begin
   set role = 'master_admin', status = 'approved', approved_at = now();
 end;
 $$;
+
+-- C. Delete User Permanently
+create or replace function public.delete_user_permanently(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  -- Only allow master_admins to delete users!
+  if (select role from public.profiles where id = auth.uid()) <> 'master_admin' then
+    raise exception 'Unauthorized: Only master administrators can delete users.';
+  end if;
+
+  -- Ensure we don't delete ourselves (the current master admin)
+  if target_user_id = auth.uid() then
+    raise exception 'Conflict: You cannot delete your own master admin account.';
+  end if;
+
+  -- Delete from auth.users (which cascades to public.profiles and all other tables)
+  delete from auth.users where id = target_user_id;
+end;
+$$;
+

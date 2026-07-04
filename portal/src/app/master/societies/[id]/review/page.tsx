@@ -24,7 +24,7 @@ interface Society {
   total_wings: number;
   total_flats: number;
   society_type: string;
-  registration_doc_url?: string;
+  document_url?: string;
   status: 'pending_verification' | 'active' | 'rejected' | 'suspended';
   created_at: string;
   rejection_reason?: string;
@@ -388,11 +388,11 @@ export default function ReviewSocietyPage() {
           {/* UPLOADED FILE VIEW */}
           <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
             <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-2">Uploaded Document</h3>
-            {society.registration_doc_url ? (
+            {society.document_url ? (
               <div className="flex flex-col gap-3">
-                <p className="text-xs text-zinc-400">Government housing registration certificate certificate uploaded by admin.</p>
+                <p className="text-xs text-zinc-400">Government housing registration certificate uploaded by admin.</p>
                 <a 
-                  href={society.registration_doc_url} 
+                  href={society.document_url} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg hover:border-zinc-700 flex items-center justify-between text-sm hover:bg-zinc-900/40 transition-all"
