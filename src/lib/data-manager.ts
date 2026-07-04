@@ -599,6 +599,14 @@ class DataManager {
       .eq('id', eventId);
   }
 
+  async deleteEvent(eventId: string): Promise<void> {
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', eventId);
+    if (error) throw error;
+  }
+
   // ==========================================
   // 4. MAINTENANCE DUES
   // ==========================================

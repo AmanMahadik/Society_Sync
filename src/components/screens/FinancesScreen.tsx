@@ -327,6 +327,32 @@ export const FinancesScreen: React.FC = () => {
     );
   };
 
+  const handleDeleteEventClick = () => {
+    if (!selectedEvent) return;
+    Alert.alert(
+      'Confirm Delete Event',
+      `Are you sure you want to permanently delete the event "${selectedEvent.name}"? This will delete all its transactions, receipts, and ledger details permanently. This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dataManager.deleteEvent(selectedEvent.id);
+              showToast('Event deleted successfully.');
+              setSelectedEvent(null);
+              loadAllData();
+            } catch (err) {
+              console.error(err);
+              showToast('Failed to delete event.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleUpdateTransaction = async () => {
     if (!selectedEvent || !editingTxId || !txTitle || !txAmount || !user) {
       showToast('Please fill in title and amount.');
@@ -749,6 +775,15 @@ export const FinancesScreen: React.FC = () => {
                 <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>{selectedEvent.name}</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Event Details & Ledger Sheet</Text>
               </View>
+              {profile?.role === 'admin' && (
+                <IconButton 
+                  icon="trash-can-outline" 
+                  iconColor="#FF3B30" 
+                  size={24} 
+                  onPress={handleDeleteEventClick} 
+                  style={{ margin: 0 }}
+                />
+              )}
             </View>
 
             {/* Financial Summary Card */}
