@@ -141,6 +141,7 @@ export default function ReviewRequestPage() {
             adminEmail: request.admin_email,
             adminName: request.admin_name,
             societyName: request.name,
+            status: 'approved',
             societyCode: code
           })
         });
@@ -187,6 +188,26 @@ export default function ReviewRequestPage() {
         .eq('id', request.id);
 
       if (error) throw error;
+
+      // Trigger rejection email notification via API
+      try {
+        console.log('Sending rejection notification email to', request.admin_email);
+        await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: request.admin_email,
+            adminName: request.admin_name,
+            societyName: request.name,
+            status: 'rejected',
+            rejectionReason: finalReason
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to trigger rejection email API:', emailErr);
+      }
 
       alert('Society registration request has been rejected.');
       setShowRejectModal(false);

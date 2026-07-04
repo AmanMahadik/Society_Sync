@@ -46,18 +46,31 @@ export default function RegisterSuccess() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
+        {/* APP INSTALLATION DETAILS */}
+        <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 text-center mb-6">
+          <p className="text-xs text-zinc-400 font-semibold mb-3 uppercase tracking-wider">Install Mobile App Preview</p>
+          <div className="flex justify-center mb-3">
+            <div className="bg-white p-2 rounded-lg inline-block">
+              <img src="/qr_code.png" alt="App Download QR Code" className="h-32 w-32 object-contain" />
+            </div>
+          </div>
+          <p className="text-[11px] text-zinc-500 max-w-xs mx-auto mb-3">
+            Scan the QR code with your mobile camera to load in Expo Go or download standalone app.
+          </p>
           <a
-            href="https://github.com/AmanMahadik/Society_Sync"
+            href="https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/e5ad992f-d0e5-499f-b19c-20f4430835b5"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-3 bg-[#00d4aa] text-zinc-950 font-bold rounded-lg hover:bg-[#00b390] transition-all flex items-center justify-center gap-2 glow-hover"
+            className="inline-flex py-2.5 px-5 bg-[#00d4aa] text-zinc-950 font-bold text-xs rounded-lg hover:bg-[#00b390] transition-all items-center gap-1.5 glow-hover"
           >
-            <Smartphone className="h-5 w-5" /> Download Resident App
+            <Smartphone className="h-4 w-4" /> Download Standalone Build
           </a>
+        </div>
+
+        <div className="flex flex-col gap-3">
           <Link
             href="/"
-            className="w-full py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all rounded-lg font-medium flex items-center justify-center gap-1.5"
+            className="w-full py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all rounded-lg font-medium flex items-center justify-center gap-1.5 text-sm"
           >
             <ArrowLeft className="h-4 w-4" /> Return to Homepage
           </Link>

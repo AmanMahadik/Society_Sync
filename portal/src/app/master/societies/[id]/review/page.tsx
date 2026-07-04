@@ -175,6 +175,26 @@ export default function ReviewSocietyPage() {
         });
       }
 
+      // Trigger approval email notification via API
+      try {
+        console.log('Sending approval notification email to', society.admin_email);
+        await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: society.admin_email,
+            adminName: society.admin_name,
+            societyName: society.name,
+            status: 'approved',
+            societyCode: code
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to trigger approval email API:', emailErr);
+      }
+
       alert(`Society approved! Code is: ${code}`);
       fetchSociety();
     } catch (e) {
@@ -212,6 +232,26 @@ export default function ReviewSocietyPage() {
           old_value: 'pending_verification',
           new_value: 'rejected'
         });
+      }
+
+      // Trigger rejection email notification via API
+      try {
+        console.log('Sending rejection notification email to', society.admin_email);
+        await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: society.admin_email,
+            adminName: society.admin_name,
+            societyName: society.name,
+            status: 'rejected',
+            rejectionReason: finalReason
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to trigger rejection email API:', emailErr);
       }
 
       alert('Society registration rejected.');
