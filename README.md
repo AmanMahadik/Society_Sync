@@ -18,6 +18,10 @@
 
 ### 🏢 A premium, secure digital society manager that helps Admins, Owners, Tenants, and Guards **run residential life — from one app, in real time.**
 
+#### 🌐 Live Deployments
+* 💻 **Admin Web Portal:** [https://society-sync-portal.vercel.app](https://society-sync-portal.vercel.app/)
+* 📄 **Landing Info Website:** [https://society-sync-info.vercel.app](https://society-sync-info.vercel.app/)
+
 </div>
 
 <br/>
@@ -204,6 +208,55 @@ sequenceDiagram
     DB->>RT: Broadcast resolution
     RT->>R: 🟢 "Your SOS was resolved"
     RT->>A: ✅ Feedback notification confirming resolution
+```
+
+### 🔄 Project Workflow Architecture
+
+```mermaid
+flowchart TD
+    subgraph Onboarding["1. Onboarding & Registration Workflow"]
+        A[Society Representative] -->|Registers Society & Uploads Docs| B(Societies DB: pending_verification)
+        B -->|Notifies| C[Master Admin]
+        C -->|Audits Docs & Pinned Location| D{Approve Request?}
+        D -->|No| E(Rejected Status)
+        D -->|Yes| F(Active Status & Generate Society Code)
+    end
+
+    subgraph ResidentJoin["2. Resident Verification Workflow"]
+        F -->|Shares Code| G[Residents]
+        G -->|Signs Up with Society Code| H(Profiles DB: pending)
+        H -->|Notifies| I[Society Admin]
+        I -->|Verifies Flat / Wing| J{Approve Resident?}
+        J -->|No| K(Rejected Status)
+        J -->|Yes| L(Approved Status & Grant App Access)
+    end
+
+    subgraph GateSecurity["3. Guard Gate Control & SOS Workflow"]
+        L -->|Trigger emergency crisis| M[Resident SOS Trigger]
+        M -->|Realtime WebSockets broadcast| N[Guard Sirens & Admin Alert]
+        N -->|Security desk intervention| O[Guard Resolves Alert]
+
+        L -->|Generate Pre-approved Passcode| P[Guest Entry Code]
+        P -->|Share via WhatsApp / SMS| Q[Visitor at Gate]
+        Q -->|Presents Code| R[Guard Gate Console]
+        R -->|Logs check-in/out| S(Visitor Logs DB)
+    end
+
+    subgraph Financials["4. Finance Ledger & Dues Workflow"]
+        I -->|Generates monthly maintenance bill| T[Invoices]
+        L -->|UPI payment upload receipt screenshot| U[Submit Payment]
+        U -->|Bucket storage audit| V[Admin Receipt Review]
+        V -->|Clears dues ledger| W(Transactions Ledger: Paid)
+    end
+
+    style Onboarding fill:#09090b,stroke:#27272a,color:#fafafa
+    style ResidentJoin fill:#09090b,stroke:#27272a,color:#fafafa
+    style GateSecurity fill:#09090b,stroke:#27272a,color:#fafafa
+    style Financials fill:#09090b,stroke:#27272a,color:#fafafa
+    style F fill:#00d4aa,stroke:#00b390,color:#09090b
+    style L fill:#00d4aa,stroke:#00b390,color:#09090b
+    style N fill:#ff3b30,stroke:#d32f2f,color:#fff
+    style W fill:#ffd700,stroke:#f5b041,color:#09090b
 ```
 
 | Layer | Technology |
