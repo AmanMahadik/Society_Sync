@@ -68,12 +68,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     if (!data) return;
     let code = data.trim();
-    const match = code.match(/SS-[A-Z]{2}-\d{4}/i);
+    const match = code.match(/SS-[A-Z]{2}-\d{2}-[A-Z]{2}-\d{4}/i) || code.match(/SS-[A-Z]{2}-\d{4}/i);
     if (match) {
       code = match[0].toUpperCase();
     } else {
       const clean = code.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-      if (clean.length >= 8) {
+      if (clean.length >= 14) {
+        code = `SS-${clean.substring(2, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}-${clean.substring(8, 12)}`;
+      } else if (clean.length >= 8) {
         code = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 8);
       }
     }
@@ -228,11 +230,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
               onChangeText={(text) => {
                 const clean = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
                 let formatted = clean;
-                if (clean.length > 2) {
-                  formatted = clean.substring(0, 2) + '-' + clean.substring(2);
-                }
-                if (clean.length > 4) {
+                if (clean.length > 8) {
+                  formatted = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 6) + '-' + clean.substring(6, 8) + '-' + clean.substring(8, 12);
+                } else if (clean.length > 4) {
                   formatted = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 8);
+                } else if (clean.length > 2) {
+                  formatted = clean.substring(0, 2) + '-' + clean.substring(2);
                 }
                 setSocietyCode(formatted);
                 setError(null);
