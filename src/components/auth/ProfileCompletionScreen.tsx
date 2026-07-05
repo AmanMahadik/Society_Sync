@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, HelperText, useTheme, SegmentedButtons } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { UserRole } from '../../lib/data-manager';
 import { supabase } from '../../lib/supabase';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 export const ProfileCompletionScreen: React.FC = () => {
   const { user, refreshProfile, signOut } = useAuth();
@@ -22,6 +23,38 @@ export const ProfileCompletionScreen: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // QR Scanning States & Permissions
+  const [scanningQR, setScanningQR] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const startQRScanner = async () => {
+    if (!permission || !permission.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert('Permission Denied', 'Camera permission is required to scan QR codes.');
+        return;
+      }
+    }
+    setScanningQR(true);
+  };
+
+  const handleBarcodeScanned = ({ data }: { data: string }) => {
+    if (!data) return;
+    let code = data.trim();
+    const match = code.match(/SS-[A-Z]{2}-\d{4}/i);
+    if (match) {
+      code = match[0].toUpperCase();
+    } else {
+      const clean = code.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      if (clean.length >= 8) {
+        code = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 8);
+      }
+    }
+    setSocietyCode(code);
+    setScanningQR(false);
+    setError(null);
+  };
 
   const handleValidateCode = async () => {
     if (!societyCode.trim()) {
@@ -106,6 +139,30 @@ export const ProfileCompletionScreen: React.FC = () => {
     }
   };
 
+  if (scanningQR) {
+    return (
+      <View style={StyleSheet.absoluteFillObject}>
+        <CameraView
+          style={StyleSheet.absoluteFillObject}
+          barcodeScannerSettings={{
+            barcodeTypes: ['qr'],
+          }}
+          onBarcodeScanned={handleBarcodeScanned}
+        />
+        <View style={{ position: 'absolute', bottom: 40, left: 20, right: 20 }}>
+          <Button 
+            mode="contained" 
+            buttonColor="#FF3B30" 
+            textColor="#FFFFFF"
+            onPress={() => setScanningQR(false)}
+          >
+            Cancel Scan
+          </Button>
+        </View>
+      </View>
+    );
+  }
+
   if (!societyValidated) {
     return (
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -144,6 +201,7 @@ export const ProfileCompletionScreen: React.FC = () => {
               style={styles.input}
               autoCapitalize="characters"
               left={<TextInput.Icon icon="key" />}
+              right={<TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} />}
             />
 
             <Button
