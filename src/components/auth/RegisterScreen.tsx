@@ -241,7 +241,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
               style={styles.input}
               autoCapitalize="characters"
               left={<TextInput.Icon icon="key" />}
-              right={isCameraAvailable ? <TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} /> : null}
+              right={<TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} />}
             />
 
             {showConfirmationCard && societyDetails && (
