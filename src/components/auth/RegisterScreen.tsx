@@ -4,7 +4,20 @@ import { Text, TextInput, Button, Card, HelperText, useTheme, SegmentedButtons }
 import { useAuth } from '../../lib/auth-context';
 import { UserRole } from '../../lib/data-manager';
 import { supabase } from '../../lib/supabase';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+
+// Safely require expo-camera to prevent runtime crashes on older binary builds without the native module compiled.
+let CameraView: any = null;
+let useCameraPermissionsHook: any = () => [null, async () => ({ granted: false })];
+let isCameraAvailable = false;
+
+try {
+  const ExpoCamera = require('expo-camera');
+  CameraView = ExpoCamera.CameraView;
+  useCameraPermissionsHook = ExpoCamera.useCameraPermissions;
+  isCameraAvailable = !!CameraView;
+} catch (e) {
+  console.warn('expo-camera native module is not available in this binary.');
+}
 
 interface RegisterScreenProps {
   onNavigateToLogin: () => void;
@@ -35,9 +48,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
 
   // QR Scanning States & Permissions
   const [scanningQR, setScanningQR] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission] = useCameraPermissionsHook();
 
   const startQRScanner = async () => {
+    if (!isCameraAvailable) {
+      Alert.alert('Scanner Unavailable', 'QR Scanning is not supported on this app version. Please type the society code manually.');
+      return;
+    }
     if (!permission || !permission.granted) {
       const res = await requestPermission();
       if (!res.granted) {
@@ -224,7 +241,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
               style={styles.input}
               autoCapitalize="characters"
               left={<TextInput.Icon icon="key" />}
-              right={<TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} />}
+              right={isCameraAvailable ? <TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} /> : null}
             />
 
             {showConfirmationCard && societyDetails && (
