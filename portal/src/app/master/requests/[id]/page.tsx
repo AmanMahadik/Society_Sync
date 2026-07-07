@@ -87,7 +87,7 @@ export default function ReviewRequestPage() {
     // 1. Fetch RTO code from LookupForge API
     let rtoPart = '14'; // default fallback RTO code (e.g. PCMC)
     try {
-      const response = await fetch(`http://localhost:3000/api/v1/rto-codes/lookup?city=${encodeURIComponent(cityName)}`, {
+      const response = await fetch(`https://lkkey.onrender.com/api/v1/rto-codes/lookup?city=${encodeURIComponent(cityName)}`, {
         headers: {
           'x-api-key': 'lk_key_0653ea4ef49a_5850632cfcd202e5557ae4c466'
         }
