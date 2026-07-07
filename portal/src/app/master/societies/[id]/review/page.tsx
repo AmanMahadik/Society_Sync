@@ -99,27 +99,84 @@ export default function ReviewSocietyPage() {
     fetchSociety();
   }, [params?.id]);
 
-  const generateUniqueSocietyCode = async (stateName: string) => {
+  const generateUniqueSocietyCode = async (stateName: string, cityName: string) => {
     const stateCode = STATE_CODES[stateName] || 'SS';
-    let code = '';
-    let isUnique = false;
-    let attempts = 0;
-
-    while (!isUnique && attempts < 100) {
-      attempts++;
-      const randDigits = Math.floor(1000 + Math.random() * 9000).toString();
-      code = `SS-${stateCode}-${randDigits}`;
-
-      const { data } = await supabase
-        .from('societies')
-        .select('id')
-        .eq('society_code', code);
-      
-      if (!data || data.length === 0) {
-        isUnique = true;
+    
+    // 1. Fetch RTO code from LookupForge API
+    let rtoPart = '14'; // default fallback RTO code (e.g. PCMC)
+    try {
+      const response = await fetch(`http://localhost:3000/api/v1/rto-codes/lookup?city=${encodeURIComponent(cityName)}`, {
+        headers: {
+          'x-api-key': 'lk_key_0653ea4ef49a_5850632cfcd202e5557ae4c466'
+        }
+      });
+      const apiData = await response.json();
+      if (apiData.success && apiData.results && apiData.results.length > 0) {
+        const rtoRaw = apiData.results[0].data.rto_code || '';
+        const matchNum = rtoRaw.match(/\d+/);
+        if (matchNum) {
+          rtoPart = matchNum[0].padStart(2, '0');
+        }
       }
+    } catch (err) {
+      console.error('Failed to fetch RTO code from LookupForge API:', err);
     }
-    return code;
+
+    const prefix = `SS-${stateCode}-${rtoPart}-`;
+
+    try {
+      // 2. Fetch existing societies with this prefix to determine the next serial sequence
+      const { data: existing } = await supabase
+        .from('societies')
+        .select('society_code')
+        .like('society_code', `${prefix}%`);
+
+      let maxIndex = -1;
+
+      if (existing && existing.length > 0) {
+        existing.forEach(soc => {
+          const codeStr = soc.society_code;
+          if (codeStr.startsWith(prefix)) {
+            const suffix = codeStr.substring(prefix.length); // e.g. "AA-0001"
+            const parts = suffix.split('-');
+            if (parts.length === 2) {
+              const series = parts[0].toUpperCase();
+              const serialStr = parts[1];
+              if (series.length === 2) {
+                const c1 = series.charCodeAt(0) - 65;
+                const c2 = series.charCodeAt(1) - 65;
+                if (c1 >= 0 && c1 <= 25 && c2 >= 0 && c2 <= 25) {
+                  const serialNum = parseInt(serialStr, 10);
+                  if (!isNaN(serialNum) && serialNum >= 1 && serialNum <= 9999) {
+                    const seriesVal = (c1 * 26) + c2;
+                    const index = (seriesVal * 9999) + (serialNum - 1);
+                    if (index > maxIndex) {
+                      maxIndex = index;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const nextIndex = maxIndex + 1;
+      const serialNum = (nextIndex % 9999) + 1;
+      const seriesVal = Math.floor(nextIndex / 9999);
+      
+      const char1 = String.fromCharCode(65 + Math.floor(seriesVal / 26));
+      const char2 = String.fromCharCode(65 + (seriesVal % 26));
+      
+      const seriesStr = `${char1}${char2}`;
+      const serialStr = serialNum.toString().padStart(4, '0');
+      
+      return `${prefix}${seriesStr}-${serialStr}`;
+    } catch (e) {
+      // Fallback in case of sequence query error
+      const randDigits = Math.floor(1000 + Math.random() * 9000).toString();
+      return `${prefix}AA-${randDigits}`;
+    }
   };
 
   const handleApprove = async () => {
@@ -135,7 +192,7 @@ export default function ReviewSocietyPage() {
     setSubmitting(true);
     try {
       // 1. Generate Society Code
-      const code = await generateUniqueSocietyCode(society.state);
+      const code = await generateUniqueSocietyCode(society.state, society.city);
       
       // 2. Update Society Status in DB
       const { error: socError } = await supabase
