@@ -81,119 +81,27 @@ export default function ReviewRequestPage() {
     fetchRequest();
   }, [params?.id]);
 
-  const generateUniqueSocietyCode = async (stateName: string, cityName: string) => {
+  const generateUniqueSocietyCode = async (stateName: string) => {
     const stateCode = STATE_CODES[stateName] || 'SS';
-    
-    // Determine RTO code based on State and City
-    const getRTODistrictCode = (state: string, city: string): string => {
-      const s = state.toLowerCase().trim();
-      const c = city.toLowerCase().trim();
-      
-      if (s === 'maharashtra') {
-        if (c.includes('pimpri') || c.includes('chinchwad') || c.includes('pcmc')) return '14';
-        if (c.includes('pune')) return '12';
-        if (c.includes('mumbai')) return '01';
-        if (c.includes('thane')) return '04';
-        if (c.includes('nagpur')) return '31';
-        if (c.includes('nashik') || c.includes('nasik')) return '15';
-        if (c.includes('kolhapur')) return '09';
-        if (c.includes('aurangabad') || c.includes('chhatrapati')) return '20';
-        return '14'; // Default to PCMC
-      }
-      
-      if (s === 'delhi') {
-        if (c.includes('north')) return '11';
-        if (c.includes('south')) return '09';
-        if (c.includes('east')) return '13';
-        if (c.includes('west')) return '10';
-        return '01';
-      }
-      
-      if (s === 'karnataka') {
-        if (c.includes('bangalore') || c.includes('bengaluru')) return '02';
-        if (c.includes('mysore') || c.includes('mysuru')) return '09';
-        if (c.includes('mangalore') || c.includes('mangaluru')) return '19';
-        return '02';
-      }
-      
-      if (s === 'gujarat') {
-        if (c.includes('ahmedabad')) return '01';
-        if (c.includes('surat')) return '05';
-        if (c.includes('vadodara') || c.includes('baroda')) return '06';
-        if (c.includes('rajkot')) return '03';
-        return '01';
-      }
-      
-      if (s === 'tamil nadu') {
-        if (c.includes('chennai')) return '01';
-        if (c.includes('coimbatore')) return '37';
-        return '01';
-      }
-      
-      if (s === 'telangana') {
-        if (c.includes('hyderabad')) return '09';
-        return '09';
-      }
-      
-      return '01'; // Default fallback
-    };
+    let code = '';
+    let isUnique = false;
+    let attempts = 0;
 
-    const rtoCode = getRTODistrictCode(stateName, cityName);
-    const prefix = `SS-${stateCode}-${rtoCode}-`;
-
-    try {
-      // Fetch existing societies matching this prefix
-      const { data: existing } = await supabase
-        .from('societies')
-        .select('society_code')
-        .like('society_code', `${prefix}%`);
-
-      let maxIndex = -1;
-
-      if (existing && existing.length > 0) {
-        existing.forEach(soc => {
-          const codeStr = soc.society_code;
-          if (codeStr.startsWith(prefix)) {
-            const suffix = codeStr.substring(prefix.length); // e.g. "AA-0001"
-            const parts = suffix.split('-');
-            if (parts.length === 2) {
-              const series = parts[0].toUpperCase();
-              const serialStr = parts[1];
-              if (series.length === 2) {
-                const c1 = series.charCodeAt(0) - 65;
-                const c2 = series.charCodeAt(1) - 65;
-                if (c1 >= 0 && c1 <= 25 && c2 >= 0 && c2 <= 25) {
-                  const serialNum = parseInt(serialStr, 10);
-                  if (!isNaN(serialNum) && serialNum >= 1 && serialNum <= 9999) {
-                    const seriesVal = (c1 * 26) + c2;
-                    const index = (seriesVal * 9999) + (serialNum - 1);
-                    if (index > maxIndex) {
-                      maxIndex = index;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        });
-      }
-
-      const nextIndex = maxIndex + 1;
-      const serialNum = (nextIndex % 9999) + 1;
-      const seriesVal = Math.floor(nextIndex / 9999);
-      
-      const char1 = String.fromCharCode(65 + Math.floor(seriesVal / 26));
-      const char2 = String.fromCharCode(65 + (seriesVal % 26));
-      
-      const seriesStr = `${char1}${char2}`;
-      const serialStr = serialNum.toString().padStart(4, '0');
-      
-      return `${prefix}${seriesStr}-${serialStr}`;
-    } catch (e) {
-      // Fallback in case of query error
+    while (!isUnique && attempts < 100) {
+      attempts++;
       const randDigits = Math.floor(1000 + Math.random() * 9000).toString();
-      return `SS-${stateCode}-${rtoCode}-AA-${randDigits}`;
+      code = `SS-${stateCode}-${randDigits}`;
+
+      const { data } = await supabase
+        .from('societies')
+        .select('id')
+        .eq('society_code', code);
+      
+      if (!data || data.length === 0) {
+        isUnique = true;
+      }
     }
+    return code;
   };
 
   const handleApprove = async () => {
@@ -209,7 +117,7 @@ export default function ReviewRequestPage() {
     setSubmitting(true);
     try {
       // 1. Generate Society Code and use applicant's password
-      const code = await generateUniqueSocietyCode(request.state, request.city);
+      const code = await generateUniqueSocietyCode(request.state);
       const adminPassword = request.admin_password || 'Admin@123';
 
       // 2. Call Transactional Database RPC function
