@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
-import { Shield, ArrowLeft, CheckCircle2, AlertCircle, FileText, Ban, CheckSquare, Square, XCircle } from 'lucide-react';
+import { Shield, ArrowLeft, CheckCircle2, AlertCircle, FileText, Ban, CheckSquare, Square, XCircle, Map, MapPin } from 'lucide-react';
 
 interface SocietyRequest {
   id: number;
@@ -22,6 +22,8 @@ interface SocietyRequest {
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
   created_at: string;
+  lat?: number;
+  lng?: number;
 }
 
 const STATE_CODES: { [key: string]: string } = {
@@ -77,9 +79,90 @@ export default function ReviewRequestPage() {
     }
   };
 
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+
   useEffect(() => {
     fetchRequest();
   }, [params?.id]);
+
+  // Load Leaflet resources dynamically on client side
+  useEffect(() => {
+    if (request && typeof window !== 'undefined') {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      if (!(window as any).L) {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.async = true;
+        script.onload = () => {
+          setMapLoaded(true);
+        };
+        document.body.appendChild(script);
+      } else {
+        setMapLoaded(true);
+      }
+    }
+  }, [request]);
+
+  // Initialize and update Leaflet Map
+  useEffect(() => {
+    if (mapLoaded && request && typeof window !== 'undefined' && (window as any).L) {
+      const L = (window as any).L;
+      const initialLat = request.lat || 19.0760;
+      const initialLng = request.lng || 72.8777;
+
+      // Make sure the container is ready
+      const container = document.getElementById('leaflet-map-review');
+      if (!container) return;
+
+      if (!mapRef.current) {
+        const map = L.map('leaflet-map-review').setView([initialLat, initialLng], 15);
+        mapRef.current = map;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const defaultIcon = L.icon({
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        });
+
+        const marker = L.marker([initialLat, initialLng], { 
+          icon: defaultIcon
+        }).addTo(map);
+        markerRef.current = marker;
+
+        marker.bindPopup(`<b>${request.name}</b><br/>${request.address}`).openPopup();
+      } else {
+        if (markerRef.current) {
+          markerRef.current.setLatLng([initialLat, initialLng]);
+          mapRef.current.setView([initialLat, initialLng], 15);
+          markerRef.current.getPopup().setContent(`<b>${request.name}</b><br/>${request.address}`).openOn(mapRef.current);
+        }
+      }
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [mapLoaded, request]);
 
   const generateUniqueSocietyCode = async (stateName: string, cityName: string) => {
     const stateCode = STATE_CODES[stateName] || 'SS';
@@ -341,6 +424,44 @@ export default function ReviewRequestPage() {
                 <span className="text-zinc-300 mt-0.5 block">{request.total_units} Units</span>
               </div>
             </div>
+          </div>
+
+          {/* MAP CARD */}
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+              <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-[#00d4aa]" />
+                Society Location Map
+              </h3>
+              {request.lat && request.lng ? (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${request.lat},${request.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#00d4aa] hover:underline"
+                >
+                  Open in Google Maps
+                </a>
+              ) : null}
+            </div>
+            
+            <div className="h-64 bg-zinc-950 rounded-lg border border-zinc-800 overflow-hidden relative">
+              {request.lat && request.lng ? (
+                <div id="leaflet-map-review" className="w-full h-full relative" style={{ zIndex: 1, filter: 'invert(90%) hue-rotate(185deg) brightness(85%) contrast(110%)' }} />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-2">
+                  <Map className="h-8 w-8 text-zinc-600" />
+                  <p className="text-xs text-zinc-500">No coordinates available.</p>
+                </div>
+              )}
+            </div>
+            
+            {request.lat && request.lng && (
+              <div className="text-[11px] text-zinc-500 flex justify-between">
+                <span>Latitude: {request.lat}</span>
+                <span>Longitude: {request.lng}</span>
+              </div>
+            )}
           </div>
 
           {/* ADMIN CARD */}
