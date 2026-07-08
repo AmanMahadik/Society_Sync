@@ -26,6 +26,7 @@ export default function SocietiesListPage() {
   const [loading, setLoading] = useState(true);
   const [societies, setSocieties] = useState<Society[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   const fetchSocieties = async () => {
     try {
@@ -64,6 +65,37 @@ export default function SocietiesListPage() {
   useEffect(() => {
     fetchSocieties();
   }, []);
+
+  const handleResendEmail = async (soc: Society) => {
+    setSendingEmailId(soc.id);
+    try {
+      const response = await fetch('/api/approve-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          adminEmail: soc.admin_email,
+          adminName: 'Society Admin',
+          societyName: soc.name,
+          status: 'approved',
+          societyCode: soc.society_code
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert(`Onboarding credentials email successfully sent to ${soc.admin_email}!`);
+      } else {
+        throw new Error(data.error || 'Failed to send email');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to send email: ${err.message || err}`);
+    } finally {
+      setSendingEmailId(null);
+    }
+  };
 
   const handleToggleSuspension = async (id: string, currentStatus: 'active' | 'suspended') => {
     const nextStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
@@ -231,6 +263,13 @@ export default function SocietiesListPage() {
                           >
                             Credentials
                           </Link>
+                          <button
+                            onClick={() => handleResendEmail(soc)}
+                            disabled={sendingEmailId === soc.id}
+                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-[#00d4aa]/40 text-[#00d4aa] text-xs font-bold transition-all disabled:opacity-50"
+                          >
+                            {sendingEmailId === soc.id ? 'Sending...' : 'Send Email'}
+                          </button>
                           <button
                             onClick={() => handleDeleteSociety(soc.society_code, soc.name)}
                             className="px-2.5 py-1 rounded bg-red-950/20 border border-red-500/20 hover:border-red-500 hover:bg-red-500/10 text-red-500 text-xs font-bold transition-all"
