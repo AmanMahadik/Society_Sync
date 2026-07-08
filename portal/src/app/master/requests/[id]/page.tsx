@@ -82,6 +82,7 @@ export default function ReviewRequestPage() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const [customVIPCode, setCustomVIPCode] = useState('');
 
   useEffect(() => {
     fetchRequest();
@@ -262,8 +263,29 @@ export default function ReviewRequestPage() {
 
     setSubmitting(true);
     try {
-      // 1. Generate Society Code and use applicant's password
-      const code = await generateUniqueSocietyCode(request.state, request.city);
+      // 1. Generate or assign Custom VIP Society Code
+      let code = '';
+      if (customVIPCode.trim()) {
+        code = customVIPCode.trim().toUpperCase();
+        if (!code.startsWith('SS-')) {
+          alert('Custom VIP code must start with "SS-" (e.g. SS-MH-12-VIP-0001)');
+          setSubmitting(false);
+          return;
+        }
+        // Verify code is unique
+        const { data: existingCodes, error: checkErr } = await supabase
+          .from('societies')
+          .select('id')
+          .eq('society_code', code);
+        if (checkErr) throw checkErr;
+        if (existingCodes && existingCodes.length > 0) {
+          alert(`The society code "${code}" is already in use. Please enter a different unique VIP code.`);
+          setSubmitting(false);
+          return;
+        }
+      } else {
+        code = await generateUniqueSocietyCode(request.state, request.city);
+      }
       const adminPassword = request.admin_password || 'Admin@123';
 
       // 2. Call Transactional Database RPC function
@@ -547,6 +569,20 @@ export default function ReviewRequestPage() {
                 </div>
               </button>
             </div>
+
+            {/* VIP CUSTOM CODE OVERRIDE */}
+            {request.status === 'pending' && (
+              <div className="flex flex-col gap-2 pt-4 border-t border-zinc-800">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">VIP Code Override (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. SS-MH-12-VIP-0001"
+                  value={customVIPCode}
+                  onChange={(e) => setCustomVIPCode(e.target.value.toUpperCase())}
+                  className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#00d4aa]"
+                />
+              </div>
+            )}
 
             {/* ACTION TRIGGERS */}
             {request.status === 'pending' && (
