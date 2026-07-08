@@ -579,13 +579,13 @@ export default function RegisterPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-zinc-400 uppercase">City *</label>
+                  <label className="text-xs font-bold text-zinc-400 uppercase">City (RTO Registry City) *</label>
                   <input 
                     type="text" 
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    placeholder="City" 
+                    placeholder="e.g. Pune, Pimpri-Chinchwad" 
                     className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm focus:outline-none focus:border-[#00d4aa] text-white"
                     required
                   />
