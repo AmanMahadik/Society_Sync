@@ -180,7 +180,7 @@ export default function ReviewRequestPage() {
       });
       const apiData = await response.json();
       if (apiData.success && apiData.results && apiData.results.length > 0) {
-        const rtoRaw = apiData.results[0].data.rto_code || '';
+        const rtoRaw = apiData.results[0].data.rto_code || apiData.results[0].data['rto-code'] || '';
         const matchNum = rtoRaw.match(/\d+/);
         if (matchNum) {
           rtoPart = matchNum[0].padStart(2, '0');
