@@ -107,7 +107,7 @@ export default function ReviewSocietyPage() {
     try {
       const response = await fetch(`https://lkkey.onrender.com/api/v1/rto-codes/lookup?city=${encodeURIComponent(cityName)}`, {
         headers: {
-          'x-api-key': 'lk_key_0653ea4ef49a_5850632cfcd202e5557ae4c466'
+          'x-api-key': 'lk_key_18a7e169cce0_db8c528bc27c7bf5eb924a986dce3a8d'
         }
       });
       const apiData = await response.json();
