@@ -103,11 +103,14 @@ export default function ReviewSocietyPage() {
     const stateCode = STATE_CODES[stateName] || 'SS';
     
     // 1. Fetch RTO code from LookupForge API
-    let rtoPart = '14'; // default fallback RTO code (e.g. PCMC)
+    let rtoPart = '';
+    const apiUrl = process.env.NEXT_PUBLIC_LOOKUPFORGE_API_URL || 'https://lkkey.onrender.com';
+    const apiKey = process.env.NEXT_PUBLIC_LOOKUPFORGE_API_KEY || 'lk_key_753e5e9e371a_8959bbb885f70c000ce06ca067d6c631';
+
     try {
-      const response = await fetch(`https://lkkey.onrender.com/api/v1/rto-codes/lookup?city=${encodeURIComponent(cityName)}`, {
+      const response = await fetch(`${apiUrl}/api/v1/rto-codes/lookup?city=${encodeURIComponent(cityName)}`, {
         headers: {
-          'x-api-key': 'lk_key_18a7e169cce0_db8c528bc27c7bf5eb924a986dce3a8d'
+          'x-api-key': apiKey
         }
       });
       const apiData = await response.json();
@@ -120,63 +123,66 @@ export default function ReviewSocietyPage() {
       }
     } catch (err) {
       console.error('Failed to fetch RTO code from LookupForge API:', err);
+      throw new Error(`Failed to contact RTO database: ${(err as Error).message}`);
+    }
+
+    if (!rtoPart) {
+      throw new Error(`RTO code could not be resolved for city "${cityName}". Please verify that this city is registered in your RTO database list.`);
     }
 
     const prefix = `SS-${stateCode}-${rtoPart}-`;
 
-    try {
-      // 2. Fetch existing societies with this prefix to determine the next serial sequence
-      const { data: existing } = await supabase
-        .from('societies')
-        .select('society_code')
-        .like('society_code', `${prefix}%`);
+    // 2. Fetch existing societies with this prefix to determine the next serial sequence
+    const { data: existing, error: queryError } = await supabase
+      .from('societies')
+      .select('society_code')
+      .like('society_code', `${prefix}%`);
 
-      let maxIndex = -1;
+    if (queryError) {
+      throw new Error(`Database error while searching existing societies: ${queryError.message}`);
+    }
 
-      if (existing && existing.length > 0) {
-        existing.forEach(soc => {
-          const codeStr = soc.society_code;
-          if (codeStr.startsWith(prefix)) {
-            const suffix = codeStr.substring(prefix.length); // e.g. "AA-0001"
-            const parts = suffix.split('-');
-            if (parts.length === 2) {
-              const series = parts[0].toUpperCase();
-              const serialStr = parts[1];
-              if (series.length === 2) {
-                const c1 = series.charCodeAt(0) - 65;
-                const c2 = series.charCodeAt(1) - 65;
-                if (c1 >= 0 && c1 <= 25 && c2 >= 0 && c2 <= 25) {
-                  const serialNum = parseInt(serialStr, 10);
-                  if (!isNaN(serialNum) && serialNum >= 1 && serialNum <= 9999) {
-                    const seriesVal = (c1 * 26) + c2;
-                    const index = (seriesVal * 9999) + (serialNum - 1);
-                    if (index > maxIndex) {
-                      maxIndex = index;
-                    }
+    let maxIndex = -1;
+
+    if (existing && existing.length > 0) {
+      existing.forEach(soc => {
+        const codeStr = soc.society_code;
+        if (codeStr.startsWith(prefix)) {
+          const suffix = codeStr.substring(prefix.length); // e.g. "AA-0001"
+          const parts = suffix.split('-');
+          if (parts.length === 2) {
+            const series = parts[0].toUpperCase();
+            const serialStr = parts[1];
+            if (series.length === 2) {
+              const c1 = series.charCodeAt(0) - 65;
+              const c2 = series.charCodeAt(1) - 65;
+              if (c1 >= 0 && c1 <= 25 && c2 >= 0 && c2 <= 25) {
+                const serialNum = parseInt(serialStr, 10);
+                if (!isNaN(serialNum) && serialNum >= 1 && serialNum <= 9999) {
+                  const seriesVal = (c1 * 26) + c2;
+                  const index = (seriesVal * 9999) + (serialNum - 1);
+                  if (index > maxIndex) {
+                    maxIndex = index;
                   }
                 }
               }
             }
           }
-        });
-      }
-
-      const nextIndex = maxIndex + 1;
-      const serialNum = (nextIndex % 9999) + 1;
-      const seriesVal = Math.floor(nextIndex / 9999);
-      
-      const char1 = String.fromCharCode(65 + Math.floor(seriesVal / 26));
-      const char2 = String.fromCharCode(65 + (seriesVal % 26));
-      
-      const seriesStr = `${char1}${char2}`;
-      const serialStr = serialNum.toString().padStart(4, '0');
-      
-      return `${prefix}${seriesStr}-${serialStr}`;
-    } catch (e) {
-      // Fallback in case of sequence query error
-      const randDigits = Math.floor(1000 + Math.random() * 9000).toString();
-      return `${prefix}AA-${randDigits}`;
+        }
+      });
     }
+
+    const nextIndex = maxIndex + 1;
+    const serialNum = (nextIndex % 9999) + 1;
+    const seriesVal = Math.floor(nextIndex / 9999);
+    
+    const char1 = String.fromCharCode(65 + Math.floor(seriesVal / 26));
+    const char2 = String.fromCharCode(65 + (seriesVal % 26));
+    
+    const seriesStr = `${char1}${char2}`;
+    const serialStr = serialNum.toString().padStart(4, '0');
+    
+    return `${prefix}${seriesStr}-${serialStr}`;
   };
 
   const handleApprove = async () => {
