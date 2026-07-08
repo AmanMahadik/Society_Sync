@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import path from 'path';
+import fs from 'fs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -102,6 +104,7 @@ If you believe this was an error, please verify your registration details and su
     // Attempt to send email via Gmail (if App Password is provided)
     if (gmailPass) {
       console.log(`Sending email using Nodemailer (Gmail) from ${gmailUser}...`);
+      
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -113,9 +116,6 @@ If you believe this was an error, please verify your registration details and su
       const attachments = [];
       
       if (status === 'approved') {
-        const path = await import('path');
-        const fs = await import('fs');
-        
         // 1. Attach QR Code inline
         const qrPath = path.join(process.cwd(), 'public', 'qr_code.png');
         if (fs.existsSync(qrPath)) {
@@ -124,6 +124,9 @@ If you believe this was an error, please verify your registration details and su
             path: qrPath,
             cid: 'app_qr_code'
           });
+          console.log('Attached QR code to email inline.');
+        } else {
+          console.warn('QR code image not found at path:', qrPath);
         }
         
         // 2. Scan public folder for user_manual files (e.g. user_manual.pdf, user_manual.docx)
@@ -132,12 +135,17 @@ If you believe this was an error, please verify your registration details and su
           const files = fs.readdirSync(publicDir);
           const manualFile = files.find(f => f.toLowerCase().startsWith('user_manual.'));
           if (manualFile) {
+            const manualPath = path.join(publicDir, manualFile);
             attachments.push({
               filename: manualFile,
-              path: path.join(publicDir, manualFile)
+              path: manualPath
             });
             console.log(`Found and attached user manual: ${manualFile}`);
+          } else {
+            console.warn('No user_manual.* file found in public directory.');
           }
+        } else {
+          console.warn('Public directory not found at path:', publicDir);
         }
       }
 
