@@ -51,8 +51,12 @@ Welcome to SocietySync!`;
 
           <p><strong>Next Steps for Onboarding Residents:</strong></p>
           <ol style="line-height: 1.6; padding-left: 20px;">
-            <li style="margin-bottom: 10px;">Direct residents to install the mobile application via the build link: <br/>
+            <li style="margin-bottom: 15px;">Direct residents to install the mobile application via the build link: <br/>
               <a href="https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/e5ad992f-d0e5-499f-b19c-20f4430835b5" style="color: #00d4aa; text-decoration: none; font-weight: bold;">Download App Here</a>
+              <div style="margin-top: 10px; text-align: center;">
+                <span style="font-size: 11px; color: #6b7280; display: block; margin-bottom: 5px;">Scan QR Code to Download:</span>
+                <img src="cid:app_qr_code" style="width: 140px; height: 140px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px;" alt="App QR Code" />
+              </div>
             </li>
             <li style="margin-bottom: 10px;">Instruct them to use your unique Society Code during mobile app registration: <strong>${societyCode}</strong></li>
             <li style="margin-bottom: 10px;">Approve their resident profiles in the SocietySync Admin Roster once they sign up.</li>
@@ -106,12 +110,44 @@ If you believe this was an error, please verify your registration details and su
         }
       });
 
+      const attachments = [];
+      
+      if (status === 'approved') {
+        const path = await import('path');
+        const fs = await import('fs');
+        
+        // 1. Attach QR Code inline
+        const qrPath = path.join(process.cwd(), 'public', 'qr_code.png');
+        if (fs.existsSync(qrPath)) {
+          attachments.push({
+            filename: 'qr_code.png',
+            path: qrPath,
+            cid: 'app_qr_code'
+          });
+        }
+        
+        // 2. Scan public folder for user_manual files (e.g. user_manual.pdf, user_manual.docx)
+        const publicDir = path.join(process.cwd(), 'public');
+        if (fs.existsSync(publicDir)) {
+          const files = fs.readdirSync(publicDir);
+          const manualFile = files.find(f => f.toLowerCase().startsWith('user_manual.'));
+          if (manualFile) {
+            attachments.push({
+              filename: manualFile,
+              path: path.join(publicDir, manualFile)
+            });
+            console.log(`Found and attached user manual: ${manualFile}`);
+          }
+        }
+      }
+
       const info = await transporter.sendMail({
         from: `"SocietySync" <${gmailUser}>`,
         to: adminEmail,
         subject: subject,
         text: messageText,
-        html: messageHtml
+        html: messageHtml,
+        attachments: attachments
       });
 
       console.log('Nodemailer email sent successfully:', info.messageId);
@@ -121,6 +157,10 @@ If you believe this was an error, please verify your registration details and su
     // Fallback: Send email via FormSubmit (free static email delivery tool)
     console.log('Gmail App Password not found in environment variables. Falling back to FormSubmit...');
     const token = '19bcd09a7561ac0a204d32703f974dbb';
+    
+    // Replace inline cid with public URL for FormSubmit compatibility
+    const fallbackHtml = messageHtml.replace('cid:app_qr_code', 'https://society-sync-portal.vercel.app/qr_code.png');
+
     const payload = {
       name: adminName,
       email: adminEmail,
