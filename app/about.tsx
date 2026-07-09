@@ -122,6 +122,12 @@ export default function AboutScreen() {
             />
             <Divider />
             <List.Item
+              title="Developer Team"
+              description="Aman Mahadik & SocietySync Contributors"
+              left={props => <List.Icon {...props} icon="code-tags" color={theme.colors.primary} />}
+            />
+            <Divider />
+            <List.Item
               title="Official Website"
               description="https://society-sync-info.vercel.app/"
               left={props => <List.Icon {...props} icon="web" color={theme.colors.primary} />}
