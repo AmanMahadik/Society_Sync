@@ -123,7 +123,7 @@ export default function SocietiesListPage() {
       // Trigger suspension or reactivation email notification
       try {
         console.log(`Sending ${nextStatus === 'suspended' ? 'suspension' : 'reactivation'} email to ${soc.admin_email}`);
-        await fetch('/api/approve-email', {
+        const emailResponse = await fetch('/api/approve-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -135,8 +135,13 @@ export default function SocietiesListPage() {
             status: nextStatus === 'suspended' ? 'suspended' : 'activated'
           })
         });
-      } catch (emailErr) {
+        const emailData = await emailResponse.json();
+        if (!emailResponse.ok || !emailData.success) {
+          throw new Error(emailData.error || 'Failed to send email');
+        }
+      } catch (emailErr: any) {
         console.error('Failed to trigger email notification:', emailErr);
+        alert(`Warning: Status updated in database, but notification email failed to send: ${emailErr.message || emailErr}`);
       }
 
       fetchSocieties();
@@ -176,7 +181,7 @@ export default function SocietiesListPage() {
         // Trigger deletion email notification
         try {
           console.log(`Sending deletion notification email to ${soc.admin_email}`);
-          await fetch('/api/approve-email', {
+          const emailResponse = await fetch('/api/approve-email', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -188,8 +193,13 @@ export default function SocietiesListPage() {
               status: 'deleted'
             })
           });
-        } catch (emailErr) {
+          const emailData = await emailResponse.json();
+          if (!emailResponse.ok || !emailData.success) {
+            throw new Error(emailData.error || 'Failed to send email');
+          }
+        } catch (emailErr: any) {
           console.error('Failed to trigger deletion email API:', emailErr);
+          alert(`Warning: Society deleted, but notification email failed to send: ${emailErr.message || emailErr}`);
         }
 
         alert(`Society "${name}" and all its users have been permanently deleted.`);
