@@ -108,44 +108,6 @@ export default function AboutScreen() {
           </Card.Content>
         </Card>
 
-        {/* Tech Stack Section */}
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>
-          Technologies Used
-        </Text>
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
-          <Card.Content style={styles.listContent}>
-            <List.Item
-              title="Expo & React Native"
-              description="Cross-platform performance and responsive design"
-              left={props => <List.Icon {...props} icon="react" color="#61DAFB" />}
-            />
-            <Divider />
-            <List.Item
-              title="Supabase"
-              description="Scalable PostgreSQL database & robust user authentication"
-              left={props => <List.Icon {...props} icon="database" color="#3ECF8E" />}
-            />
-            <Divider />
-            <List.Item
-              title="React Native Paper"
-              description="Material Design 3 themed beautiful native components"
-              left={props => <List.Icon {...props} icon="leaf" color="#FF007F" />}
-            />
-            <Divider />
-            <List.Item
-              title="Supabase Realtime"
-              description="Live subscription streams for chat and SOS warnings"
-              left={props => <List.Icon {...props} icon="flash" color="#FBBF24" />}
-            />
-            <Divider />
-            <List.Item
-              title="Expo Notifications"
-              description="Reliable background push notifications engine"
-              left={props => <List.Icon {...props} icon="bell" color="#F43F5E" />}
-            />
-          </Card.Content>
-        </Card>
-
         {/* Contact Support Section */}
         <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>
           Contact & Support
@@ -160,23 +122,10 @@ export default function AboutScreen() {
             />
             <Divider />
             <List.Item
-              title="Developer Team"
-              description="Aman Mahadik & SocietySync Contributors"
-              left={props => <List.Icon {...props} icon="code-tags" color={theme.colors.primary} />}
-            />
-            <Divider />
-            <List.Item
               title="Official Website"
               description="https://society-sync-info.vercel.app/"
               left={props => <List.Icon {...props} icon="web" color={theme.colors.primary} />}
               onPress={() => handleOpenURL('https://society-sync-info.vercel.app/')}
-            />
-            <Divider />
-            <List.Item
-              title="GitHub Repository"
-              description="https://github.com/AmanMahadik/Society_Sync"
-              left={props => <List.Icon {...props} icon="github" color={theme.colors.primary} />}
-              onPress={() => handleOpenURL('https://github.com/AmanMahadik/Society_Sync')}
             />
           </Card.Content>
         </Card>
