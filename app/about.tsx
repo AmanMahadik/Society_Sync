@@ -167,9 +167,9 @@ export default function AboutScreen() {
             <Divider />
             <List.Item
               title="Official Website"
-              description="https://amanmahadik.github.io/Society_Sync/"
+              description="https://society-sync-info.vercel.app/"
               left={props => <List.Icon {...props} icon="web" color={theme.colors.primary} />}
-              onPress={() => handleOpenURL('https://amanmahadik.github.io/Society_Sync/')}
+              onPress={() => handleOpenURL('https://society-sync-info.vercel.app/')}
             />
             <Divider />
             <List.Item

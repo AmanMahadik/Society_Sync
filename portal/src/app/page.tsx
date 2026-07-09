@@ -205,8 +205,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <p>© {new Date().getFullYear()} SocietySync Inc. All rights reserved.</p>
           <div className="flex gap-4">
-            <a href="https://amanmahadik.github.io/Society_Sync/#legal" className="hover:underline">Privacy Policy</a>
-            <a href="https://amanmahadik.github.io/Society_Sync/#legal" className="hover:underline">Terms & Conditions</a>
+            <a href="https://society-sync-info.vercel.app/#legal" className="hover:underline">Privacy Policy</a>
+            <a href="https://society-sync-info.vercel.app/#legal" className="hover:underline">Terms & Conditions</a>
           </div>
         </div>
       </footer>
