@@ -3,15 +3,48 @@ import nodemailer from 'nodemailer';
 import path from 'path';
 import fs from 'fs';
 
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get('origin') || '*';
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get('origin') || '*';
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+  };
+
   try {
     const body = await req.json();
-    const { adminEmail, adminName, societyName, status } = body;
+    const { status } = body;
 
-    if (!adminEmail || !societyName || !adminName || !status) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!status) {
+      return NextResponse.json({ error: 'Missing status field' }, { status: 400, headers: corsHeaders });
     }
 
+    // Input fields validation
+    if (status !== 'support_query') {
+      const { adminEmail, adminName, societyName } = body;
+      if (!adminEmail || !societyName || !adminName) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400, headers: corsHeaders });
+      }
+    } else {
+      const { userEmail, userName, message } = body;
+      if (!userEmail || !userName || !message) {
+        return NextResponse.json({ error: 'Missing required fields for support query' }, { status: 400, headers: corsHeaders });
+      }
+    }
+
+    const { adminEmail, adminName, societyName } = body;
     const gmailUser = process.env.EMAIL_USER || 'societysync5@gmail.com';
     const gmailPass = process.env.EMAIL_PASS; // Gmail App Password
 
@@ -23,7 +56,7 @@ export async function POST(req: NextRequest) {
     if (status === 'approved') {
       const { societyCode } = body;
       if (!societyCode) {
-        return NextResponse.json({ error: 'Missing societyCode for approval' }, { status: 400 });
+        return NextResponse.json({ error: 'Missing societyCode for approval' }, { status: 400, headers: corsHeaders });
       }
 
       subject = `🏢 SocietySync Registration Approved: ${societyName}`;
@@ -194,8 +227,53 @@ We appreciate you being part of SocietySync. If you have any questions, please c
           <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This is an automated message sent from SocietySync Admin Team.</p>
         </div>
       `;
+    } else if (status === 'support_query') {
+      const { userEmail, userName, flat, message } = body;
+      subject = `❓ New SocietySync Support Inquiry from ${userName}`;
+      messageText = `Hello,
+
+A new support request has been submitted from the marketing/info website:
+
+- Name: ${userName}
+- Email: ${userEmail}
+- Flat/Unit: ${flat || 'N/A'}
+- Message:
+${message}
+
+A copy of this inquiry has been CC'd to the user.`;
+
+      messageHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff; color: #374151;">
+          <h2 style="color: #00d4aa; text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">❓ Support Request</h2>
+          <p>A new support request has been submitted from the marketing/info website:</p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 8px 0; font-weight: bold; width: 120px;">Name:</td>
+              <td style="padding: 8px 0;">${userName}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 8px 0; font-weight: bold;">Email:</td>
+              <td style="padding: 8px 0;"><a href="mailto:${userEmail}" style="color: #00d4aa; text-decoration: none;">${userEmail}</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 8px 0; font-weight: bold;">Flat/Unit:</td>
+              <td style="padding: 8px 0;">${flat || 'N/A'}</td>
+            </tr>
+          </table>
+
+          <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 6px; margin: 20px 0; white-space: pre-wrap;">
+            <strong>Message:</strong><br/>
+            ${message}
+          </div>
+
+          <p style="font-size: 11px; color: #6b7280; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px; margin-top: 30px;">
+            A copy of this message has been sent to the sender at ${userEmail}.
+          </p>
+        </div>
+      `;
     } else {
-      return NextResponse.json({ error: 'Invalid status type' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid status type' }, { status: 400, headers: corsHeaders });
     }
 
     // Attempt to send email via Gmail (if App Password is provided)
@@ -246,9 +324,19 @@ We appreciate you being part of SocietySync. If you have any questions, please c
         }
       }
 
+      let toEmail = adminEmail;
+      let ccEmail = undefined;
+
+      if (status === 'support_query') {
+        const { userEmail } = body;
+        toEmail = gmailUser;
+        ccEmail = userEmail;
+      }
+
       const info = await transporter.sendMail({
         from: `"SocietySync" <${gmailUser}>`,
-        to: adminEmail,
+        to: toEmail,
+        cc: ccEmail,
         subject: subject,
         text: messageText,
         html: messageHtml,
@@ -256,7 +344,7 @@ We appreciate you being part of SocietySync. If you have any questions, please c
       });
 
       console.log('Nodemailer email sent successfully:', info.messageId);
-      return NextResponse.json({ success: true, method: 'nodemailer', messageId: info.messageId });
+      return NextResponse.json({ success: true, method: 'nodemailer', messageId: info.messageId }, { headers: corsHeaders });
     }
 
     // Fallback: Send email via FormSubmit (free static email delivery tool)
@@ -266,13 +354,21 @@ We appreciate you being part of SocietySync. If you have any questions, please c
     // Replace inline cid with public URL for FormSubmit compatibility
     const fallbackHtml = messageHtml.replace('cid:app_qr_code', 'https://society-sync-portal.vercel.app/qr_code.png');
 
+    let payloadName = adminName;
+    let payloadEmail = adminEmail;
+    if (status === 'support_query') {
+      const { userName, userEmail } = body;
+      payloadName = userName;
+      payloadEmail = userEmail;
+    }
+
     const payload = {
-      name: adminName,
-      email: adminEmail,
-      society: societyName,
+      name: payloadName,
+      email: payloadEmail,
+      society: societyName || 'N/A',
       status: status.toUpperCase(),
       message: messageText,
-      _cc: adminEmail,
+      _cc: payloadEmail,
       _subject: subject,
       _template: "box"
     };
@@ -289,9 +385,9 @@ We appreciate you being part of SocietySync. If you have any questions, please c
     });
 
     const fsData = await formSubmitResponse.json();
-    return NextResponse.json({ success: true, method: 'formsubmit', data: fsData });
+    return NextResponse.json({ success: true, method: 'formsubmit', data: fsData }, { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error in approve-email API route:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500, headers: corsHeaders });
   }
 }
