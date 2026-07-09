@@ -14,6 +14,7 @@ interface Society {
   state: string;
   pincode: string;
   society_code: string;
+  admin_name: string;
   admin_email: string;
   admin_phone: string;
   total_units: number;
@@ -98,6 +99,12 @@ export default function SocietiesListPage() {
   };
 
   const handleToggleSuspension = async (id: string, currentStatus: 'active' | 'suspended') => {
+    const soc = societies.find(s => s.id === id);
+    if (!soc) {
+      alert('Error: Society details not found.');
+      return;
+    }
+
     const nextStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
     const actionLabel = currentStatus === 'suspended' ? 'activate' : 'suspend';
     
@@ -112,6 +119,26 @@ export default function SocietiesListPage() {
 
       if (error) throw error;
       alert(`Society has been successfully set to ${nextStatus}.`);
+
+      // Trigger suspension or reactivation email notification
+      try {
+        console.log(`Sending ${nextStatus === 'suspended' ? 'suspension' : 'reactivation'} email to ${soc.admin_email}`);
+        await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: soc.admin_email,
+            adminName: soc.admin_name || 'Society Admin',
+            societyName: soc.name,
+            status: nextStatus === 'suspended' ? 'suspended' : 'activated'
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to trigger email notification:', emailErr);
+      }
+
       fetchSocieties();
     } catch (e) {
       console.error(e);
@@ -120,6 +147,12 @@ export default function SocietiesListPage() {
   };
 
   const handleDeleteSociety = async (societyCode: string, name: string) => {
+    const soc = societies.find(s => s.society_code === societyCode);
+    if (!soc) {
+      alert("Society details not found.");
+      return;
+    }
+
     const confirmationCode = window.prompt(
       `WARNING: This will permanently delete the society "${name}" along with ALL its residents, admins, guards, bills, complaints, settings, and visitor history.\n\nTo confirm, type the society code "${societyCode}":`
     );
@@ -140,6 +173,25 @@ export default function SocietiesListPage() {
       if (error) throw error;
 
       if (data === true) {
+        // Trigger deletion email notification
+        try {
+          console.log(`Sending deletion notification email to ${soc.admin_email}`);
+          await fetch('/api/approve-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              adminEmail: soc.admin_email,
+              adminName: soc.admin_name || 'Society Admin',
+              societyName: soc.name,
+              status: 'deleted'
+            })
+          });
+        } catch (emailErr) {
+          console.error('Failed to trigger deletion email API:', emailErr);
+        }
+
         alert(`Society "${name}" and all its users have been permanently deleted.`);
         fetchSocieties();
       } else {

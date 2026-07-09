@@ -30,6 +30,7 @@ interface Society {
   state: string;
   pincode: string;
   society_code: string;
+  admin_name: string;
   admin_email: string;
   admin_phone: string;
   total_units: number;
@@ -122,6 +123,12 @@ export default function MasterDashboard() {
   };
 
   const handleToggleSuspension = async (id: string, currentStatus: 'active' | 'suspended') => {
+    const soc = societies.find(s => s.id === id);
+    if (!soc) {
+      alert('Error: Society details not found.');
+      return;
+    }
+
     const nextStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
     const actionLabel = currentStatus === 'suspended' ? 'activate' : 'suspend';
     
@@ -136,6 +143,26 @@ export default function MasterDashboard() {
 
       if (error) throw error;
       alert(`Society has been successfully set to ${nextStatus}.`);
+
+      // Trigger suspension or reactivation email notification
+      try {
+        console.log(`Sending ${nextStatus === 'suspended' ? 'suspension' : 'reactivation'} email to ${soc.admin_email}`);
+        await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: soc.admin_email,
+            adminName: soc.admin_name || 'Society Admin',
+            societyName: soc.name,
+            status: nextStatus === 'suspended' ? 'suspended' : 'activated'
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to trigger email notification:', emailErr);
+      }
+
       fetchData();
     } catch (e) {
       console.error(e);

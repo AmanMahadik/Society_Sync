@@ -97,6 +97,103 @@ If you believe this was an error, please verify your registration details and su
           <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This is an automated message sent from SocietySync Admin Team.</p>
         </div>
       `;
+    } else if (status === 'suspended') {
+      subject = `⚠️ SocietySync Account Suspended: ${societyName}`;
+      messageText = `Hello ${adminName},
+
+We are writing to inform you that your SocietySync account for the society "${societyName}" has been suspended by the Master Admin team.
+
+During this suspension:
+- Access to the Web Admin Portal will be blocked.
+- Residents and security guards will not be able to log in or use the mobile app.
+- All real-time visitor gate pass approvals and services are temporarily paused.
+
+If you have any questions or would like to request reactivation, please contact our support team.`;
+
+      messageHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff; color: #374151;">
+          <h2 style="color: #f59e0b; text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">⚠️ Account Suspended</h2>
+          <p>Hello <strong>${adminName}</strong>,</p>
+          <p>We are writing to inform you that your SocietySync account for the society <strong>"${societyName}"</strong> has been suspended by the Master Admin team.</p>
+          
+          <div style="background-color: #fffbeb; border: 1px dashed #fcd34d; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #b45309; font-weight: bold;">Impact of Suspension:</p>
+            <ul style="margin: 5px 0 0 0; font-size: 14px; color: #78350f; line-height: 1.5; padding-left: 20px;">
+              <li>Access to the Web Admin Portal is temporarily blocked.</li>
+              <li>Residents and security guards cannot log in or access mobile app features.</li>
+              <li>Real-time notifications and visitor gate pass approvals are paused.</li>
+            </ul>
+          </div>
+
+          <p>If you believe this suspension is an error or would like to resolve the issue and request reactivation, please contact our Master Admin support team.</p>
+          
+          <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This is an automated message sent from SocietySync Admin Team.</p>
+        </div>
+      `;
+    } else if (status === 'activated') {
+      subject = `✅ SocietySync Account Reactivated: ${societyName}`;
+      messageText = `Hello ${adminName},
+
+Great news! Your SocietySync account for the society "${societyName}" has been reactivated by the Master Admin team.
+
+All services have been restored:
+- You can now log in to the Web Admin Portal as usual.
+- Residents and security guards can log back into the mobile app and resume operations.
+
+Thank you for your cooperation!`;
+
+      messageHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff; color: #374151;">
+          <h2 style="color: #10b981; text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">✅ Account Reactivated</h2>
+          <p>Hello <strong>${adminName}</strong>,</p>
+          <p>Great news! Your SocietySync account for the society <strong>"${societyName}"</strong> has been reactivated by the Master Admin team.</p>
+          
+          <div style="background-color: #ecfdf5; border: 1px dashed #6ee7b7; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #047857; font-weight: bold;">Status Restored:</p>
+            <ul style="margin: 5px 0 0 0; font-size: 14px; color: #065f46; line-height: 1.5; padding-left: 20px;">
+              <li>Full access to the Web Admin Portal is restored.</li>
+              <li>Residents and security guards can log in and access all mobile features.</li>
+              <li>All services and notifications are fully operational.</li>
+            </ul>
+          </div>
+
+          <p>You can now log in and continue managing your society. Thank you for your patience and cooperation.</p>
+          
+          <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This is an automated message sent from SocietySync Admin Team.</p>
+        </div>
+      `;
+    } else if (status === 'deleted') {
+      subject = `🚨 SocietySync Account Permanently Deleted: ${societyName}`;
+      messageText = `Hello ${adminName},
+
+We are writing to notify you that the society "${societyName}" has been permanently deleted from the SocietySync platform by the Master Admin team.
+
+Please note:
+- All associated data including resident rosters, guard logs, visitor history, and configurations have been permanently wiped.
+- This action is irreversible, and you will no longer be able to log in or retrieve any information.
+
+We appreciate you being part of SocietySync. If you have any questions, please contact the Master Admin team.`;
+
+      messageHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff; color: #374151;">
+          <h2 style="color: #dc2626; text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">🚨 Account Permanently Deleted</h2>
+          <p>Hello <strong>${adminName}</strong>,</p>
+          <p>We are writing to notify you that the society <strong>"${societyName}"</strong> has been permanently deleted from the SocietySync platform by the Master Admin team.</p>
+          
+          <div style="background-color: #fef2f2; border: 1px dashed #fca5a5; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #b91c1c; font-weight: bold;">Important Notice:</p>
+            <ul style="margin: 5px 0 0 0; font-size: 14px; color: #7f1d1d; line-height: 1.5; padding-left: 20px;">
+              <li>All resident profiles, admin credentials, and guard accounts have been removed.</li>
+              <li>Visitor history, passcodes, and society settings have been permanently wiped.</li>
+              <li>This action is irreversible and no data can be recovered.</li>
+            </ul>
+          </div>
+
+          <p>Thank you for using SocietySync. If you have any final inquiries, please get in touch with the Master Admin team.</p>
+          
+          <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This is an automated message sent from SocietySync Admin Team.</p>
+        </div>
+      `;
     } else {
       return NextResponse.json({ error: 'Invalid status type' }, { status: 400 });
     }
@@ -173,7 +270,7 @@ If you believe this was an error, please verify your registration details and su
       name: adminName,
       email: adminEmail,
       society: societyName,
-      status: status === 'approved' ? "APPROVED / ACTIVE" : "REJECTED / DECLINED",
+      status: status.toUpperCase(),
       message: messageText,
       _cc: adminEmail,
       _subject: subject,
