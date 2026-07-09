@@ -42,3 +42,31 @@ example
 # generated native folders
 /ios
 /android
+
+# build and deploy scripts
+build.bat
+build.sh
+build_android.bat
+build_android_production.bat
+build_ios.bat
+build_web.bat
+deploy.bat
+run_production.bat
+
+# database migrations
+migration_announcements.sql
+migration_coordinates.sql
+migration_delete_society.sql
+migration_flow_update.sql
+migration_realtime.sql
+migration_storage_buckets.sql
+migration_visitor_passcodes.sql
+schema.sql
+
+# project configuration files
+babel.config.js
+eas.json
+eslint.config.js
+package-lock.json
+package.json
+tsconfig.json
