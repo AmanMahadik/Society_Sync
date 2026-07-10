@@ -41,6 +41,7 @@ interface Profile {
   full_name: string;
   email: string;
   wing?: string | null;
+  phone?: string | null;
 }
 
 export default function ChandaDashboard() {
@@ -140,7 +141,7 @@ export default function ChandaDashboard() {
       // 3. Fetch Profiles for dropdown
       const { data: profilesList } = await supabase
         .from('profiles')
-        .select('id, full_name, email, wing')
+        .select('id, full_name, email, wing, phone')
         .eq('society_id', targetSocietyId)
         .order('full_name');
       setProfiles(profilesList || []);
@@ -437,13 +438,15 @@ export default function ChandaDashboard() {
     if (!selectedWing) return;
 
     try {
+      const selectedProfile = profiles.find((p) => p.id === collectorForm.collectorUserId);
+
       const { error } = await supabase
         .from('wings')
         .update({
           collector_user_id: collectorForm.collectorUserId || null,
           collector_upi_id: collectorForm.collectorUpiId.trim() || null,
-          collector_name: collectorForm.collectorName.trim() || null,
-          collector_phone: collectorForm.collectorPhone.trim() || null,
+          collector_name: selectedProfile?.full_name || null,
+          collector_phone: selectedProfile?.phone || null,
         })
         .eq('id', selectedWing.id);
 
@@ -1057,38 +1060,15 @@ export default function ChandaDashboard() {
                 <select
                   value={collectorForm.collectorUserId}
                   onChange={(e) => setCollectorForm({ ...collectorForm, collectorUserId: e.target.value })}
-                  className="bg-zinc-955 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00d4aa] w-full"
+                  className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00d4aa] w-full"
                 >
-                  <option value="">Choose resident profile...</option>
+                  <option value="" className="bg-zinc-900 text-white">Choose resident profile...</option>
                   {profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.id} className="bg-zinc-900 text-white">
                       {p.full_name} ({p.email})
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-400 uppercase block">Coordinator Name</label>
-                <input 
-                  type="text" 
-                  value={collectorForm.collectorName}
-                  onChange={(e) => setCollectorForm({ ...collectorForm, collectorName: e.target.value })}
-                  placeholder="e.g. Yogesh Gore"
-                  required
-                  className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00d4aa] w-full"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-400 uppercase block">Coordinator Phone</label>
-                <input 
-                  type="text" 
-                  value={collectorForm.collectorPhone}
-                  onChange={(e) => setCollectorForm({ ...collectorForm, collectorPhone: e.target.value })}
-                  placeholder="e.g. 9876543210"
-                  className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00d4aa] w-full"
-                />
               </div>
 
               <div className="space-y-1">
