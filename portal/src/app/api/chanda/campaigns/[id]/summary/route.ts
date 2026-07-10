@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // 4. Fetch Offline Contributions
     const { data: offlines, error: offErr } = await supabaseServer
       .from('chanda_offline_contributions')
-      .select('*, profiles(full_name, phone, flat_number)')
+      .select('*, profiles!resident_id(full_name, phone, flat_number)')
       .eq('campaign_id', id);
 
     if (offErr) throw offErr;

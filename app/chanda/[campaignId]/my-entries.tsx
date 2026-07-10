@@ -37,7 +37,7 @@ export default function MyCollectionsScreen() {
     try {
       const { data, error } = await supabase
         .from('chanda_offline_contributions')
-        .select('*, profiles(full_name, flat_number)')
+        .select('*, profiles!resident_id(full_name, flat_number)')
         .eq('campaign_id', campaignId)
         .eq('entered_by', user.id)
         .order('created_at', { ascending: false });

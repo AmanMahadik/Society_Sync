@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
     const { data: contributions, error } = await supabaseServer
       .from('chanda_offline_contributions')
-      .select('*, profiles(full_name, phone, flat_number), wings(name)')
+      .select('*, profiles!resident_id(full_name, phone, flat_number), wings(name)')
       .eq('campaign_id', campaignId)
       .eq('status', status)
       .order('created_at', { ascending: false });
