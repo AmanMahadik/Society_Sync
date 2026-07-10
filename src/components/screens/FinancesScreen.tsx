@@ -9,11 +9,12 @@ import { supabase, uriToArrayBuffer } from '../../lib/supabase';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { getReportTemplate } from '../../lib/report-template';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 
 export const FinancesScreen: React.FC = () => {
   const { profile, user, refreshProfile } = useAuth();
   const theme = useTheme();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState('ledger'); // 'ledger' or 'dues'
@@ -683,6 +684,23 @@ export const FinancesScreen: React.FC = () => {
         {/* ==================== TAB 1: FESTIVAL LEDGER ==================== */}
         {activeTab === 'ledger' && !selectedEvent && (
           <View>
+            {/* CHANDA Campaigns Quick Access Card */}
+            <Card 
+              style={{ backgroundColor: theme.colors.elevation.level1, borderColor: 'rgba(0, 212, 170, 0.2)', borderWidth: 1, borderRadius: 12, marginBottom: 16 }}
+              onPress={() => router.push('/chanda' as any)}
+            >
+              <Card.Content style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <IconButton icon="hand-coin" containerColor="rgba(0, 212, 170, 0.1)" iconColor="#00D4AA" size={24} style={{ margin: 0 }} />
+                  <View>
+                    <Text variant="titleMedium" style={{ fontWeight: 'bold', fontSize: 14 }}>Chanda Collection Desk</Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 11 }}>Contribute to active community festival funds</Text>
+                  </View>
+                </View>
+                <IconButton icon="chevron-right" iconColor={theme.colors.onSurface} size={20} style={{ margin: 0 }} />
+              </Card.Content>
+            </Card>
+
             <View style={styles.sectionHeaderRow}>
               <Text variant="titleMedium" style={styles.sectionTitle}>Festival Events & Ledgers</Text>
               {(profile?.role === 'admin') && (
