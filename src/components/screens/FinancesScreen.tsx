@@ -703,7 +703,7 @@ export const FinancesScreen: React.FC = () => {
 
             <View style={styles.sectionHeaderRow}>
               <Text variant="titleMedium" style={styles.sectionTitle}>Festival Events & Ledgers</Text>
-              {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+              {(profile?.role === 'admin') && (
                 <Button 
                   mode="contained" 
                   icon="plus" 
@@ -793,7 +793,7 @@ export const FinancesScreen: React.FC = () => {
                 <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>{selectedEvent.name}</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Event Details & Ledger Sheet</Text>
               </View>
-              {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+              {profile?.role === 'admin' && (
                 <IconButton 
                   icon="trash-can-outline" 
                   iconColor="#FF3B30" 
@@ -837,7 +837,7 @@ export const FinancesScreen: React.FC = () => {
                   style={{ margin: 0 }}
                   onPress={handleExportPDF} 
                 />
-                {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+                {(profile?.role === 'admin') && (
                   <Button 
                     mode="contained" 
                     icon="plus" 
@@ -888,7 +888,7 @@ export const FinancesScreen: React.FC = () => {
                       </Text>
                     </View>
                   </Card.Content>
-                  {(tx.bill_image_url || profile?.role === 'admin' || profile?.role === 'master_admin') && (
+                  {(tx.bill_image_url || profile?.role === 'admin') && (
                     <Card.Actions style={styles.txActions}>
                       {tx.bill_image_url && (
                         <Button 
@@ -904,7 +904,7 @@ export const FinancesScreen: React.FC = () => {
                           View Bill Proof
                         </Button>
                       )}
-                      {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+                      {(profile?.role === 'admin') && (
                         <Button 
                           mode="text" 
                           icon="pencil" 
@@ -914,7 +914,7 @@ export const FinancesScreen: React.FC = () => {
                           Edit
                         </Button>
                       )}
-                      {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+                      {(profile?.role === 'admin') && (
                         <Button 
                           mode="text" 
                           icon="delete" 
@@ -949,7 +949,7 @@ export const FinancesScreen: React.FC = () => {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 {profile?.role === 'renter' ? 'Your Flat Maintenance Ledger' : 'Outstanding Dues'}
               </Text>
-              {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+              {(profile?.role === 'admin') && (
                 <Button 
                   mode="contained" 
                   icon="plus" 
@@ -1041,7 +1041,7 @@ export const FinancesScreen: React.FC = () => {
                     {/* Dues Actions */}
                     {due.status !== 'paid' && (
                       <Card.Actions style={styles.dueActions}>
-                        {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+                        {(profile?.role === 'admin') && (
                           <Button 
                             mode="text" 
                             icon="bell-ring" 
@@ -1051,7 +1051,7 @@ export const FinancesScreen: React.FC = () => {
                             Send Reminder
                           </Button>
                         )}
-                        {(profile?.role === 'admin' || profile?.role === 'master_admin') && (
+                        {(profile?.role === 'admin') && (
                           <Button 
                             mode="contained-tonal" 
                             icon="cash" 
