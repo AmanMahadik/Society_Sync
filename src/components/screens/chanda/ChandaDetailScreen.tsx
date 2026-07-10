@@ -157,7 +157,7 @@ export default function ChandaDetailScreen() {
               }),
             });
             Alert.alert('Success', 'Payment initiated successfully! Receipt will be generated shortly.');
-            router.push('/chanda/history' as any);
+            router.push('/chanda-history' as any);
           })
           .catch((err: any) => {
             console.error('Checkout error:', err);
@@ -192,7 +192,7 @@ export default function ChandaDetailScreen() {
                 });
 
                 Alert.alert('Success', 'Mock payment verified! Receipt generated.');
-                router.push('/chanda/history' as any);
+                router.push('/chanda-history' as any);
               },
             },
           ]
@@ -299,7 +299,7 @@ export default function ChandaDetailScreen() {
 
               <Button
                 mode="outlined"
-                onPress={() => router.push(`/chanda/${campaign.id}/log-entry` as any)}
+                onPress={() => router.push(`/chanda-log-entry?campaignId=${campaign.id}` as any)}
                 style={{ marginTop: 12 }}
                 textColor={theme.colors.primary}
               >
@@ -324,7 +324,7 @@ export default function ChandaDetailScreen() {
                   mode="contained"
                   buttonColor={theme.colors.primary}
                   textColor={theme.colors.onPrimary}
-                  onPress={() => router.push(`/chanda/${campaign.id}/log-entry` as any)}
+                  onPress={() => router.push(`/chanda-log-entry?campaignId=${campaign.id}` as any)}
                   style={{ flex: 1 }}
                 >
                   Log Collection
@@ -332,7 +332,7 @@ export default function ChandaDetailScreen() {
                 <Button
                   mode="outlined"
                   textColor={theme.colors.primary}
-                  onPress={() => router.push(`/chanda/${campaign.id}/my-entries` as any)}
+                  onPress={() => router.push(`/chanda-my-entries?campaignId=${campaign.id}` as any)}
                   style={{ flex: 1 }}
                 >
                   Track Collections

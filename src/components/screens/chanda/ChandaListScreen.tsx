@@ -75,7 +75,7 @@ export default function ChandaListScreen() {
         <Appbar.Content title="Chanda Campaigns" titleStyle={{ fontWeight: 'bold' }} />
         <Appbar.Action 
           icon="history" 
-          onPress={() => router.push('/chanda/history' as any)} 
+          onPress={() => router.push('/chanda-history' as any)} 
           color={theme.colors.onSurface} 
         />
       </Appbar.Header>
@@ -103,7 +103,7 @@ export default function ChandaListScreen() {
               <Card 
                 key={item.id} 
                 style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}
-                onPress={() => item.status === 'active' && router.push(`/chanda/${item.id}` as any)}
+                onPress={() => item.status === 'active' && router.push(`/chanda-detail?campaignId=${item.id}` as any)}
               >
                 <Card.Content style={styles.cardContent}>
                   <View style={styles.cardHeader}>

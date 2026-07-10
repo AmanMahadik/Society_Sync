@@ -104,7 +104,18 @@ function AppWithTheme() {
         router.replace('/pending-approval' as any);
       }
     } else {
-      const allowedScreens = ['settings', 'edit-profile', 'about', 'change-password', 'chanda'];
+      if (!segments[0]) return;
+      const allowedScreens = [
+        'settings', 
+        'edit-profile', 
+        'about', 
+        'change-password', 
+        'chanda',
+        'chanda-detail',
+        'chanda-history',
+        'chanda-log-entry',
+        'chanda-my-entries'
+      ];
       const currentSegment = segments[0];
       const isAllowed = allowedScreens.includes(currentSegment);
       if (!inTabsGroup && !isAllowed) {
@@ -164,6 +175,11 @@ function AppWithTheme() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="profile-completion" />
           <Stack.Screen name="pending-approval" />
+          <Stack.Screen name="chanda" />
+          <Stack.Screen name="chanda-detail" />
+          <Stack.Screen name="chanda-history" />
+          <Stack.Screen name="chanda-log-entry" />
+          <Stack.Screen name="chanda-my-entries" />
         </Stack>
         <FloatingNotificationStack />
       </NotificationProvider>
