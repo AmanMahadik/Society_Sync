@@ -38,12 +38,13 @@ export default function ChandaLogEntryScreen() {
   const fetchWingResidents = async () => {
     if (!profile?.society_id || !profile?.wing) return;
     try {
+      const wingSearchName = profile.wing.trim();
       const { data: wingData } = await supabase
         .from('wings')
         .select('id, collector_upi_id')
         .eq('society_id', profile.society_id)
-        .eq('name', profile.wing)
-        .single();
+        .or(`name.eq."${wingSearchName}",name.eq."Wing ${wingSearchName}"`)
+        .maybeSingle();
       
       if (wingData) {
         setWingId(wingData.id);

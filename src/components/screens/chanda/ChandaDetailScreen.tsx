@@ -65,11 +65,12 @@ export default function ChandaDetailScreen() {
       }
 
       if (profile?.wing) {
+        const wingSearchName = profile.wing.trim();
         const { data: wingData } = await supabase
           .from('wings')
           .select('*')
           .eq('society_id', profile.society_id)
-          .eq('name', profile.wing)
+          .or(`name.eq."${wingSearchName}",name.eq."Wing ${wingSearchName}"`)
           .maybeSingle();
 
         setWing(wingData);
