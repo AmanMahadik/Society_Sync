@@ -40,6 +40,7 @@ interface Profile {
   id: string;
   full_name: string;
   email: string;
+  wing?: string | null;
 }
 
 export default function ChandaDashboard() {
@@ -139,7 +140,7 @@ export default function ChandaDashboard() {
       // 3. Fetch Profiles for dropdown
       const { data: profilesList } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, wing')
         .eq('society_id', targetSocietyId)
         .order('full_name');
       setProfiles(profilesList || []);
@@ -151,6 +152,44 @@ export default function ChandaDashboard() {
       alert(`Load failed: ${e.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAutoCreateWings = async () => {
+    try {
+      const uniqueWings = Array.from(
+        new Set(profiles.map((p) => p.wing).filter(Boolean))
+      );
+      
+      if (uniqueWings.length === 0) {
+        uniqueWings.push('A', 'B'); // Fallback default wings
+      }
+
+      const insertPromises = uniqueWings.map(async (wingName) => {
+        const nameFormatted = String(wingName).startsWith('Wing') ? wingName : `Wing ${wingName}`;
+        const { data, error } = await supabase
+          .from('wings')
+          .insert({
+            society_id: societyId,
+            name: nameFormatted,
+          })
+          .select()
+          .maybeSingle();
+        return { data, error };
+      });
+
+      await Promise.all(insertPromises);
+      alert('Wings created successfully!');
+      
+      // Refresh wings
+      const { data: wingsList } = await supabase
+        .from('wings')
+        .select('*')
+        .eq('society_id', societyId)
+        .order('name');
+      setWings(wingsList || []);
+    } catch (e: any) {
+      alert(`Failed to auto-create wings: ${e.message}`);
     }
   };
 
@@ -630,27 +669,39 @@ export default function ChandaDashboard() {
                 <p className="text-zinc-500 text-xs">Configure coordinators to collect chanda offline via their personal UPI IDs.</p>
 
                 <div className="divide-y divide-zinc-850">
-                  {wings.map((w) => (
-                    <div key={w.id} className="py-3 flex justify-between items-center gap-4">
-                      <div>
-                        <span className="font-bold text-white text-sm block">{w.name}</span>
-                        {w.collector_name ? (
-                          <span className="text-zinc-400 text-xs mt-0.5 block">
-                            {w.collector_name} ({w.collector_upi_id || 'No UPI'})
-                          </span>
-                        ) : (
-                          <span className="text-zinc-600 text-xs mt-0.5 block italic">No coordinator assigned</span>
-                        )}
-                      </div>
+                  {wings.length === 0 ? (
+                    <div className="text-center py-6 space-y-4">
+                      <span className="text-zinc-500 text-xs italic block">No wings configured in the system.</span>
                       <button
-                        onClick={() => handleOpenCollectorConfig(w)}
-                        className="p-1.5 rounded bg-zinc-950 border border-zinc-850 hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all"
-                        title="Configure Wing Collector"
+                        onClick={handleAutoCreateWings}
+                        className="px-4 py-2 bg-zinc-950 border border-zinc-800 hover:border-[#00d4aa]/30 text-[#00d4aa] hover:bg-zinc-900 rounded text-xs font-bold transition-all shadow-md"
                       >
-                        <Edit2 className="h-3.5 w-3.5" />
+                        Auto-create Wings from Roster
                       </button>
                     </div>
-                  ))}
+                  ) : (
+                    wings.map((w) => (
+                      <div key={w.id} className="py-3 flex justify-between items-center gap-4">
+                        <div>
+                          <span className="font-bold text-white text-sm block">{w.name}</span>
+                          {w.collector_name ? (
+                            <span className="text-zinc-400 text-xs mt-0.5 block">
+                              {w.collector_name} ({w.collector_upi_id || 'No UPI'})
+                            </span>
+                          ) : (
+                            <span className="text-zinc-600 text-xs mt-0.5 block italic">No coordinator assigned</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleOpenCollectorConfig(w)}
+                          className="p-1.5 rounded bg-zinc-950 border border-zinc-850 hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all"
+                          title="Configure Wing Collector"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
