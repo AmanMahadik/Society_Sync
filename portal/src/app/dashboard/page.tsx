@@ -350,9 +350,15 @@ export default function SocietyAdminDashboard() {
       
       {/* NAVBAR */}
       <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="SocietySync Logo" className="h-8 w-8 rounded-lg object-contain" />
-          <span className="font-extrabold text-lg tracking-tight">SocietySync <span className="text-[#00d4aa] text-xs font-bold uppercase tracking-wider ml-1">Admin</span></span>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="SocietySync Logo" className="h-8 w-8 rounded-lg object-contain" />
+            <span className="font-extrabold text-lg tracking-tight">SocietySync <span className="text-[#00d4aa] text-xs font-bold uppercase tracking-wider ml-1">Admin</span></span>
+          </div>
+          <nav className="hidden md:flex items-center gap-4 ml-6">
+            <a href="/dashboard" className="text-sm font-semibold text-[#00d4aa] transition-colors border-b-2 border-[#00d4aa] pb-1">Roster & Notices</a>
+            <a href="/dashboard/chanda" className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">Chanda Campaigns</a>
+          </nav>
         </div>
         <button 
           onClick={handleSignOut} 

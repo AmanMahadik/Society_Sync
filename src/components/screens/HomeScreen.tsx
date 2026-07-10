@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../lib/notification-context';
 // @ts-ignore
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 
 interface HomeScreenProps {
   jumpTo?: (key: string) => void;
@@ -15,6 +15,7 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const { profile, user, refreshProfile } = useAuth();
+  const router = useRouter();
   const { addNotification } = useNotifications();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -897,6 +898,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                   ))}
               </ScrollView>
             )}
+            {/* CHANDA Campaigns Quick Access Card */}
+            <Card 
+              style={{ backgroundColor: theme.colors.elevation.level1, borderColor: 'rgba(0, 212, 170, 0.2)', borderWidth: 1, borderRadius: 12, marginTop: 12 }}
+              onPress={() => router.push('/chanda' as any)}
+            >
+              <Card.Content style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <IconButton icon="hand-coin" containerColor="rgba(0, 212, 170, 0.1)" iconColor="#00D4AA" size={24} style={{ margin: 0 }} />
+                  <View>
+                    <Text variant="titleMedium" style={{ fontWeight: 'bold', fontSize: 14 }}>Chanda Collection Desk</Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 11 }}>Contribute to active community festival funds</Text>
+                  </View>
+                </View>
+                <IconButton icon="chevron-right" iconColor={theme.colors.onSurface} size={20} style={{ margin: 0 }} />
+              </Card.Content>
+            </Card>
           </View>
         )}
 
