@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, TextInput } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, TextInput, NativeModules } from 'react-native';
 import { Appbar, Card, Text, Button, useTheme, ActivityIndicator, HelperText } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -130,7 +130,7 @@ export default function ChandaDetailScreen() {
         throw new Error(orderData.error || 'Failed to create order');
       }
 
-      if (RazorpayCheckout) {
+      if (RazorpayCheckout && NativeModules.RazorpayCheckout) {
         const checkoutOptions = {
           key: orderData.keyId,
           order_id: orderData.orderId,
