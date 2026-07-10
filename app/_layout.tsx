@@ -104,7 +104,7 @@ function AppWithTheme() {
         router.replace('/pending-approval' as any);
       }
     } else {
-      const allowedScreens = ['settings', 'edit-profile', 'about', 'change-password'];
+      const allowedScreens = ['settings', 'edit-profile', 'about', 'change-password', 'chanda'];
       const currentSegment = segments[0];
       const isAllowed = allowedScreens.includes(currentSegment);
       if (!inTabsGroup && !isAllowed) {
