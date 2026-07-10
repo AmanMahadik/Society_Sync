@@ -146,24 +146,35 @@ export default function ChandaDetailScreen() {
           theme: { color: theme.colors.primary },
         };
 
-        RazorpayCheckout.open(checkoutOptions)
-          .then(async (data: any) => {
-            await fetch('https://society-sync-portal.vercel.app/api/chanda/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: data.razorpay_order_id,
-                razorpay_payment_id: data.razorpay_payment_id,
-                razorpay_signature: data.razorpay_signature,
-              }),
+        try {
+          RazorpayCheckout.open(checkoutOptions)
+            .then(async (data: any) => {
+              await fetch('https://society-sync-portal.vercel.app/api/chanda/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: data.razorpay_order_id,
+                  razorpay_payment_id: data.razorpay_payment_id,
+                  razorpay_signature: data.razorpay_signature,
+                }),
+              });
+              Alert.alert('Success', 'Payment initiated successfully! Receipt will be generated shortly.');
+              router.push('/chanda-history' as any);
+            })
+            .catch((err: any) => {
+              console.error('Checkout error:', err);
+              const errMsg = err?.description || 
+                             (err && typeof err === 'object' ? JSON.stringify(err) : String(err)) || 
+                             'Checkout was dismissed';
+              Alert.alert('Payment Failed', errMsg);
             });
-            Alert.alert('Success', 'Payment initiated successfully! Receipt will be generated shortly.');
-            router.push('/chanda-history' as any);
-          })
-          .catch((err: any) => {
-            console.error('Checkout error:', err);
-            Alert.alert('Payment Failed', err.description || 'Checkout was dismissed');
-          });
+        } catch (e: any) {
+          console.error('Sync checkout error:', e);
+          Alert.alert(
+            'Expo Go Native Library Conflict',
+            'Online payment utilizes a native mobile library wrapper (react-native-razorpay) which cannot run inside the default Expo Go app. To test, please use the Simulator Mode or compile the app using a Custom Dev Client.'
+          );
+        }
       } else {
         Alert.alert(
           'Simulator Mode',
