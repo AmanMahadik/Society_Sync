@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Society_Sync",
-    "slug": "Society_Sync",
+    "name": "Society Sync",
+    "slug": "society-sync",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
