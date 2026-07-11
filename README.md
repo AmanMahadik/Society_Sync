@@ -92,20 +92,28 @@ It's underpinned by **Supabase** and **Expo React Native**, with strict **Role-B
 ### 🚨 Real-Time Emergency SOS Shield
 One-tap crisis alert from the resident dashboard. Triggers a **persistent full-screen alarm + vibration** for all active Admins and Guards, with a full Acknowledge → Resolve workflow and automatic feedback loops back to the resident and admin team.
 
-### 💰 Festival Ledgers & Maintenance Dues
-Transparent festival fund tracking — Total Chandaa, Total Expense, Fund Balance — with itemized transactions and receipt-bill uploads. Plus a monthly maintenance tracker showing **Pending / Paid / Partial / Overdue** status.
+### 💰 Chandaa Drives & Razorpay Payments
+*   **Online Gateways**: Secure in-app payments using native **Razorpay Checkout SDK**. Successful transactions automatically trigger secure backend webhooks, record payment entries, and issue PDF receipts.
+*   **Offline Collection**: Log cash/UPI payments directly in the app. Submit transaction screenshot proofs and UTR IDs to your wing coordinator.
+*   **Collector Panels**: Appointed Wing Coordinators get a dedicated panel to review pending collections, view wing stats, and approve/reject logs.
+
+### 🚗 Smart Visitor Parking Management
+Live **V1–V10** slot grid by date and time-block (Morning / Afternoon / Evening / Overnight). Residents request, Admins approve or reject, and approved bookings auto-populate the Guard's **Gate Entry Checklist**.
 
 </td>
 <td width="50%" valign="top">
 
-### 🚗 Smart Visitor Parking Management
-Live **V1–V10** slot grid by date and time-block (Morning / Afternoon / Evening / Overnight). Residents request, Admins approve or reject, and approved bookings auto-populate the Guard's **Gate Entry Checklist**.
+### 🔒 Biometric Security App Lock
+Secures your app usage using **local authentication (FaceID, Fingerprint, or Device PIN)**. Features a quick toggle under Settings, safe-key storage, and auto-lock screen triggers when the app enters the background.
 
 ### 💬 Council Chats & Live Voting Polls
 Category-threaded discussions (`#General-Complaints`, `#Water-Infrastructure`, `#Annual-Budget`) plus Admin-created polls with **Supabase Realtime** vote counts updating live on every screen.
 
 ### 👤 Unified Profile, Settings & Roster
 Wing/flat-organized resident directory, role cycling for Admins, Dark/Light/System theming, and a diagnostics panel showing live connectivity (Supabase, WebSockets, Notifications).
+
+### 🛠️ Stable Flat-Routing Architecture
+Refactored nested route screens into a robust **flat page layout** at the root of `app/` (e.g. `chanda.tsx`, `chanda-detail.tsx`, `chanda-history.tsx`). This prevents Expo Router race-conditions and stops accidental tab-fallback redirects during loading states.
 
 </td>
 </tr>
@@ -151,8 +159,10 @@ flowchart TB
         UI["React Native Paper UI<br/>(Material Design 3)"]
         Router["Expo Router<br/>(File-based Navigation)"]
         Cache["AsyncStorage<br/>(Theme / Locale Cache)"]
+        Bio["Expo Local Authentication<br/>(Biometrics FaceID/Fingerprint)"]
         UI --> Router
         UI -.-> Cache
+        UI -.-> Bio
     end
 
     subgraph Edge["🌐 Realtime Channel Layer"]
@@ -162,14 +172,15 @@ flowchart TB
     subgraph Backend["☁️ Supabase Cloud Backend"]
         Auth["Supabase Auth<br/>(JWT · Google OAuth)"]
         DB["PostgreSQL<br/>+ Row-Level Security"]
-        Storage["Supabase Storage<br/>(Avatars · Receipt Bills)"]
+        Storage["Supabase Storage<br/>(Avatars · Receipt Bills · UTR Proofs)"]
     end
 
-    subgraph Roles["🧑‍🤝‍🧑 Role-Based Access"]
+    subgraph Roles["🧑🤝🧑 Role-Based Access"]
         Admin["🛡️ Admin"]
         Owner["🏡 Owner"]
         Tenant["👥 Tenant"]
         Guard["👮 Security Guard"]
+        Collector["🤝 Wing Coordinator"]
     end
 
     Router -->|REST / RPC| DB
@@ -179,7 +190,7 @@ flowchart TB
     WS <-->|Postgres Changes| DB
     Auth -->|Issues JWT| DB
 
-    Admin & Owner & Tenant & Guard -->|Scoped by RLS Policy| DB
+    Admin & Owner & Tenant & Guard & Collector -->|Scoped by RLS Policy| DB
 
     style Client fill:#1f6feb,color:#fff,stroke:#0d419d
     style Edge fill:#2ea043,color:#fff,stroke:#1a7f37
@@ -242,11 +253,11 @@ flowchart TD
         R -->|Logs check-in/out| S(Visitor Logs DB)
     end
 
-    subgraph Financials["4. Finance Ledger & Dues Workflow"]
-        I -->|Generates monthly maintenance bill| T[Invoices]
-        L -->|UPI payment upload receipt screenshot| U[Submit Payment]
-        U -->|Bucket storage audit| V[Admin Receipt Review]
-        V -->|Clears dues ledger| W(Transactions Ledger: Paid)
+    subgraph Financials["4. Chanda Payment & Razorpay Workflow"]
+        I -->|Generates monthly maintenance/chanda drive| T[Invoices / Campaigns]
+        L -->|Pays Online / Uploads Offline Receipt| U[Submit Payment / UTR Screenshot]
+        U -->|Bucket storage audit / Webhook verification| V[Admin / Coordinator Review]
+        V -->|Triggers PDF receipt generator| W(Transactions Ledger: Paid)
     end
 
     style Onboarding fill:#09090b,stroke:#27272a,color:#fafafa
@@ -261,26 +272,27 @@ flowchart TD
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Expo (React Native SDK 54), Expo Router, React Native Paper (MD3), `@expo/vector-icons`, AsyncStorage, react-native-safe-area-context |
-| **Backend** | Supabase Auth (JWT + Google Sign-In), Supabase Realtime (WebSockets), Supabase Storage (Buckets) |
+| **Frontend** | Expo (React Native SDK 54), Expo Router, React Native Paper (MD3), `@expo/vector-icons`, AsyncStorage, react-native-safe-area-context, react-native-razorpay, expo-local-authentication |
+| **Backend** | Supabase Auth (JWT + Google Sign-In), Supabase Realtime (WebSockets), Supabase Storage (Buckets), Next.js API endpoints, Nodemailer, Razorpay API |
 | **Database** | PostgreSQL on Supabase + Postgres Row-Level Security (RLS) |
 
 ---
 
-## 🧱 Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology | Purpose |
 |:---|:---|:---|
 | **Framework** | `Expo (React Native) SDK 54` | Single codebase → native iOS & Android |
 | **Navigation** | `Expo Router` | File-based routing for stacks, tabs & nested screens |
 | **UI Library** | `React Native Paper (MD3)` | Cards, dialogs, snackbars, portals — Material Design 3 |
-| **Icons** | `@expo/vector-icons` | Material Community Icons |
-| **Local Storage** | `AsyncStorage` | Persists theme & language preferences |
+| **Biometrics** | `expo-local-authentication` | Device biometric authentication (FaceID / Fingerprint) |
+| **Payments** | `react-native-razorpay` | Online payment SDK integration for mobile transactions |
+| **Local Storage** | `AsyncStorage` | Persists theme, lock parameters, and preferences |
 | **Layout Safety** | `react-native-safe-area-context` | Notch / punch-hole / status-bar aware spacing |
 | **Database** | `PostgreSQL` (Supabase) | Enterprise-grade relational storage |
 | **Auth** | `Supabase Auth` | JWT sessions, Google Sign-In, password recovery |
 | **Realtime** | `Supabase Realtime (WebSockets)` | Live chat, poll updates, SOS alarms |
-| **Storage** | `Supabase Storage Buckets` | Avatars & transaction receipt bills |
+| **Storage** | `Supabase Storage Buckets` | Avatars, bills, and payment verification proofs |
 | **Security** | `Postgres Row-Level Security (RLS)` | Per-role, per-user data access policies |
 
 ---
@@ -289,17 +301,18 @@ flowchart TD
 
 <div align="center">
 
-| Feature / Permission | 🛡️ Admin | 🏡 Owner | 👥 Tenant | 👮 Guard |
-|:---|:---:|:---:|:---:|:---:|
-| Manage Roster (Approve/Reject) | ✅ | ❌ | ❌ | ❌ |
-| Cycle User Roles | ✅ | ❌ | ❌ | ❌ |
-| Acknowledge & Resolve SOS | ✅ | ❌ | ❌ | ✅ |
-| Record Festival Income/Expense | ✅ | ❌ | ❌ | ❌ |
-| Approve/Reject Parking | ✅ | ❌ | ❌ | ❌ |
-| Gate Entry Checklist | ❌ | ❌ | ❌ | ✅ |
-| Create Voting Polls | ✅ | ❌ | ❌ | ❌ |
-| Cast Votes | ✅ | ✅ | ✅ | ❌ |
-| Post Chat Messages | ✅ | ✅ | ✅ | ❌ |
+| Feature / Permission | 🛡️ Admin | 🏡 Owner | 👥 Tenant | 👮 Guard | 🤝 Coordinator |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| Manage Roster (Approve/Reject) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Cycle User Roles | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Acknowledge & Resolve SOS | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Record Festival Income/Expense | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Verify Offline Collections | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Approve/Reject Parking | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Gate Entry Checklist | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Create Voting Polls | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Cast Votes | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Post Chat Messages | ✅ | ✅ | ✅ | ❌ | ✅ |
 
 </div>
 
@@ -322,6 +335,13 @@ erDiagram
     POLL_OPTIONS ||--o{ POLL_VOTES : receives
     PROFILES ||--o{ POLL_VOTES : casts
     PROFILES ||--o{ NOTIFICATIONS : receives
+    WINGS ||--o{ FLATS : contains
+    WINGS ||--o{ CHANDA_PAYMENTS : receives
+    FLATS ||--o{ CHANDA_PAYMENTS : has
+    PROFILES ||--o{ CHANDA_PAYMENTS : pays
+    CHANDA_CAMPAIGNS ||--o{ CHANDA_PAYMENTS : logs
+    CHANDA_CAMPAIGNS ||--o{ CHANDA_OFFLINE_CONTRIBUTIONS : logs
+    PROFILES ||--o{ CHANDA_OFFLINE_CONTRIBUTIONS : logs
 
     PROFILES {
         uuid id PK
@@ -365,6 +385,50 @@ erDiagram
         string type
         string receipt_url
     }
+    WINGS {
+        uuid id PK
+        string name
+        uuid collector_user_id FK
+        string collector_upi_id
+    }
+    FLATS {
+        uuid id PK
+        uuid wing_id FK
+        string flat_number
+    }
+    CHANDA_CAMPAIGNS {
+        uuid id PK
+        string title
+        string description
+        numeric target_amount
+        numeric suggested_amount
+        numeric min_amount
+        string status
+    }
+    CHANDA_PAYMENTS {
+        uuid id PK
+        uuid campaign_id FK
+        uuid society_id FK
+        uuid wing_id FK
+        uuid flat_id FK
+        uuid resident_id FK
+        numeric amount
+        string status
+        string razorpay_order_id
+        string razorpay_payment_id
+    }
+    CHANDA_OFFLINE_CONTRIBUTIONS {
+        uuid id PK
+        uuid campaign_id FK
+        uuid society_id FK
+        uuid wing_id FK
+        uuid flat_id FK
+        uuid resident_id FK
+        numeric amount
+        string proof_image_url
+        string utr_id
+        string status
+    }
 ```
 
 > 🔐 **Row-Level Security is enforced on every table.** Profiles are publicly readable (for the roster) but only self-or-admin editable. SOS complaints can be inserted by any approved resident but only updated by Guards/Admins. Notifications are strictly scoped to `auth.uid() = user_id`.
@@ -378,13 +442,18 @@ societysync/
 ├── app/                          # Expo Router screens (file-based routing)
 │   ├── (auth)/                     # Sign in / sign up / password recovery
 │   ├── (tabs)/                      # Home, Parking, Chat, Profile tabs
-│   └── (admin)/                     # Admin-only approval & roster screens
+│   ├── chanda.tsx                   # [FLAT ROUTE] Active/past chanda drives list
+│   ├── chanda-detail.tsx            # [FLAT ROUTE] Drive summary, Razorpay pay desk
+│   ├── chanda-history.tsx           # [FLAT ROUTE] Transaction ledger & PDF download desk
+│   ├── chanda-log-entry.tsx         # [FLAT ROUTE] Log offline payments & upload UTR proof
+│   ├── chanda-my-entries.tsx        # [FLAT ROUTE] Coordinator review desk
+│   ├── settings.tsx                 # Profile configurations & Biometrics toggle
+│   └── about.tsx                    # Connectivity diagnostic dashboard
 │
-├── components/                   # Reusable React Native Paper UI components
-│
-├── lib/
-│   ├── supabase.ts                  # Supabase client init
-│   └── realtime/                    # Realtime channel subscriptions (SOS, chat, polls)
+├── src/
+│   ├── components/                 # Reusable UI cards, inputs, and portals
+│   ├── lib/                        # Supabase client & Context Providers (Auth, Theme)
+│   └── components/screens/chanda   # Chanda views code controllers
 │
 ├── docs/
 │   ├── architecture-diagram.png     # 📌 Exported architecture diagram
@@ -397,7 +466,7 @@ societysync/
 
 ---
 
-## ⚙️ Environment Configuration
+## ⚙️ Environment Setup
 
 <details>
 <summary><b>🔧 App Environment (<code>.env</code>)</b> — click to expand</summary>
@@ -408,8 +477,7 @@ Create a `.env` file in the project root with the following variables:
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_public_key
-EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_public_key
 ```
 
 </details>
@@ -420,10 +488,9 @@ EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id
 <br/>
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. Run the migrations in `supabase/migrations/` to create tables and RLS policies.
-3. Create a Storage bucket named `avatars` (public read) for resident profile photos.
-4. Enable **Google** as an auth provider under Authentication → Providers.
-5. Copy your Project URL and `anon` public key into `.env`.
+2. Run the migrations in `supabase/migrations/` and `migration_chanda.sql` to create tables and RLS policies.
+3. Create Storage buckets named `avatars` (profile photos) and `chanda_proofs` (for coordinator payment proofs).
+4. Copy your Project URL and public key into your app `.env` and Next.js portal configurations.
 
 </details>
 
@@ -462,10 +529,10 @@ npx expo start
 
 ## 🎨 UI/UX Principles
 
+- **🔒 Biometric Gate Guarding** — Secures dashboard entry using secure local authenticators before reading financial statements.
 - **🧭 Safe-Area Aware** — `useSafeAreaInsets` keeps headers clear of notches & punch-holes on every device.
 - **📐 Clearance Spacing** — 80–100px bottom padding keeps content clear of the floating tab bar.
 - **🌗 Theme-Aware Contrast** — colors bind to `theme.colors.onSurface` / `theme.colors.surface`, never hardcoded — full Dark & Light mode support.
-- **🏷️ Smart Contrast Badging** — role badges auto-adjust shade per theme (e.g. `#047857` for Owners in Light Mode) to stay readable.
 
 ---
 
@@ -497,8 +564,6 @@ Found a bug or have an idea? [Open an issue](../../issues) — every contributio
 ## 📄 License
 
 This project is **Proprietary**. All rights reserved. Redistribution, modification, or commercial use requires explicit prior permission from the author.
-
-> 📌 *Swap this section for your actual license (MIT, CC BY-NC 4.0, etc.) if you intend to open-source the project.*
 
 ---
 
