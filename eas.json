@@ -19,6 +19,17 @@
       },
       "channel": "preview"
     },
+    "simulator": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nqpxlvbgzcfguijouhgl.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_wbaNcYnzSZ_VT1bf0lPdKA_5SSl5aeO"
+      },
+      "channel": "preview"
+    },
     "production": {
       "android": {
         "buildType": "app-bundle"
