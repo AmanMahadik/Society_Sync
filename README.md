@@ -46,7 +46,7 @@
 
 <div align="center">
 
-### 👉 [**⬇️ Download the Android Build (Expo)**](https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/b8cfa267-de50-43d7-979b-2ac99bcd0c96) 👈
+### 👉 [**⬇️ Download the Android Build (Expo)**](https://expo.dev/accounts/aman1611/projects/society-sync/builds/739948e4-dbfc-40f2-b05f-59c1c53d3020) 👈
 
 Click the link above to open the Expo build page, then tap **"Download build"** to get the standalone `.apk` directly — or scan the QR with **Expo Go** on your Android device.
 

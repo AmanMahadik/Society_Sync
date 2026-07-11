@@ -67,7 +67,7 @@ Congratulations! Your registration request for "${societyName}" has been success
 Your unique Society Code is: ${societyCode}
 
 You can now log in to the Web Admin Portal to manage your society operations. To onboarding residents:
-1. Ask them to install the mobile app via the download link: https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/e5ad992f-d0e5-499f-b19c-20f4430835b5
+1. Ask them to install the mobile app via the download link: https://expo.dev/accounts/aman1611/projects/society-sync/builds/739948e4-dbfc-40f2-b05f-59c1c53d3020
 2. Tell them to register using the Society Code: ${societyCode}
 3. Approve their profiles in the Roster.
 
@@ -87,7 +87,7 @@ Welcome to SocietySync!`;
           <p><strong>Next Steps for Onboarding Residents:</strong></p>
           <ol style="line-height: 1.6; padding-left: 20px;">
             <li style="margin-bottom: 15px;">Direct residents to install the mobile application via the build link: <br/>
-              <a href="https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/e5ad992f-d0e5-499f-b19c-20f4430835b5" style="color: #00d4aa; text-decoration: none; font-weight: bold;">Download App Here</a>
+              <a href="https://expo.dev/accounts/aman1611/projects/society-sync/builds/739948e4-dbfc-40f2-b05f-59c1c53d3020" style="color: #00d4aa; text-decoration: none; font-weight: bold;">Download App Here</a>
               <div style="margin-top: 10px; text-align: center;">
                 <span style="font-size: 11px; color: #6b7280; display: block; margin-bottom: 5px;">Scan QR Code to Download:</span>
                 <img src="cid:app_qr_code" style="width: 140px; height: 140px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px;" alt="App QR Code" />

@@ -58,7 +58,7 @@ export default function RegisterSuccess() {
             Scan the QR code with your mobile camera to load in Expo Go or download standalone app.
           </p>
           <a
-            href="https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/e5ad992f-d0e5-499f-b19c-20f4430835b5"
+            href="https://expo.dev/accounts/aman1611/projects/society-sync/builds/739948e4-dbfc-40f2-b05f-59c1c53d3020"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex py-2.5 px-5 bg-[#00d4aa] text-zinc-950 font-bold text-xs rounded-lg hover:bg-[#00b390] transition-all items-center gap-1.5 glow-hover"

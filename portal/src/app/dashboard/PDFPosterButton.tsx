@@ -125,7 +125,7 @@ const PosterDocument = ({ societyName, societyCode }: { societyName: string; soc
         <View style={pdfStyles.qrBox}>
           <Text style={pdfStyles.qrTitle}>1. Scan to Install App</Text>
           <Image 
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://expo.dev/accounts/aman1611/projects/Society_Sync/builds/e5ad992f-d0e5-499f-b19c-20f4430835b5')}`} 
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://expo.dev/accounts/aman1611/projects/society-sync/builds/739948e4-dbfc-40f2-b05f-59c1c53d3020')}`} 
             style={pdfStyles.qrImage} 
           />
           <Text style={pdfStyles.qrDesc}>Download the official SocietySync app build onto your device.</Text>
