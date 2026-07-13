@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
-import { Building2, Copy, Users, FileText, CheckCircle, Share2, LogOut, Trash2, Search, Filter, Map } from 'lucide-react';
+import { Building2, Copy, Users, FileText, CheckCircle, Share2, LogOut, Trash2, Search, Filter, Map, Moon, Sun, Laptop } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const PDFPosterButton = dynamic(
   () => import('./PDFPosterButton'),
-  { ssr: false, loading: () => <div className="w-full py-3 text-[#8a8f91] text-center text-xs">Loading PDF Generator...</div> }
+  { ssr: false, loading: () => <div className="w-full py-3 text-muted-foreground text-center text-xs">Loading PDF Generator...</div> }
 );
 
 interface Profile {
@@ -56,6 +57,42 @@ export default function SocietyAdminDashboard() {
   const [noticeContent, setNoticeContent] = useState('');
   const [noticePinned, setNoticePinned] = useState(false);
   const [noticeModal, setNoticeModal] = useState(false);
+
+  // Profile & settings drawer dropdown status
+  const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  // Theme settings state
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark');
+
+  // Theme Matcher Helper
+  const applyTheme = (mode: 'light' | 'dark' | 'system') => {
+    if (typeof window === 'undefined') return;
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    
+    let resolvedMode = mode;
+    if (mode === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      resolvedMode = systemTheme;
+    }
+    
+    root.classList.add(resolvedMode);
+    localStorage.setItem('theme', mode);
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' || 'dark';
+      setTheme(savedTheme);
+      applyTheme(savedTheme);
+    }
+  }, []);
+
+  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
+    setTheme(mode);
+    applyTheme(mode);
+  };
 
   const fetchDashboardData = async () => {
     console.log('fetchDashboardData: Component mounted, starting to fetch dashboard data...');
@@ -139,6 +176,16 @@ export default function SocietyAdminDashboard() {
       }
       console.log('fetchDashboardData: Society details successfully fetched:', soc.name);
       setSociety(soc);
+
+      // Fetch admin details
+      const { data: currentProf } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (currentProf) {
+        setAdminProfile(currentProf);
+      }
 
       // 3. Fetch community members
       console.log('fetchDashboardData: Fetching community members...');
@@ -447,21 +494,30 @@ export default function SocietyAdminDashboard() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const getInitials = (name?: string) => {
+    if (!name) return 'SA';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0].substring(0, 2).toUpperCase();
+  };
+
   // Filter roster list
   const filteredRoster = profiles.filter((prof) => {
     const matchesSearch = 
-      prof.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${prof.wing}-${prof.flat_number}`.toLowerCase().includes(searchQuery.toLowerCase());
+      (prof.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${prof.wing || ''}-${prof.flat_number || ''}`.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesRole = roleFilter === 'all' || prof.role.toLowerCase() === roleFilter.toLowerCase();
+    const matchesRole = roleFilter === 'all' || (prof.role || '').toLowerCase() === roleFilter.toLowerCase();
     
     return matchesSearch && matchesRole;
   });
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0b0e10] text-[#f2f2f0] flex items-center justify-center p-6">
-        <p className="text-[#8a8f91] text-sm">Opening Society Dashboard...</p>
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+        <p className="text-muted-foreground text-sm animate-pulse">Opening Society Dashboard...</p>
       </div>
     );
   }
@@ -469,32 +525,141 @@ export default function SocietyAdminDashboard() {
   if (!society) return null;
 
   return (
-    <div className="min-h-screen bg-[#0b0e10] text-[#f2f2f0] flex flex-col selection:bg-[#1D9E75] selection:text-[#0b0e10]">
+    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-[#1D9E75] selection:text-[#0b0e10]">
       
       {/* NAVBAR */}
-      <header className="border-b border-[#1c2224] bg-[#0b0e10] px-6 py-4 flex justify-between items-center">
+      <header className="border-b border-border bg-background px-6 py-4 flex justify-between items-center relative z-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="SocietySync Logo" className="h-7 w-7 rounded object-contain" />
-            <span className="font-extrabold text-base tracking-tight text-[#f2f2f0]">SocietySync</span>
+            <span className="font-extrabold text-base tracking-tight">SocietySync</span>
           </div>
           <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-[#0F6E56]/20 text-[#1D9E75] border border-[#1D9E75]/30">
-            Society admin
+            SOCIETY ADMIN
           </span>
         </div>
+        
         <div className="flex items-center gap-6">
           <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
-            <a href="/dashboard" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">Overview</a>
-            <a href="/dashboard/chanda" className="text-[#8a8f91] hover:text-[#f2f2f0] transition-colors">Billing</a>
-            <span className="text-zinc-800 cursor-not-allowed">Parking</span>
-            <span className="text-zinc-800 cursor-not-allowed">Forum</span>
+            <Link href="/dashboard" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">Overview</Link>
+            <Link href="/dashboard/chanda" className="text-muted-foreground hover:text-foreground transition-colors">Billing</Link>
+            <span className="text-zinc-600 dark:text-zinc-800 cursor-not-allowed">Parking</span>
+            <Link href="/dashboard/forum" className="text-muted-foreground hover:text-foreground transition-colors">Forum</Link>
           </nav>
-          <button 
-            onClick={handleSignOut} 
-            className="text-xs font-semibold px-3 py-1.5 rounded bg-[#111517] hover:bg-[#1c2224] text-[#8a8f91] hover:text-[#f2f2f0] transition-all border border-[#1c2224] flex items-center gap-1.5"
-          >
-            <LogOut className="h-3.5 w-3.5" /> Sign Out
-          </button>
+          
+          {/* Circular Admin Avatar Button */}
+          <div className="relative">
+            <button 
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="h-8 w-8 rounded-full bg-[#1D9E75] flex items-center justify-center font-extrabold text-xs text-white shadow-lg shadow-[#1D9E75]/20 hover:bg-[#15803d] transition-all cursor-pointer"
+            >
+              {getInitials(adminProfile?.full_name)}
+            </button>
+
+            {/* Profile & settings dropdown modal */}
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-3 w-80 bg-card border border-border rounded-lg shadow-2xl p-5 space-y-4 text-xs z-50 text-foreground">
+                <div className="flex justify-between items-center border-b border-border pb-2">
+                  <h3 className="font-bold text-sm tracking-tight">Account & Settings</h3>
+                  <button 
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="text-muted-foreground hover:text-foreground text-sm font-bold cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                {/* Profile */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Profile</span>
+                  <div className="flex items-center gap-3 bg-background/50 border border-border p-3 rounded-lg">
+                    <div className="h-10 w-10 rounded-full bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center font-bold text-[#1D9E75] text-sm">
+                      {getInitials(adminProfile?.full_name)}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-foreground">{adminProfile?.full_name || 'Society Admin'}</h4>
+                      <span className="text-[10px] text-[#1D9E75] font-semibold uppercase tracking-wider block bg-[#1D9E75]/10 border border-[#1D9E75]/20 px-2 py-0.5 rounded mt-1 max-w-fit">
+                        Society Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verification / Society Details */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Society Registry</span>
+                  <div className="bg-background/50 border border-border p-3 rounded-lg space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Society Name:</span>
+                      <span className="text-foreground font-bold">{society?.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Verification:</span>
+                      <span className={`${society?.status === 'active' ? 'text-[#1D9E75]' : 'text-amber-500'} font-bold`}>
+                        {society?.status === 'active' ? 'Verified' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Society Code:</span>
+                      <span className="text-foreground font-mono font-bold">{society?.society_code}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">City / State:</span>
+                      <span className="text-foreground font-bold">{society?.city}, {society?.state}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Theme Selector inside Dropdown */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Theme</span>
+                  <div className="grid grid-cols-3 gap-2 bg-background border border-border rounded p-1">
+                    <button
+                      onClick={() => handleThemeChange('light')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'light' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Sun className="h-3 w-3" />
+                      Light
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('dark')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'dark' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Moon className="h-3 w-3" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('system')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'system' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Laptop className="h-3 w-3" />
+                      System
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sign Out Button */}
+                <button
+                  onClick={handleSignOut}
+                  className="w-full py-2 bg-[#993C1D]/10 text-[#dc2626] border border-[#dc2626]/30 hover:bg-[#dc2626]/10 font-bold rounded text-center transition-all cursor-pointer block border-t"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -513,7 +678,7 @@ export default function SocietyAdminDashboard() {
       )}
 
       {/* LIVE TICKER BAR */}
-      <div className="border-b border-[#1c2224] bg-[#0b0e10] px-6 py-2.5 flex items-center gap-4 overflow-x-auto text-[11px] font-semibold text-[#8a8f91] select-none whitespace-nowrap">
+      <div className="border-b border-border bg-background px-6 py-2.5 flex items-center gap-4 overflow-x-auto text-[11px] font-semibold text-muted-foreground select-none whitespace-nowrap">
         <div className="flex items-center gap-1.5 mr-2 text-[#1D9E75]">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1D9E75] opacity-75"></span>
@@ -522,15 +687,15 @@ export default function SocietyAdminDashboard() {
           <span className="uppercase tracking-widest text-[10px] font-bold">Live</span>
         </div>
         <span>Residents {profiles.length}</span>
-        <span className="text-zinc-800 font-normal">·</span>
+        <span className="text-border font-normal">·</span>
         <span>Dues pending 12</span>
-        <span className="text-zinc-800 font-normal">·</span>
+        <span className="text-border font-normal">·</span>
         <span>Open complaints 3</span>
-        <span className="text-zinc-800 font-normal">·</span>
+        <span className="text-border font-normal">·</span>
         <span>Guards on duty {profiles.filter(p => p.role === 'guard').length || 1}</span>
-        <span className="text-zinc-800 font-normal">·</span>
+        <span className="text-border font-normal">·</span>
         <span>Guests today 9</span>
-        <span className="text-zinc-800 font-normal">·</span>
+        <span className="text-border font-normal">·</span>
         <span>SOS alerts 0</span>
       </div>
 

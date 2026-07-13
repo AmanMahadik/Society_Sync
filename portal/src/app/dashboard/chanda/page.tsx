@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { 
   Building2, ArrowLeft, Coins, Calendar, Plus, Edit2, 
   Trash2, Download, Check, X, RefreshCw, BarChart2, Eye, 
   ExternalLink, UserCheck, AlertTriangle, LogOut, Settings, 
-  FileSpreadsheet, FileText, IndianRupee, Heart
+  FileSpreadsheet, FileText, IndianRupee, Heart, Shield, Moon, Sun, Laptop
 } from 'lucide-react';
 import { formatINR } from '../../../lib/utils';
 
@@ -58,6 +59,52 @@ export default function ChandaDashboard() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [offlineQueue, setOfflineQueue] = useState<any[]>([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // Profile dropdown states
+  const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [societyDetails, setSocietyDetails] = useState<any>(null);
+
+  // Theme settings state
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark');
+
+  // Theme Matcher Helper
+  const applyTheme = (mode: 'light' | 'dark' | 'system') => {
+    if (typeof window === 'undefined') return;
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    
+    let resolvedMode = mode;
+    if (mode === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      resolvedMode = systemTheme;
+    }
+    
+    root.classList.add(resolvedMode);
+    localStorage.setItem('theme', mode);
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' || 'dark';
+      setTheme(savedTheme);
+      applyTheme(savedTheme);
+    }
+  }, []);
+
+  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
+    setTheme(mode);
+    applyTheme(mode);
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'SA';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0].substring(0, 2).toUpperCase();
+  };
 
   // Form states
   const [createModal, setCreateModal] = useState(false);
@@ -129,6 +176,26 @@ export default function ChandaDashboard() {
 
       setSocietyId(targetSocietyId);
       setSocietyName(targetSocietyName);
+
+      // Fetch admin details
+      const { data: currentProf } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (currentProf) {
+        setAdminProfile(currentProf);
+      }
+
+      // Fetch society details
+      const { data: soc } = await supabase
+        .from('societies')
+        .select('*')
+        .eq('id', targetSocietyId)
+        .maybeSingle();
+      if (soc) {
+        setSocietyDetails(soc);
+      }
 
       // 2. Fetch Wings
       const { data: wingsList } = await supabase
@@ -499,36 +566,149 @@ export default function ChandaDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex items-center justify-center p-6">
-        <p className="text-zinc-500 text-sm flex items-center gap-2">
-          <RefreshCw className="h-4 w-4 animate-spin text-[#00d4aa]" /> Loading Chanda Collection Dashboard...
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+        <p className="text-muted-foreground text-sm flex items-center gap-2 animate-pulse">
+          <RefreshCw className="h-4 w-4 animate-spin text-[#1D9E75]" /> Loading Chanda Collection Dashboard...
         </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col selection:bg-[#00d4aa] selection:text-[#09090b]">
+    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-[#1D9E75] selection:text-[#0b0e10]">
       {/* NAVBAR */}
-      <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 flex justify-between items-center shrink-0">
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={() => router.push('/dashboard')}
-            className="p-1.5 rounded bg-zinc-900 border border-zinc-850 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+      <header className="border-b border-border bg-background px-6 py-4 flex justify-between items-center relative z-50">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="SocietySync Logo" className="h-8 w-8 rounded-lg object-contain" />
-            <span className="font-extrabold text-lg tracking-tight">
-              SocietySync <span className="text-[#00d4aa] text-xs font-bold uppercase tracking-wider ml-1">Admin</span>
-            </span>
+            <img src="/logo.png" alt="SocietySync Logo" className="h-7 w-7 rounded object-contain" />
+            <span className="font-extrabold text-base tracking-tight">SocietySync</span>
           </div>
-          <nav className="hidden md:flex items-center gap-4 ml-6">
-            <a href="/dashboard" className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">Roster & Notices</a>
-            <a href="/dashboard/chanda" className="text-sm font-semibold text-[#00d4aa] transition-colors border-b-2 border-[#00d4aa] pb-1">Chanda Campaigns</a>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-[#0F6E56]/20 text-[#1D9E75] border border-[#1D9E75]/30">
+            SOCIETY ADMIN
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
+            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">Overview</Link>
+            <Link href="/dashboard/chanda" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">Billing</Link>
+            <span className="text-zinc-600 dark:text-zinc-800 cursor-not-allowed">Parking</span>
+            <Link href="/dashboard/forum" className="text-muted-foreground hover:text-foreground transition-colors">Forum</Link>
           </nav>
+          
+          {/* Circular Admin Avatar Button */}
+          <div className="relative">
+            <button 
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="h-8 w-8 rounded-full bg-[#1D9E75] flex items-center justify-center font-extrabold text-xs text-white shadow-lg shadow-[#1D9E75]/20 hover:bg-[#15803d] transition-all cursor-pointer"
+            >
+              {getInitials(adminProfile?.full_name)}
+            </button>
+
+            {/* Profile & settings dropdown modal */}
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-3 w-80 bg-card border border-border rounded-lg shadow-2xl p-5 space-y-4 text-xs z-50 text-foreground">
+                <div className="flex justify-between items-center border-b border-border pb-2">
+                  <h3 className="font-bold text-sm tracking-tight">Account & Settings</h3>
+                  <button 
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="text-muted-foreground hover:text-foreground text-sm font-bold cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                {/* Profile */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Profile</span>
+                  <div className="flex items-center gap-3 bg-background/50 border border-border p-3 rounded-lg">
+                    <div className="h-10 w-10 rounded-full bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center font-bold text-[#1D9E75] text-sm">
+                      {getInitials(adminProfile?.full_name)}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-foreground">{adminProfile?.full_name || 'Society Admin'}</h4>
+                      <span className="text-[10px] text-[#1D9E75] font-semibold uppercase tracking-wider block bg-[#1D9E75]/10 border border-[#1D9E75]/20 px-2 py-0.5 rounded mt-1 max-w-fit">
+                        Society Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verification / Society Details */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Society Registry</span>
+                  <div className="bg-background/50 border border-border p-3 rounded-lg space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Society Name:</span>
+                      <span className="text-foreground font-bold">{societyName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Verification:</span>
+                      <span className={`${societyDetails?.status === 'active' ? 'text-[#1D9E75]' : 'text-amber-500'} font-bold`}>
+                        {societyDetails?.status === 'active' ? 'Verified' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Society Code:</span>
+                      <span className="text-foreground font-mono font-bold">{societyDetails?.society_code}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">City / State:</span>
+                      <span className="text-foreground font-bold">{societyDetails?.city}, {societyDetails?.state}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Theme Selector inside Dropdown */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Theme</span>
+                  <div className="grid grid-cols-3 gap-2 bg-background border border-border rounded p-1">
+                    <button
+                      onClick={() => handleThemeChange('light')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'light' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Sun className="h-3.5 w-3.5" />
+                      Light
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('dark')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'dark' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Moon className="h-3.5 w-3.5" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('system')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'system' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Laptop className="h-3.5 w-3.5" />
+                      System
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sign Out Button */}
+                <button
+                  onClick={() => { supabase.auth.signOut(); router.push('/login'); }}
+                  className="w-full py-2 bg-[#993C1D]/10 text-[#dc2626] border border-[#dc2626]/30 hover:bg-[#dc2626]/10 font-bold rounded text-center transition-all cursor-pointer block border-t"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
