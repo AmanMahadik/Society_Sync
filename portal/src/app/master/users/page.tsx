@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { Shield, User, Mail, ShieldAlert, Award } from 'lucide-react';
+import { Shield, User, Mail, ShieldAlert, Award, Moon, Sun, Laptop } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -27,6 +27,42 @@ export default function UsersListPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Profile & settings drawer dropdown status
+  const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  // Theme settings state
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark');
+
+  // Theme Matcher Helper
+  const applyTheme = (mode: 'light' | 'dark' | 'system') => {
+    if (typeof window === 'undefined') return;
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    
+    let resolvedMode = mode;
+    if (mode === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      resolvedMode = systemTheme;
+    }
+    
+    root.classList.add(resolvedMode);
+    localStorage.setItem('theme', mode);
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' || 'dark';
+      setTheme(savedTheme);
+      applyTheme(savedTheme);
+    }
+  }, []);
+
+  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
+    setTheme(mode);
+    applyTheme(mode);
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -38,7 +74,7 @@ export default function UsersListPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', session.user.id)
         .single();
       
@@ -46,6 +82,8 @@ export default function UsersListPage() {
         router.push('/master/login');
         return;
       }
+
+      setAdminProfile(profile);
 
       // Fetch profiles with a join to societies to show their society name
       const { data, error } = await supabase
@@ -127,32 +165,139 @@ export default function UsersListPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0b0e10] text-[#f2f2f0] flex flex-col selection:bg-[#dc2626] selection:text-[#0b0e10]">
+    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-[#dc2626] selection:text-[#0b0e10]">
       {/* NAVBAR */}
-      <header className="border-b border-[#1c2224] bg-[#0b0e10] px-6 py-4 flex justify-between items-center">
+      <header className="border-b border-border bg-background px-6 py-4 flex justify-between items-center relative z-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5">
             <div className="h-7 w-7 rounded bg-[#dc2626] flex items-center justify-center font-bold text-white shadow-lg shadow-[#dc2626]/20">
               <Shield className="h-4 w-4" />
             </div>
-            <span className="font-extrabold text-base tracking-tight text-[#f2f2f0]">SocietySync</span>
+            <span className="font-extrabold text-base tracking-tight">SocietySync</span>
           </div>
           <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-red-950/20 text-red-500 border border-red-500/30">
             Master admin
           </span>
         </div>
+        
         <div className="flex items-center gap-6">
           <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
-            <Link href="/master/dashboard" className="text-[#8a8f91] hover:text-[#f2f2f0] transition-colors">Requests</Link>
-            <Link href="/master/societies" className="text-[#8a8f91] hover:text-[#f2f2f0] transition-colors">Societies</Link>
+            <Link href="/master/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">Requests</Link>
+            <Link href="/master/societies" className="text-muted-foreground hover:text-foreground transition-colors">Societies</Link>
             <Link href="/master/users" className="text-[#dc2626] transition-colors border-b-2 border-[#dc2626] pb-1">Users</Link>
           </nav>
-          <button 
-            onClick={() => { supabase.auth.signOut(); router.push('/master/login'); }}
-            className="text-xs font-semibold px-3 py-1.5 rounded bg-[#111517] hover:bg-[#1c2224] text-[#8a8f91] hover:text-[#f2f2f0] transition-all border border-[#1c2224] flex items-center gap-1.5"
-          >
-            Sign Out
-          </button>
+          
+          {/* Circular Admin Avatar Button */}
+          <div className="relative">
+            <button 
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="h-8 w-8 rounded-full bg-red-950/20 border border-red-500/30 flex items-center justify-center font-extrabold text-xs text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+            >
+              MA
+            </button>
+
+            {/* Profile & settings dropdown modal */}
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-3 w-80 bg-card border border-border rounded-lg shadow-2xl p-5 space-y-4 text-xs z-50 text-foreground">
+                <div className="flex justify-between items-center border-b border-border pb-2">
+                  <h3 className="font-bold text-sm tracking-tight">Account & Settings</h3>
+                  <button 
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="text-muted-foreground hover:text-foreground text-sm font-bold cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                {/* Profile */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Profile</span>
+                  <div className="flex items-center gap-3 bg-background/50 border border-border p-3 rounded-lg">
+                    <div className="h-10 w-10 rounded-full bg-[#dc2626]/10 border border-[#dc2626]/20 flex items-center justify-center font-bold text-[#dc2626] text-sm">
+                      MA
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-foreground">{adminProfile?.full_name || 'Master Admin'}</h4>
+                      <span className="text-[10px] text-red-500 font-semibold uppercase tracking-wider block bg-red-950/15 border border-red-500/20 px-2 py-0.5 rounded mt-1 max-w-fit">
+                        Global Superuser
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verification */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Verification</span>
+                  <div className="bg-background/50 border border-border p-3 rounded-lg space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Registry Status:</span>
+                      <span className="text-[#1D9E75] font-bold">Verified</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">OCR validation:</span>
+                      <span className="text-[#1D9E75] font-bold">Active</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Clearance level:</span>
+                      <span className="text-foreground font-mono font-bold">CDL-A</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Security Role:</span>
+                      <span className="text-foreground font-bold">SysAdmin</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Theme Selector inside Dropdown */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Theme</span>
+                  <div className="grid grid-cols-3 gap-2 bg-background border border-border rounded p-1">
+                    <button
+                      onClick={() => handleThemeChange('light')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'light' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Sun className="h-3 w-3" />
+                      Light
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('dark')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'dark' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Moon className="h-3 w-3" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('system')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'system' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Laptop className="h-3 w-3" />
+                      System
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sign Out Button */}
+                <button
+                  onClick={() => { supabase.auth.signOut(); router.push('/master/login'); }}
+                  className="w-full py-2 bg-red-950/20 text-[#dc2626] border border-[#dc2626]/30 hover:bg-[#dc2626]/10 font-bold rounded text-center transition-all cursor-pointer block border-t"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -161,7 +306,7 @@ export default function UsersListPage() {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
             <h2 className="text-xl font-extrabold tracking-tight">User Administration</h2>
-            <p className="text-[#8a8f91] text-xs">Control global application roles and access privileges</p>
+            <p className="text-muted-foreground text-xs">Control global application roles and access privileges</p>
           </div>
           
           <input
@@ -169,25 +314,25 @@ export default function UsersListPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, email, or society..."
-            className="max-w-xs w-full bg-[#111517] border border-[#1c2224] rounded-lg p-2.5 text-xs text-[#f2f2f0] focus:outline-none focus:border-[#dc2626]"
+            className="max-w-xs w-full bg-card border border-border rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-[#dc2626]"
           />
         </div>
 
         {/* USERS TABLE */}
-        <div className="bg-[#111517] border border-[#1c2224] rounded-lg overflow-hidden shadow-xl">
+        <div className="bg-card border border-border rounded-lg overflow-hidden shadow-xl">
           {loading ? (
-            <div className="p-12 text-center text-[#8a8f91] text-xs">
+            <div className="p-12 text-center text-muted-foreground text-xs">
               Retrieving user database profiles...
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-12 text-center text-[#8a8f91] text-xs">
+            <div className="p-12 text-center text-muted-foreground text-xs">
               No registered user profiles found matching your search.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-[#1c2224] bg-[#0b0e10]/40 text-[#8a8f91] font-semibold uppercase tracking-wider">
+                  <tr className="border-b border-border bg-background/40 text-muted-foreground font-semibold uppercase tracking-wider">
                     <th className="p-4">User Details</th>
                     <th className="p-4">Email</th>
                     <th className="p-4">Affiliated Society</th>
@@ -198,33 +343,33 @@ export default function UsersListPage() {
                     <th className="p-4 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1c2224]">
+                <tbody className="divide-y divide-border">
                   {filtered.map((user) => (
-                    <tr key={user.id} className="hover:bg-[#0b0e10]/30 transition-colors">
-                      <td className="p-4 font-bold text-[#f2f2f0] flex items-center gap-2">
-                        <div className="h-7 w-7 rounded bg-[#0b0e10] flex items-center justify-center border border-[#1c2224] text-[#8a8f91] shrink-0">
+                    <tr key={user.id} className="hover:bg-background/40 transition-colors">
+                      <td className="p-4 font-bold flex items-center gap-2">
+                        <div className="h-7 w-7 rounded bg-background flex items-center justify-center border border-border text-muted-foreground shrink-0">
                           {user.role === 'master_admin' ? <Award className="h-4 w-4 text-[#dc2626]" /> : <User className="h-4 w-4" />}
                         </div>
                         {user.full_name || 'N/A'}
                       </td>
-                      <td className="p-4 text-[#8a8f91] font-mono text-xs">{user.email}</td>
-                      <td className="p-4 text-[#f2f2f0]">
+                      <td className="p-4 text-muted-foreground font-mono text-xs">{user.email}</td>
+                      <td className="p-4">
                         {user.role === 'master_admin' ? (
-                          <span className="text-[#8a8f91] italic">Global Superuser</span>
+                          <span className="text-muted-foreground italic">Global Superuser</span>
                         ) : (
                           user.societies?.name || <span className="text-[#854F0B] font-semibold">Unlinked / No Society</span>
                         )}
                       </td>
-                      <td className="p-4 text-[#8a8f91] font-mono text-xs">
+                      <td className="p-4 text-muted-foreground font-mono text-xs">
                         {user.wing && user.flat_number ? `${user.wing}-${user.flat_number}` : 'N/A'}
                       </td>
-                      <td className="p-4 text-[#8a8f91]">
+                      <td className="p-4 text-muted-foreground">
                         {new Date(user.created_at).toLocaleDateString()}
                       </td>
                       <td className="p-4 text-center">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                           user.role === 'master_admin' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                          (user.role === 'admin' ? 'bg-[#1D9E75]/10 text-[#1D9E75] border border-[#1D9E75]/20' : 'bg-[#0b0e10] text-[#8a8f91] border border-[#1c2224]')
+                          (user.role === 'admin' ? 'bg-[#1D9E75]/10 text-[#1D9E75] border border-[#1D9E75]/20' : 'bg-background text-muted-foreground border border-border')
                         }`}>
                           {user.role}
                         </span>
@@ -234,7 +379,7 @@ export default function UsersListPage() {
                           value={user.role}
                           disabled={updatingId === user.id}
                           onChange={(e) => handleRoleChange(user.id, user.role, e.target.value as any)}
-                          className="bg-[#0b0e10] border border-[#1c2224] rounded px-2.5 py-1 text-xs text-[#f2f2f0] focus:outline-none focus:border-[#dc2626]"
+                          className="bg-background border border-border rounded px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-[#dc2626] cursor-pointer"
                         >
                           <option value="resident">Resident</option>
                           <option value="admin">Admin</option>
@@ -245,7 +390,7 @@ export default function UsersListPage() {
                         <button
                           disabled={updatingId === user.id || user.role === 'master_admin'}
                           onClick={() => handleDeleteUser(user.id, user.email)}
-                          className="px-3 py-1.5 bg-[#993C1D]/10 text-[#dc2626] border border-[#dc2626]/20 hover:bg-[#dc2626]/10 rounded text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 bg-[#993C1D]/10 text-[#dc2626] border border-[#dc2626]/20 hover:bg-[#dc2626]/10 rounded text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                           Delete
                         </button>
