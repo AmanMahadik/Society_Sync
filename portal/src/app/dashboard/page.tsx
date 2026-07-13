@@ -45,6 +45,11 @@ export default function SocietyAdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
+  // Console widgets dynamic database states
+  const [maintenanceDues, setMaintenanceDues] = useState<any[]>([]);
+  const [gateActivity, setGateActivity] = useState<any[]>([]);
+  const [collectionsThisMonth, setCollectionsThisMonth] = useState<string>('₹0.00');
+
   // Announcements / Notice Board states
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [noticeTitle, setNoticeTitle] = useState('');
@@ -160,6 +165,49 @@ export default function SocietyAdminDashboard() {
       
       if (!noticesErr) {
         setAnnouncements(notices || []);
+      }
+
+      // 3.6. Fetch dynamic widgets data
+      // A. Fetch maintenance dues
+      const { data: dues, error: duesErr } = await supabase
+        .from('maintenance_dues')
+        .select('*, profiles(full_name, wing, flat_number)')
+        .eq('society_id', soc.id)
+        .order('due_date', { ascending: false })
+        .limit(5);
+
+      if (!duesErr && dues) {
+        setMaintenanceDues(dues);
+      }
+
+      // B. Fetch gate activity
+      const { data: visitors, error: visErr } = await supabase
+        .from('visitors')
+        .select('*')
+        .eq('society_id', soc.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!visErr && visitors) {
+        setGateActivity(visitors);
+      }
+
+      // C. Fetch collections this month (Chanda)
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { data: payments, error: payErr } = await supabase
+        .from('chanda_payments')
+        .select('amount')
+        .eq('status', 'paid')
+        .eq('society_id', soc.id)
+        .gte('created_at', startOfMonth.toISOString());
+
+      if (!payErr && payments) {
+        let sum = 0;
+        payments.forEach(p => sum += parseFloat(p.amount) || 0);
+        setCollectionsThisMonth(`₹${sum.toLocaleString('en-IN')}`);
       }
 
     } catch (e: any) {
@@ -521,10 +569,10 @@ export default function SocietyAdminDashboard() {
             <div className="bg-[#111517] border border-[#1c2224] rounded-lg p-5 flex-1 flex flex-col justify-between">
               <div>
                 <span className="text-[9px] text-[#8a8f91] font-bold uppercase tracking-wider block">Collections this month</span>
-                <span className="text-3xl font-extrabold text-[#f2f2f0] mt-1 block">₹4.82L</span>
+                <span className="text-3xl font-extrabold text-[#f2f2f0] mt-1 block">{collectionsThisMonth}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs font-bold text-[#1D9E75]">
-                <span>↑ 6.1% vs last month</span>
+              <div className="flex items-center gap-1 text-[10px] font-bold text-[#8a8f91]">
+                <span>Active Chanda payments</span>
               </div>
             </div>
 
@@ -533,39 +581,58 @@ export default function SocietyAdminDashboard() {
               <div className="flex justify-between items-center mb-3">
                 <span className="text-[9px] text-[#8a8f91] font-bold uppercase tracking-wider">Maintenance dues</span>
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-[#993C1D]/15 text-[#FAECE7] border border-[#993C1D]/30">
-                  3 overdue
+                  {maintenanceDues.filter(d => d.status === 'overdue').length} overdue
                 </span>
               </div>
               
               <div className="space-y-2 overflow-y-auto pr-1 flex-1">
-                <div className="flex justify-between items-center bg-[#0b0e10] p-2 rounded border border-[#1c2224] text-[11px]">
-                  <span className="font-bold text-[#f2f2f0]">Flat B-204 · Mehta</span>
-                  <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-[#1D9E75]/15 text-[#1D9E75] border border-[#1D9E75]/30">Paid</span>
-                </div>
-                <div className="flex justify-between items-center bg-[#0b0e10] p-2 rounded border border-[#1c2224] text-[11px]">
-                  <span className="font-bold text-[#f2f2f0]">Flat A-101 · Rao</span>
-                  <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-[#993C1D]/15 text-[#FAECE7] border border-[#993C1D]/30">Overdue</span>
-                </div>
-                <div className="flex justify-between items-center bg-[#0b0e10] p-2 rounded border border-[#1c2224] text-[11px]">
-                  <span className="font-bold text-[#f2f2f0]">Flat C-310 · Iyer</span>
-                  <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-[#854F0B]/15 text-[#FAEEDA] border border-[#854F0B]/30">Pending</span>
-                </div>
+                {maintenanceDues.length === 0 ? (
+                  <div className="text-[10px] text-[#8a8f91] text-center py-6">No dues recorded.</div>
+                ) : (
+                  maintenanceDues.map((item) => {
+                    const prof = item.profiles;
+                    const name = prof ? prof.full_name : 'Resident';
+                    const unit = prof ? `${prof.wing}-${prof.flat_number}` : '';
+                    const status = item.status || 'pending';
+                    return (
+                      <div key={item.id} className="flex justify-between items-center bg-[#0b0e10] p-2 rounded border border-[#1c2224] text-[11px]">
+                        <span className="font-bold text-[#f2f2f0] truncate max-w-[130px]" title={name}>
+                          {unit ? `${unit} · ` : ''}{name}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                          status === 'paid' ? 'bg-[#1D9E75]/15 text-[#1D9E75] border border-[#1D9E75]/30' :
+                          (status === 'overdue' ? 'bg-[#993C1D]/15 text-[#FAECE7] border border-[#993C1D]/30' : 'bg-[#854F0B]/15 text-[#FAEEDA] border border-[#854F0B]/30')
+                        }`}>
+                          {status}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
             {/* WIDGET 3: LIVE GATE ACTIVITY */}
-            <div className="bg-[#111517] border border-[#1c2224] rounded-lg p-4 flex-1 flex flex-col justify-between">
+            <div className="bg-[#111517] border border-[#1c2224] rounded-lg p-4 flex-1 flex flex-col justify-between overflow-hidden">
               <span className="text-[9px] text-[#8a8f91] font-bold uppercase tracking-wider block mb-2">Live gate activity</span>
               
-              <div className="space-y-1.5 flex-1 justify-center flex flex-col">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-[#f2f2f0] font-medium">Guest · A-101</span>
-                  <span className="text-[#1D9E75] font-bold">Checked in</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-[#8a8f91]">Cab · B-204</span>
-                  <span className="text-[#8a8f91] font-semibold">En route</span>
-                </div>
+              <div className="space-y-1.5 flex-1 justify-center flex flex-col overflow-y-auto">
+                {gateActivity.length === 0 ? (
+                  <div className="text-[10px] text-[#8a8f91] text-center py-2">No recent visitors.</div>
+                ) : (
+                  gateActivity.map((item) => (
+                    <div key={item.id} className="flex justify-between text-[11px]">
+                      <span className="text-[#f2f2f0] font-medium truncate max-w-[140px]" title={item.name}>
+                        {item.name} {item.host_flat ? `· ${item.host_flat}` : ''}
+                      </span>
+                      <span className={`font-bold uppercase text-[9px] ${
+                        item.status === 'checked_in' ? 'text-[#1D9E75]' : 'text-[#8a8f91]'
+                      }`}>
+                        {item.status === 'checked_in' ? 'In Gate' : (item.status === 'checked_out' ? 'Out Gate' : item.status)}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

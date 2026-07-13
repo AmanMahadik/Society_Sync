@@ -68,18 +68,8 @@ export default function LandingPage() {
     fetchSocieties();
   }, []);
 
-  // Seed default premium Pune societies for display alongside real ones
-  const defaultPuneSocieties: PuneSociety[] = [
-    { name: "Marvel Zephyr", address: "Kharadi, Pune", city: "Pune", state: "Maharashtra", lat: 18.5539, lng: 73.9482, isMock: true },
-    { name: "Eon Homes", address: "Hinjawadi Phase 3, Pune", city: "Pune", state: "Maharashtra", lat: 18.5812, lng: 73.6872, isMock: true },
-    { name: "Amanora Park Town", address: "Hadapsar, Pune", city: "Pune", state: "Maharashtra", lat: 18.5198, lng: 73.9317, isMock: true },
-    { name: "Blue Ridge", address: "Hinjawadi Phase 1, Pune", city: "Pune", state: "Maharashtra", lat: 18.5831, lng: 73.7432, isMock: true },
-    { name: "Megapolis Sunway", address: "Hinjawadi Phase 3, Pune", city: "Pune", state: "Maharashtra", lat: 18.5775, lng: 73.6890, isMock: true },
-    { name: "Windward Ranch", address: "Baner, Pune", city: "Pune", state: "Maharashtra", lat: 18.5679, lng: 73.7915, isMock: true }
-  ];
-
-  // Combine real database societies with the default premium seed markers
-  const allSocietiesMap = [...defaultPuneSocieties, ...dbSocieties];
+  // Display only real database societies
+  const allSocietiesMap = dbSocieties;
 
   // Initialize and render Leaflet Map
   useEffect(() => {
@@ -101,7 +91,11 @@ export default function LandingPage() {
         mapDiv.style.height = '100%';
         container.appendChild(mapDiv);
 
-        const map = L.map('map-landing-inner', { zoomControl: false }).setView([18.545, 73.83], 11.5);
+        const firstSoc = dbSocieties[0];
+        const centerLat = firstSoc ? firstSoc.lat : 18.5204;
+        const centerLng = firstSoc ? firstSoc.lng : 73.8567;
+
+        const map = L.map('map-landing-inner', { zoomControl: false }).setView([centerLat, centerLng], 12);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
