@@ -208,11 +208,11 @@ export default function MasterDashboard() {
         mapDiv.style.height = '100%';
         container.appendChild(mapDiv);
 
-        // Center on Pune
-        const centerLat = 18.5204;
-        const centerLng = 73.8567;
+        // Center on Pimpri-Chinchwad
+        const centerLat = 18.6298;
+        const centerLng = 73.7997;
 
-        const map = L.map('map-master-inner', { zoomControl: false }).setView([centerLat, centerLng], 12);
+        const map = L.map('map-master-inner', { zoomControl: false }).setView([centerLat, centerLng], 11);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -225,15 +225,22 @@ export default function MasterDashboard() {
           const isActive = soc.status === 'active';
           
           const pulseIcon = L.divIcon({
-            className: 'custom-leaflet-pulse',
+            className: 'custom-leaflet-pulse-logo',
             html: `
-              <div class="relative flex h-4 w-4 justify-center items-center">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${isActive ? 'bg-[#1D9E75]' : 'bg-[#993C1D]'} opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 ${isActive ? 'bg-[#1D9E75]' : 'bg-[#993C1D]'} border border-white/20"></span>
+              <div class="relative flex flex-col items-center justify-end w-[120px] h-[70px]">
+                <div class="bg-[#dc2626] text-white flex items-center gap-1.5 px-2 py-0.5 rounded shadow-lg border border-white/10 text-[9px] font-extrabold uppercase tracking-wider mb-1 animate-bounce">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                  SocietySync
+                </div>
+                <div class="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-[#dc2626] -mt-1.5 mb-1.5"></div>
+                <div class="relative flex h-3.5 w-3.5 justify-center items-center">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${isActive ? 'bg-[#1D9E75]' : 'bg-[#993C1D]'} opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-1.5 w-1.5 ${isActive ? 'bg-[#1D9E75]' : 'bg-[#993C1D]'} border border-white/20"></span>
+                </div>
               </div>
             `,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
+            iconSize: [120, 70],
+            iconAnchor: [60, 70]
           });
 
           const marker = L.marker([parseFloat(soc.lat), parseFloat(soc.lng)], { icon: pulseIcon }).addTo(map);
