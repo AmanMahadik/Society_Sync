@@ -63,7 +63,8 @@ export default function RegisterPage() {
   // Form Field change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const cleanValue = name === 'adminEmail' ? value.replace(/\s/g, '') : value;
+    setFormData(prev => ({ ...prev, [name]: cleanValue }));
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {

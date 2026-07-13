@@ -337,7 +337,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
           <TextInput
             label="Email Address"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => setEmail(text.replace(/\s/g, ''))}
             mode="outlined"
             keyboardType="email-address"
             autoCapitalize="none"

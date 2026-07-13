@@ -165,7 +165,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
             <TextInput
               label="Email Address"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => setEmail(text.replace(/\s/g, ''))}
               mode="outlined"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -249,7 +249,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               <TextInput
                 label="Email Address"
                 value={resetEmail}
-                onChangeText={setResetEmail}
+                onChangeText={(text) => setResetEmail(text.replace(/\s/g, ''))}
                 mode="outlined"
                 keyboardType="email-address"
                 autoCapitalize="none"
