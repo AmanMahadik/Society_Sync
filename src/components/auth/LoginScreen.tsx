@@ -17,16 +17,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Biometrics login state
   const [hasBiometrics, setHasBiometrics] = useState(false);
 
   React.useEffect(() => {
-    const checkBiometrics = async () => {
+    const loadSavedCredentials = async () => {
       try {
-        const enabled = await AsyncStorage.getItem('biometrics_enabled');
         const savedEmail = await AsyncStorage.getItem('saved_email');
         const savedPassword = await AsyncStorage.getItem('saved_password');
+        if (savedEmail) setEmail(savedEmail);
+        if (savedPassword) setPassword(savedPassword);
+
+        const enabled = await AsyncStorage.getItem('biometrics_enabled');
         if (enabled === 'true' && savedEmail && savedPassword) {
           const hasHardware = await LocalAuthentication.hasHardwareAsync();
           const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -35,10 +39,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
           }
         }
       } catch (e) {
-        console.warn(e);
+        console.warn('Failed to load saved credentials:', e);
       }
     };
-    checkBiometrics();
+    loadSavedCredentials();
   }, []);
 
   const triggerBiometricLogin = async () => {
@@ -170,6 +174,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
+              activeOutlineColor="#00D4AA"
               left={<TextInput.Icon icon="email" />}
               right={hasBiometrics ? <TextInput.Icon icon="fingerprint" onPress={triggerBiometricLogin} /> : undefined}
               onFocus={handleEmailFocus}
@@ -179,17 +184,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               label="Password"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               mode="outlined"
               style={styles.input}
+              activeOutlineColor="#00D4AA"
               left={<TextInput.Icon icon="lock" />}
+              right={<TextInput.Icon icon={showPassword ? "eye-off" : "eye"} onPress={() => setShowPassword(!showPassword)} />}
             />
 
             <Button
               mode="text"
               onPress={() => setResetDialogVisible(true)}
               style={styles.forgotPasswordButton}
-              labelStyle={{ fontSize: 12 }}
+              labelStyle={{ fontSize: 12, color: '#00D4AA' }}
               compact
             >
               Forgot Password?
@@ -200,7 +207,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               onPress={handleLogin}
               loading={loading}
               disabled={loading}
-              style={styles.button}
+              buttonColor="#00D4AA"
+              textColor="#09090b"
+              style={[styles.button, { borderRadius: 28 }]}
+              labelStyle={{ fontWeight: 'bold' }}
             >
               Sign In
             </Button>
@@ -218,7 +228,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               disabled={loading}
               icon="google"
               textColor={theme.dark ? '#FFFFFF' : theme.colors.onSurface}
-              style={[styles.googleButton, { borderColor: theme.colors.outline }]}
+              style={[styles.googleButton, { borderColor: theme.colors.outline, borderRadius: 28 }]}
               contentStyle={styles.googleButtonContent}
             >
               Sign in with Google
@@ -228,6 +238,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               mode="text"
               onPress={onNavigateToRegister}
               style={styles.textButton}
+              textColor="#00D4AA"
             >
               Don't have an account? Register Flat
             </Button>
