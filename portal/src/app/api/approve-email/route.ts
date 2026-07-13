@@ -272,6 +272,32 @@ A copy of this inquiry has been CC'd to the user.`;
           </p>
         </div>
       `;
+    } else if (status === 'broadcast') {
+      const { broadcastMessage } = body;
+      subject = `📢 SocietySync System Announcement for ${societyName}`;
+      messageText = `Hello ${adminName},
+
+We have an important announcement from the SocietySync Master Admin team:
+
+${broadcastMessage}
+
+Best regards,
+The SocietySync Master Admin Team`;
+
+      messageHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff; color: #374151;">
+          <h2 style="color: #dc2626; text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">📢 System Announcement</h2>
+          <p>Hello <strong>${adminName}</strong>,</p>
+          <p>We are writing to communicate an official broadcast announcement from the SocietySync Master Admin team to the society <strong>"${societyName}"</strong>:</p>
+          
+          <div style="background-color: #f9fafb; border-left: 4px solid #dc2626; padding: 15px; border-radius: 4px; margin: 20px 0; white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: #1f2937;">
+            ${broadcastMessage}
+          </div>
+          
+          <p>If you have any questions or require support regarding this notice, please get in touch with us.</p>
+          <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This notice is sent directly from SocietySync Master Operations.</p>
+        </div>
+      `;
     } else {
       return NextResponse.json({ error: 'Invalid status type' }, { status: 400, headers: corsHeaders });
     }
