@@ -35,6 +35,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
   const [wing, setWing] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
   const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -242,13 +244,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
               }}
               mode="outlined"
               style={styles.input}
+              activeOutlineColor={theme.colors.primary}
               autoCapitalize="characters"
               left={<TextInput.Icon icon="key" />}
               right={<TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} />}
             />
 
             {showConfirmationCard && societyDetails && (
-              <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer, marginVertical: 12 }]}>
+              <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer, marginVertical: 12, borderRadius: 12 }]}>
                 <Card.Content style={styles.infoContent}>
                   <Text variant="titleMedium" style={{ color: theme.colors.onPrimaryContainer, fontWeight: 'bold' }}>
                     ✅ {societyDetails.name}
@@ -268,7 +271,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
                 <Button
                   mode="contained"
                   onPress={() => setSocietyValidated(true)}
-                  style={styles.button}
+                  buttonColor={theme.colors.primary}
+                  textColor={theme.dark ? '#09090b' : '#ffffff'}
+                  style={[styles.button, { borderRadius: 28 }]}
+                  labelStyle={{ fontWeight: 'bold' }}
                 >
                   Yes, Continue
                 </Button>
@@ -279,6 +285,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
                     setSocietyDetails(null);
                     setSocietyCode('');
                   }}
+                  textColor={theme.colors.primary}
                 >
                   Enter Different Code
                 </Button>
@@ -289,7 +296,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
                 onPress={handleValidateSocietyCode}
                 loading={validatingCode}
                 disabled={validatingCode}
-                style={styles.button}
+                buttonColor={theme.colors.primary}
+                textColor={theme.dark ? '#09090b' : '#ffffff'}
+                style={[styles.button, { borderRadius: 28 }]}
+                labelStyle={{ fontWeight: 'bold' }}
               >
                 Validate Code
               </Button>
@@ -299,6 +309,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
               mode="text"
               onPress={onNavigateToLogin}
               style={styles.textButton}
+              textColor={theme.colors.primary}
             >
               Already registered? Sign In
             </Button>
@@ -331,6 +342,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             onChangeText={setFullName}
             mode="outlined"
             style={styles.input}
+            activeOutlineColor={theme.colors.primary}
             left={<TextInput.Icon icon="account" />}
           />
 
@@ -342,6 +354,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             keyboardType="email-address"
             autoCapitalize="none"
             style={styles.input}
+            activeOutlineColor={theme.colors.primary}
             left={<TextInput.Icon icon="email" />}
           />
 
@@ -349,20 +362,24 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             label="Password"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             mode="outlined"
             style={styles.input}
+            activeOutlineColor={theme.colors.primary}
             left={<TextInput.Icon icon="lock" />}
+            right={<TextInput.Icon icon={showPassword ? "eye-off" : "eye"} onPress={() => setShowPassword(!showPassword)} />}
           />
 
           <TextInput
             label="Confirm Password"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            secureTextEntry
+            secureTextEntry={!showConfirmPassword}
             mode="outlined"
             style={styles.input}
+            activeOutlineColor={theme.colors.primary}
             left={<TextInput.Icon icon="lock-check" />}
+            right={<TextInput.Icon icon={showConfirmPassword ? "eye-off" : "eye"} onPress={() => setShowConfirmPassword(!showConfirmPassword)} />}
           />
 
           <Text variant="labelLarge" style={styles.label}>Register As</Text>
@@ -386,6 +403,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
                 onChangeText={setWing}
                 mode="outlined"
                 style={[styles.input, styles.halfInput]}
+                activeOutlineColor={theme.colors.primary}
                 autoCapitalize="characters"
               />
               <TextInput
@@ -395,6 +413,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
                 onChangeText={setFlatNumber}
                 mode="outlined"
                 keyboardType="numeric"
+                activeOutlineColor={theme.colors.primary}
                 style={[styles.input, styles.halfInput]}
               />
             </View>
@@ -408,10 +427,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             keyboardType="phone-pad"
             mode="outlined"
             style={styles.input}
+            activeOutlineColor={theme.colors.primary}
             left={<TextInput.Icon icon="phone" />}
           />
 
-          <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer }]}>
+          <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer, borderRadius: 12 }]}>
             <Card.Content style={styles.infoContent}>
               <Text variant="bodySmall" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '500', textAlign: 'center' }}>
                 ⚠️ Approval Required: After registration, you will need to be approved by the Society Secretary before you can access ledgers, chats, or parking bookings.
@@ -424,7 +444,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             onPress={handleRegister}
             loading={loading}
             disabled={loading}
-            style={styles.button}
+            buttonColor={theme.colors.primary}
+            textColor={theme.dark ? '#09090b' : '#ffffff'}
+            style={[styles.button, { borderRadius: 28 }]}
+            labelStyle={{ fontWeight: 'bold' }}
           >
             Submit Registration
           </Button>
@@ -433,6 +456,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             mode="text"
             onPress={() => setSocietyValidated(false)}
             style={styles.textButton}
+            textColor={theme.colors.primary}
           >
             Change Society Code
           </Button>
