@@ -176,63 +176,84 @@ export default function MasterDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col selection:bg-[#00d4aa] selection:text-[#09090b]">
+    <div className="min-h-screen bg-[#0b0e10] text-[#f2f2f0] flex flex-col selection:bg-[#dc2626] selection:text-[#0b0e10]">
       {/* NAVBAR */}
-      <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white">
-            <Shield className="h-5 w-5" />
+      <header className="border-b border-[#1c2224] bg-[#0b0e10] px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded bg-[#dc2626] flex items-center justify-center font-bold text-white shadow-lg shadow-[#dc2626]/20">
+              <Shield className="h-4 w-4" />
+            </div>
+            <span className="font-extrabold text-base tracking-tight text-[#f2f2f0]">SocietySync</span>
           </div>
-          <span className="font-extrabold text-lg tracking-tight">
-            SocietySync <span className="text-red-500 text-xs uppercase tracking-wider font-bold ml-1">Master</span>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-red-950/20 text-red-500 border border-red-500/30">
+            Master admin
           </span>
         </div>
-        <nav className="flex items-center gap-6 text-sm font-medium">
-          <Link href="/master/dashboard" className="text-red-500 hover:text-red-400">Requests</Link>
-          <Link href="/master/societies" className="text-zinc-400 hover:text-white">Societies</Link>
-          <Link href="/master/users" className="text-zinc-400 hover:text-white">Users</Link>
-        </nav>
-        <button 
-          onClick={handleSignOut} 
-          className="text-xs font-bold px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-all border border-zinc-800"
-        >
-          Sign Out
-        </button>
+        <div className="flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
+            <Link href="/master/dashboard" className="text-[#dc2626] transition-colors border-b-2 border-[#dc2626] pb-1">Requests</Link>
+            <Link href="/master/societies" className="text-[#8a8f91] hover:text-[#f2f2f0] transition-colors">Societies</Link>
+            <Link href="/master/users" className="text-[#8a8f91] hover:text-[#f2f2f0] transition-colors">Users</Link>
+          </nav>
+          <button 
+            onClick={handleSignOut} 
+            className="text-xs font-semibold px-3 py-1.5 rounded bg-[#111517] hover:bg-[#1c2224] text-[#8a8f91] hover:text-[#f2f2f0] transition-all border border-[#1c2224] flex items-center gap-1.5"
+          >
+            Sign Out
+          </button>
+        </div>
       </header>
 
       {/* MAIN CONTAINER */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
         
         {/* STATS WIDGETS */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden">
-            <h4 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Total Societies</h4>
-            <p className="text-3xl font-extrabold mt-2 text-white">{stats.totalSocieties}</p>
-            <Activity className="h-6 w-6 text-zinc-700 absolute right-6 top-6" />
+          <div className="bg-[#111517] border border-[#1c2224] p-5 rounded-lg relative overflow-hidden flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-[#8a8f91] font-bold uppercase tracking-wider block">Total Societies</span>
+              <span className="text-3xl font-extrabold mt-1 text-[#f2f2f0] block">{stats.totalSocieties}</span>
+            </div>
+            <div className="h-10 w-10 bg-[#8a8f91]/10 rounded-full flex items-center justify-center border border-[#8a8f91]/20">
+              <Activity className="h-5 w-5 text-[#8a8f91]" />
+            </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden">
-            <h4 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Pending Requests</h4>
-            <p className="text-3xl font-extrabold mt-2 text-yellow-500">{stats.pendingRequests}</p>
-            <AlertCircle className="h-6 w-6 text-yellow-500/20 absolute right-6 top-6" />
+          <div className="bg-[#111517] border border-[#1c2224] p-5 rounded-lg relative overflow-hidden flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-[#8a8f91] font-bold uppercase tracking-wider block">Pending Requests</span>
+              <span className="text-3xl font-extrabold mt-1 text-yellow-500 block">{stats.pendingRequests}</span>
+            </div>
+            <div className="h-10 w-10 bg-yellow-500/10 rounded-full flex items-center justify-center border border-yellow-500/20">
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+            </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden">
-            <h4 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Active Societies</h4>
-            <p className="text-3xl font-extrabold mt-2 text-[#00d4aa]">{stats.activeSocieties}</p>
-            <CheckCircle2 className="h-6 w-6 text-[#00d4aa]/20 absolute right-6 top-6" />
+          <div className="bg-[#111517] border border-[#1c2224] p-5 rounded-lg relative overflow-hidden flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-[#8a8f91] font-bold uppercase tracking-wider block">Active Societies</span>
+              <span className="text-3xl font-extrabold mt-1 text-[#1D9E75] block">{stats.activeSocieties}</span>
+            </div>
+            <div className="h-10 w-10 bg-[#1D9E75]/10 rounded-full flex items-center justify-center border border-[#1D9E75]/20">
+              <CheckCircle2 className="h-5 w-5 text-[#1D9E75]" />
+            </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden">
-            <h4 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Global App Users</h4>
-            <p className="text-3xl font-extrabold mt-2 text-blue-500">{stats.globalUsers}</p>
-            <Users className="h-6 w-6 text-blue-500/20 absolute right-6 top-6" />
+          <div className="bg-[#111517] border border-[#1c2224] p-5 rounded-lg relative overflow-hidden flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-[#8a8f91] font-bold uppercase tracking-wider block">Global App Users</span>
+              <span className="text-3xl font-extrabold mt-1 text-blue-500 block">{stats.globalUsers}</span>
+            </div>
+            <div className="h-10 w-10 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20">
+              <Users className="h-5 w-5 text-blue-500" />
+            </div>
           </div>
         </div>
 
-        {/* TABS */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-          <div className="flex border-b border-zinc-800 bg-zinc-950 px-4 pt-3 gap-2 overflow-x-auto scrollbar-thin">
+        {/* TABS & DATA TABLE */}
+        <div className="bg-[#111517] border border-[#1c2224] rounded-lg overflow-hidden shadow-xl">
+          <div className="flex border-b border-[#1c2224] bg-[#0b0e10]/80 px-4 pt-3 gap-2 overflow-x-auto scrollbar-thin">
             {(['pending', 'active', 'rejected', 'suspended', 'all_societies'] as const).map((tab) => {
               const label = tab === 'pending' ? 'Pending Requests' : 
                             tab === 'active' ? 'Active Societies' : 
@@ -244,13 +265,13 @@ export default function MasterDashboard() {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                    isSelected ? 'border-red-500 text-red-500' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 pb-2.5 ${
+                    isSelected ? 'border-[#dc2626] text-[#dc2626]' : 'border-transparent text-[#8a8f91] hover:text-[#f2f2f0]'
                   }`}
                 >
                   {label}
                   {hasBadge && (
-                    <span className="h-4 w-4 bg-yellow-500 text-zinc-950 text-[10px] rounded-full flex items-center justify-center font-extrabold">
+                    <span className="h-4 w-4 bg-yellow-500 text-[#0b0e10] text-[10px] rounded-full flex items-center justify-center font-extrabold">
                       {stats.pendingRequests}
                     </span>
                   )}
@@ -259,11 +280,11 @@ export default function MasterDashboard() {
             })}
           </div>
 
-          {/* TABLE & CARD DISPLAY */}
+          {/* TABLE DISPLAY */}
           {loading ? (
             <div className="p-20 flex flex-col items-center justify-center gap-4">
-              <div className="h-10 w-10 rounded-full border-2 border-zinc-800 border-t-[#00d4aa] animate-spin" />
-              <span className="text-zinc-500 text-xs animate-pulse font-medium">Retrieving database registries...</span>
+              <div className="h-10 w-10 rounded-full border-2 border-[#1c2224] border-t-[#dc2626] animate-spin" />
+              <span className="text-[#8a8f91] text-xs animate-pulse font-medium">Retrieving database registries...</span>
             </div>
           ) : (
             <div>
@@ -272,9 +293,9 @@ export default function MasterDashboard() {
                 <>
                   {/* Desktop view */}
                   <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-sm">
+                    <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+                        <tr className="border-b border-[#1c2224] bg-[#0b0e10]/40 text-[#8a8f91] font-semibold uppercase tracking-wider">
                           <th className="p-4">Society Request</th>
                           <th className="p-4">Location</th>
                           <th className="p-4">Admin Details</th>
@@ -284,24 +305,24 @@ export default function MasterDashboard() {
                           <th className="p-4 text-center">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-800">
+                      <tbody className="divide-y divide-[#1c2224]">
                         {requests
                           .filter(r => r.status === activeTab)
                           .map((req) => (
-                            <tr key={req.id} className="hover:bg-zinc-955/20 transition-colors">
-                              <td className="p-4 font-bold text-white">{req.name}</td>
-                              <td className="p-4 text-zinc-400">{req.city}, {req.state}</td>
+                            <tr key={req.id} className="hover:bg-[#0b0e10]/30 transition-colors">
+                              <td className="p-4 font-bold text-[#f2f2f0]">{req.name}</td>
+                              <td className="p-4 text-[#8a8f91]">{req.city}, {req.state}</td>
                               <td className="p-4">
-                                <span className="block text-zinc-300 font-medium">{req.admin_name}</span>
-                                <span className="block text-[11px] text-zinc-500">{req.admin_email}</span>
+                                <span className="block text-[#f2f2f0] font-medium">{req.admin_name}</span>
+                                <span className="block text-[10px] text-[#8a8f91] mt-0.5">{req.admin_email}</span>
                               </td>
-                              <td className="p-4 text-center text-zinc-300">{req.total_units}</td>
-                              <td className="p-4 text-zinc-500">{new Date(req.created_at).toLocaleDateString()}</td>
-                              {activeTab === 'rejected' && <td className="p-4 text-red-400 text-xs">{req.rejection_reason || 'N/A'}</td>}
+                              <td className="p-4 text-center text-[#f2f2f0]">{req.total_units}</td>
+                              <td className="p-4 text-[#8a8f91]">{new Date(req.created_at).toLocaleDateString()}</td>
+                              {activeTab === 'rejected' && <td className="p-4 text-[#993C1D] text-xs font-semibold">{req.rejection_reason || 'N/A'}</td>}
                               <td className="p-4 text-center">
                                 <Link 
                                   href={`/master/requests/${req.id}`}
-                                  className="inline-flex px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-xs transition-all"
+                                  className="inline-flex px-3 py-1.5 bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold rounded text-xs transition-all shadow-md shadow-[#dc2626]/20"
                                 >
                                   Review Request
                                 </Link>
@@ -310,7 +331,7 @@ export default function MasterDashboard() {
                           ))}
                         {requests.filter(r => r.status === activeTab).length === 0 && (
                           <tr>
-                            <td colSpan={activeTab === 'rejected' ? 7 : 6} className="p-8 text-center text-zinc-500">
+                            <td colSpan={activeTab === 'rejected' ? 7 : 6} className="p-8 text-center text-[#8a8f91]">
                               No requests found under this filter.
                             </td>
                           </tr>
@@ -320,35 +341,35 @@ export default function MasterDashboard() {
                   </div>
 
                   {/* Mobile view */}
-                  <div className="block md:hidden divide-y divide-zinc-800">
+                  <div className="block md:hidden divide-y divide-[#1c2224]">
                     {requests
                       .filter(r => r.status === activeTab)
                       .map((req) => (
-                        <div key={req.id} className="p-4 space-y-3 bg-zinc-950/20">
+                        <div key={req.id} className="p-4 space-y-3 bg-[#0b0e10]/10">
                           <div className="flex justify-between items-start">
-                            <h4 className="font-bold text-white text-sm leading-tight">{req.name}</h4>
-                            <span className="text-[10px] text-zinc-500">{new Date(req.created_at).toLocaleDateString()}</span>
+                            <h4 className="font-bold text-[#f2f2f0] text-xs leading-tight">{req.name}</h4>
+                            <span className="text-[10px] text-[#8a8f91]">{new Date(req.created_at).toLocaleDateString()}</span>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="grid grid-cols-2 gap-2 text-xs text-[#8a8f91]">
                             <div>
-                              <span className="text-zinc-500 block">Location:</span>
-                              <span className="text-zinc-300">{req.city}, {req.state}</span>
+                              <span className="text-[#8a8f91] block">Location:</span>
+                              <span className="text-[#f2f2f0]">{req.city}, {req.state}</span>
                             </div>
                             <div>
-                              <span className="text-zinc-500 block">Units / Flats:</span>
-                              <span className="text-zinc-300">{req.total_units}</span>
+                              <span className="text-[#8a8f91] block">Units / Flats:</span>
+                              <span className="text-[#f2f2f0]">{req.total_units}</span>
                             </div>
                           </div>
 
-                          <div className="text-xs border-t border-zinc-850 pt-2">
-                            <span className="text-zinc-500 block">Admin Representative:</span>
-                            <span className="text-zinc-300 font-medium block">{req.admin_name}</span>
-                            <span className="text-zinc-500 block mt-0.5">{req.admin_email}</span>
+                          <div className="text-xs border-t border-[#1c2224] pt-2">
+                            <span className="text-[#8a8f91] block">Admin Representative:</span>
+                            <span className="text-[#f2f2f0] font-medium block">{req.admin_name}</span>
+                            <span className="text-[#8a8f91] block mt-0.5">{req.admin_email}</span>
                           </div>
 
                           {activeTab === 'rejected' && (
-                            <div className="p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                            <div className="p-2 bg-[#993C1D]/10 border border-[#993C1D]/20 rounded text-xs text-[#993C1D]">
                               <span className="font-bold block">Rejection Reason:</span>
                               {req.rejection_reason || 'N/A'}
                             </div>
@@ -357,7 +378,7 @@ export default function MasterDashboard() {
                           <div className="pt-1">
                             <Link 
                               href={`/master/requests/${req.id}`}
-                              className="block text-center py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-xs transition-all w-full"
+                              className="block text-center py-2 bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold rounded text-xs transition-all w-full shadow-md shadow-[#dc2626]/20"
                             >
                               Review Request
                             </Link>
@@ -365,7 +386,7 @@ export default function MasterDashboard() {
                         </div>
                       ))}
                     {requests.filter(r => r.status === activeTab).length === 0 && (
-                      <div className="p-8 text-center text-zinc-500 text-sm">
+                      <div className="p-8 text-center text-[#8a8f91] text-xs">
                         No requests found under this filter.
                       </div>
                     )}
@@ -378,9 +399,9 @@ export default function MasterDashboard() {
                 <>
                   {/* Desktop view */}
                   <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-sm">
+                    <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+                        <tr className="border-b border-[#1c2224] bg-[#0b0e10]/40 text-[#8a8f91] font-semibold uppercase tracking-wider">
                           <th className="p-4">Society Name</th>
                           <th className="p-4">Location</th>
                           <th className="p-4">Admin Email</th>
@@ -391,46 +412,48 @@ export default function MasterDashboard() {
                           <th className="p-4 text-center">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-800">
+                      <tbody className="divide-y divide-[#1c2224]">
                         {societies
                           .filter(s => {
                             if (activeTab === 'all_societies') return true;
                             return s.status === activeTab;
                           })
                           .map((soc) => (
-                            <tr key={soc.id} className="hover:bg-zinc-955/20 transition-colors">
-                              <td className="p-4 font-bold text-white">{soc.name}</td>
-                              <td className="p-4 text-zinc-400">{soc.city}, {soc.state}</td>
-                              <td className="p-4 text-zinc-300">{soc.admin_email}</td>
-                              <td className="p-4 text-center font-mono text-xs text-[#00d4aa]">{soc.society_code}</td>
-                              <td className="p-4 text-center text-zinc-300">{soc.total_units}</td>
-                              <td className="p-4 text-zinc-500">{new Date(soc.created_at).toLocaleDateString()}</td>
+                            <tr key={soc.id} className="hover:bg-[#0b0e10]/30 transition-colors">
+                              <td className="p-4 font-bold text-[#f2f2f0]">{soc.name}</td>
+                              <td className="p-4 text-[#8a8f91]">{soc.city}, {soc.state}</td>
+                              <td className="p-4 text-[#f2f2f0]">{soc.admin_email}</td>
+                              <td className="p-4 text-center font-mono text-xs text-[#1D9E75] font-bold">{soc.society_code}</td>
+                              <td className="p-4 text-center text-[#f2f2f0]">{soc.total_units}</td>
+                              <td className="p-4 text-[#8a8f91]">{new Date(soc.created_at).toLocaleDateString()}</td>
                               <td className="p-4 text-center">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                  soc.status === 'active' ? 'bg-[#00d4aa]/15 text-[#00d4aa] border border-[#00d4aa]/30' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                  soc.status === 'active' ? 'bg-[#1D9E75]/15 text-[#1D9E75] border border-[#1D9E75]/30' : 'bg-[#993C1D]/15 text-[#FAECE7] border border-[#993C1D]/30'
                                 }`}>
                                   {soc.status}
                                 </span>
                               </td>
                               <td className="p-4 text-center">
-                                <div className="flex justify-center gap-3">
+                                <div className="flex justify-center gap-2">
                                   <button
                                     onClick={() => handleToggleSuspension(soc.id, soc.status)}
-                                    className={`px-2 py-1 rounded text-xs font-bold transition-all border ${
-                                      soc.status === 'active' ? 'bg-zinc-900 border-zinc-800 hover:border-red-500/30 text-red-400' : 'bg-[#00d4aa]/10 border-[#00d4aa]/20 text-[#00d4aa] hover:border-[#00d4aa]'
+                                    className={`px-2 py-1 rounded text-[11px] font-bold transition-all border ${
+                                      soc.status === 'active' 
+                                        ? 'bg-[#0b0e10] border-[#1c2224] hover:border-[#993C1D]/35 text-[#993C1D]' 
+                                        : 'bg-[#1D9E75]/10 border-[#1D9E75]/25 text-[#1D9E75] hover:bg-[#1D9E75]/20'
                                     }`}
                                   >
                                     {soc.status === 'active' ? 'Suspend' : 'Activate'}
                                   </button>
                                   <Link
                                     href={`/master/societies/${soc.id}/review`}
-                                    className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-[#00d4aa]/40 text-[#00d4aa] text-xs font-bold transition-all flex items-center justify-center"
+                                    className="px-2.5 py-1 rounded bg-[#0b0e10] border border-[#1c2224] hover:border-[#1D9E75]/30 text-[#1D9E75] text-[11px] font-bold transition-all flex items-center justify-center"
                                   >
                                     View Info
                                   </Link>
                                   <Link
                                     href={`/master/credentials/${soc.id}`}
-                                    className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold transition-all flex items-center justify-center"
+                                    className="px-2.5 py-1 rounded bg-[#0b0e10] border border-[#1c2224] hover:border-[#8a8f91]/30 text-[#f2f2f0] text-[11px] font-bold transition-all flex items-center justify-center"
                                   >
                                     Credentials
                                   </Link>
@@ -443,7 +466,7 @@ export default function MasterDashboard() {
                           return s.status === activeTab;
                         }).length === 0 && (
                           <tr>
-                            <td colSpan={8} className="p-8 text-center text-zinc-500">
+                            <td colSpan={8} className="p-8 text-center text-[#8a8f91]">
                               No societies found under this filter.
                             </td>
                           </tr>
@@ -453,62 +476,64 @@ export default function MasterDashboard() {
                   </div>
 
                   {/* Mobile view */}
-                  <div className="block md:hidden divide-y divide-zinc-800">
+                  <div className="block md:hidden divide-y divide-[#1c2224]">
                     {societies
                       .filter(s => {
                         if (activeTab === 'all_societies') return true;
                         return s.status === activeTab;
                       })
                       .map((soc) => (
-                        <div key={soc.id} className="p-4 space-y-3 bg-zinc-955/10">
+                        <div key={soc.id} className="p-4 space-y-3 bg-[#0b0e10]/10">
                           <div className="flex justify-between items-start gap-2">
-                            <h4 className="font-bold text-white text-sm leading-tight">{soc.name}</h4>
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${
-                              soc.status === 'active' ? 'bg-[#00d4aa]/15 text-[#00d4aa] border border-[#00d4aa]/30' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                            <h4 className="font-bold text-[#f2f2f0] text-xs leading-tight">{soc.name}</h4>
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shrink-0 ${
+                              soc.status === 'active' ? 'bg-[#1D9E75]/15 text-[#1D9E75] border border-[#1D9E75]/30' : 'bg-[#993C1D]/15 text-[#FAECE7] border border-[#993C1D]/30'
                             }`}>
                               {soc.status}
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="grid grid-cols-2 gap-2 text-xs text-[#8a8f91]">
                             <div>
-                              <span className="text-zinc-500 block">Location:</span>
-                              <span className="text-zinc-300">{soc.city}, {soc.state}</span>
+                              <span className="text-[#8a8f91] block">Location:</span>
+                              <span className="text-[#f2f2f0]">{soc.city}, {soc.state}</span>
                             </div>
                             <div>
-                              <span className="text-zinc-500 block">Units / Flats:</span>
-                              <span className="text-zinc-300">{soc.total_units}</span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-zinc-850 pt-2">
-                            <div>
-                              <span className="text-zinc-500 block">Society Code:</span>
-                              <span className="font-mono font-bold text-[#00d4aa]">{soc.society_code}</span>
-                            </div>
-                            <div>
-                              <span className="text-zinc-500 block">Approved On:</span>
-                              <span className="text-zinc-400">{new Date(soc.created_at).toLocaleDateString()}</span>
+                              <span className="text-[#8a8f91] block">Units / Flats:</span>
+                              <span className="text-[#f2f2f0]">{soc.total_units}</span>
                             </div>
                           </div>
 
-                          <div className="text-xs pt-1">
-                            <span className="text-zinc-500 block font-semibold">Admin Contact Email:</span>
-                            <span className="text-zinc-300">{soc.admin_email}</span>
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-[#1c2224] pt-2">
+                            <div>
+                              <span className="text-[#8a8f91] block">Society Code:</span>
+                              <span className="font-mono font-bold text-[#1D9E75]">{soc.society_code}</span>
+                            </div>
+                            <div>
+                              <span className="text-[#8a8f91] block">Approved On:</span>
+                              <span className="text-[#f2f2f0]">{new Date(soc.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-xs pt-1 text-[#8a8f91]">
+                            <span className="text-[#8a8f91] block font-semibold">Admin Contact Email:</span>
+                            <span className="text-[#f2f2f0]">{soc.admin_email}</span>
                           </div>
 
                           <div className="flex gap-2 pt-1">
                             <button
                               onClick={() => handleToggleSuspension(soc.id, soc.status)}
                               className={`flex-1 py-2 rounded text-xs font-bold transition-all border text-center ${
-                                soc.status === 'active' ? 'bg-zinc-950 border-zinc-800 hover:border-red-500/30 text-red-400' : 'bg-[#00d4aa]/10 border-[#00d4aa]/20 text-[#00d4aa] hover:border-[#00d4aa]'
+                                soc.status === 'active' 
+                                  ? 'bg-[#0b0e10] border-[#1c2224] hover:border-[#993C1D]/30 text-[#993C1D]' 
+                                  : 'bg-[#1D9E75]/10 border-[#1D9E75]/25 text-[#1D9E75] hover:bg-[#1D9E75]/20'
                               }`}
                             >
                               {soc.status === 'active' ? 'Suspend' : 'Activate'}
                             </button>
                             <Link
                               href={`/master/credentials/${soc.id}`}
-                              className="flex-1 py-2 rounded bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-350 text-xs font-bold text-center block"
+                              className="flex-1 py-2 rounded bg-[#0b0e10] border border-[#1c2224] hover:bg-[#1c2224] text-[#f2f2f0] text-xs font-bold text-center block"
                             >
                               Credentials
                             </Link>
@@ -518,8 +543,8 @@ export default function MasterDashboard() {
                     {societies.filter(s => {
                       if (activeTab === 'all_societies') return true;
                       return s.status === activeTab;
-                    }).length === 0 && (
-                      <div className="p-8 text-center text-zinc-500 text-sm">
+                        }).length === 0 && (
+                      <div className="p-8 text-center text-[#8a8f91] text-xs">
                         No societies found under this filter.
                       </div>
                     )}

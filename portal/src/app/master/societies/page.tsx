@@ -222,36 +222,41 @@ export default function SocietiesListPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col selection:bg-[#00d4aa] selection:text-[#09090b]">
+    <div className="min-h-screen bg-[#0b0e10] text-[#f2f2f0] flex flex-col selection:bg-[#dc2626] selection:text-[#0b0e10]">
       {/* NAVBAR */}
-      <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white">
-            <Shield className="h-5 w-5" />
+      <header className="border-b border-[#1c2224] bg-[#0b0e10] px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded bg-[#dc2626] flex items-center justify-center font-bold text-white shadow-lg shadow-[#dc2626]/20">
+              <Shield className="h-4 w-4" />
+            </div>
+            <span className="font-extrabold text-base tracking-tight text-[#f2f2f0]">SocietySync</span>
           </div>
-          <span className="font-extrabold text-lg tracking-tight">
-            SocietySync <span className="text-red-500 text-xs uppercase tracking-wider font-bold ml-1">Master</span>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-red-950/20 text-red-500 border border-red-500/30">
+            Master admin
           </span>
         </div>
-        <nav className="flex items-center gap-6 text-sm font-medium">
-          <Link href="/master/dashboard" className="text-zinc-400 hover:text-white">Requests</Link>
-          <Link href="/master/societies" className="text-red-500 hover:text-red-400">Societies</Link>
-          <Link href="/master/users" className="text-zinc-400 hover:text-white">Users</Link>
-        </nav>
-        <button 
-          onClick={() => { supabase.auth.signOut(); router.push('/master/login'); }}
-          className="text-xs font-bold px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-all border border-zinc-800"
-        >
-          Sign Out
-        </button>
+        <div className="flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
+            <Link href="/master/dashboard" className="text-[#8a8f91] hover:text-[#f2f2f0] transition-colors">Requests</Link>
+            <Link href="/master/societies" className="text-[#dc2626] transition-colors border-b-2 border-[#dc2626] pb-1">Societies</Link>
+            <Link href="/master/users" className="text-[#8a8f91] hover:text-[#f2f2f0] transition-colors">Users</Link>
+          </nav>
+          <button 
+            onClick={() => { supabase.auth.signOut(); router.push('/master/login'); }}
+            className="text-xs font-semibold px-3 py-1.5 rounded bg-[#111517] hover:bg-[#1c2224] text-[#8a8f91] hover:text-[#f2f2f0] transition-all border border-[#1c2224] flex items-center gap-1.5"
+          >
+            Sign Out
+          </button>
+        </div>
       </header>
 
       {/* BODY CONTENT */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight">Approved Societies</h2>
-            <p className="text-zinc-500 text-sm">Manage system-wide housing complex registrations</p>
+            <h2 className="text-xl font-extrabold tracking-tight">Approved Societies</h2>
+            <p className="text-[#8a8f91] text-xs">Manage system-wide housing complex registrations</p>
           </div>
           
           <input
@@ -259,26 +264,26 @@ export default function SocietiesListPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, code, or city..."
-            className="max-w-xs w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#00d4aa]"
+            className="max-w-xs w-full bg-[#111517] border border-[#1c2224] rounded-lg p-2.5 text-xs text-[#f2f2f0] focus:outline-none focus:border-[#dc2626]"
           />
         </div>
 
         {/* SOCIETIES LIST TABLE */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="bg-[#111517] border border-[#1c2224] rounded-lg overflow-hidden shadow-xl">
           {loading ? (
             <div className="p-20 flex flex-col items-center justify-center gap-4">
-              <div className="h-10 w-10 rounded-full border-2 border-zinc-800 border-t-[#00d4aa] animate-spin" />
-              <span className="text-zinc-500 text-xs animate-pulse font-medium">Retrieving approved societies...</span>
+              <div className="h-10 w-10 rounded-full border-2 border-[#1c2224] border-t-[#dc2626] animate-spin" />
+              <span className="text-[#8a8f91] text-xs animate-pulse font-medium">Retrieving approved societies...</span>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-12 text-center text-zinc-500 text-sm">
+            <div className="p-12 text-center text-[#8a8f91] text-xs">
               No registered societies found matching your search.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
+              <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+                  <tr className="border-b border-[#1c2224] bg-[#0b0e10]/40 text-[#8a8f91] font-semibold uppercase tracking-wider">
                     <th className="p-4">Society Name</th>
                     <th className="p-4">Location</th>
                     <th className="p-4">Admin Email</th>
@@ -288,53 +293,55 @@ export default function SocietiesListPage() {
                     <th className="p-4 text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800">
+                <tbody className="divide-y divide-[#1c2224]">
                   {filtered.map((soc) => (
-                    <tr key={soc.id} className="hover:bg-zinc-950/40 transition-colors">
-                      <td className="p-4 font-bold text-white">{soc.name}</td>
-                      <td className="p-4 text-zinc-400">{soc.city}, {soc.state}</td>
-                      <td className="p-4 text-zinc-300">{soc.admin_email}</td>
-                      <td className="p-4 text-center font-mono text-xs text-[#00d4aa]">{soc.society_code}</td>
-                      <td className="p-4 text-center text-zinc-300">{soc.total_units}</td>
+                    <tr key={soc.id} className="hover:bg-[#0b0e10]/30 transition-colors">
+                      <td className="p-4 font-bold text-[#f2f2f0]">{soc.name}</td>
+                      <td className="p-4 text-[#8a8f91]">{soc.city}, {soc.state}</td>
+                      <td className="p-4 text-[#f2f2f0]">{soc.admin_email}</td>
+                      <td className="p-4 text-center font-mono text-xs text-[#1D9E75] font-bold">{soc.society_code}</td>
+                      <td className="p-4 text-center text-[#f2f2f0]">{soc.total_units}</td>
                       <td className="p-4 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          soc.status === 'active' ? 'bg-[#00d4aa]/15 text-[#00d4aa] border border-[#00d4aa]/30' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                          soc.status === 'active' ? 'bg-[#1D9E75]/15 text-[#1D9E75] border border-[#1D9E75]/30' : 'bg-[#993C1D]/15 text-[#FAECE7] border border-[#993C1D]/30'
                         }`}>
                           {soc.status}
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <div className="flex justify-center gap-3">
+                        <div className="flex justify-center gap-2">
                           <button
                             onClick={() => handleToggleSuspension(soc.id, soc.status)}
-                            className={`px-2.5 py-1 rounded text-xs font-bold transition-all border ${
-                              soc.status === 'active' ? 'bg-zinc-900 border-zinc-800 hover:border-red-500/30 text-red-400' : 'bg-[#00d4aa]/10 border-[#00d4aa]/20 text-[#00d4aa] hover:border-[#00d4aa]'
+                            className={`px-2 py-1 rounded text-[11px] font-bold transition-all border ${
+                              soc.status === 'active' 
+                                ? 'bg-[#0b0e10] border-[#1c2224] hover:border-[#993C1D]/35 text-[#993C1D]' 
+                                : 'bg-[#1D9E75]/10 border-[#1D9E75]/25 text-[#1D9E75] hover:bg-[#1D9E75]/20'
                             }`}
                           >
                             {soc.status === 'active' ? 'Suspend' : 'Activate'}
                           </button>
                           <Link
                             href={`/master/societies/${soc.id}/review`}
-                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-[#00d4aa]/40 text-[#00d4aa] text-xs font-bold flex items-center justify-center transition-all"
+                            className="px-2.5 py-1 rounded bg-[#0b0e10] border border-[#1c2224] hover:border-[#1D9E75]/30 text-[#1D9E75] text-[11px] font-bold flex items-center justify-center transition-all"
                           >
                             View Info
                           </Link>
                           <Link
                             href={`/master/credentials/${soc.id}`}
-                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-bold flex items-center justify-center transition-all"
+                            className="px-2.5 py-1 rounded bg-[#0b0e10] border border-[#1c2224] hover:border-zinc-700 text-zinc-350 text-[11px] font-bold flex items-center justify-center transition-all"
                           >
                             Credentials
                           </Link>
                           <button
                             onClick={() => handleResendEmail(soc)}
                             disabled={sendingEmailId === soc.id}
-                            className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-[#00d4aa]/40 text-[#00d4aa] text-xs font-bold transition-all disabled:opacity-50"
+                            className="px-2.5 py-1 rounded bg-[#0b0e10] border border-[#1c2224] hover:border-[#1D9E75]/30 text-[#1D9E75] text-[11px] font-bold transition-all disabled:opacity-50"
                           >
                             {sendingEmailId === soc.id ? 'Sending...' : 'Send Email'}
                           </button>
                           <button
                             onClick={() => handleDeleteSociety(soc.society_code, soc.name)}
-                            className="px-2.5 py-1 rounded bg-red-950/20 border border-red-500/20 hover:border-red-500 hover:bg-red-500/10 text-red-500 text-xs font-bold transition-all"
+                            className="px-2.5 py-1 rounded bg-[#993C1D]/10 border border-[#993C1D]/20 hover:border-[#dc2626] hover:bg-[#dc2626]/10 text-[#dc2626] text-[11px] font-bold transition-all"
                           >
                             Delete
                           </button>

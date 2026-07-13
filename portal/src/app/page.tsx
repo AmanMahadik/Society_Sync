@@ -12,6 +12,7 @@ interface PuneSociety {
   state: string;
   lat: number;
   lng: number;
+  status?: string;
   isMock?: boolean;
 }
 
@@ -38,14 +39,14 @@ export default function LandingPage() {
     }
   }, []);
 
-  // Fetch active societies from Supabase database
+  // Fetch active and suspended societies from Supabase database
   useEffect(() => {
     const fetchSocieties = async () => {
       try {
         const { data, error } = await supabase
           .from('societies')
-          .select('name, address, city, state, lat, lng')
-          .eq('status', 'active');
+          .select('name, address, city, state, lat, lng, status')
+          .in('status', ['active', 'suspended']);
         
         if (!error && data) {
           const parsed: PuneSociety[] = data
@@ -57,6 +58,7 @@ export default function LandingPage() {
               state: s.state,
               lat: parseFloat(s.lat) || 18.5204,
               lng: parseFloat(s.lng) || 73.8567,
+              status: s.status,
               isMock: false
             }));
           setDbSocieties(parsed);
@@ -103,23 +105,32 @@ export default function LandingPage() {
           attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        const customIcon = L.icon({
-          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-          iconSize: [22, 36],
-          iconAnchor: [11, 36],
-          popupAnchor: [1, -30],
-          shadowSize: [36, 36]
-        });
-
         allSocietiesMap.forEach((soc) => {
-          const marker = L.marker([soc.lat, soc.lng], { icon: customIcon }).addTo(map);
+          const isActive = soc.status === 'active';
+          
+          const pulseIcon = L.divIcon({
+            className: 'custom-leaflet-pulse',
+            html: `
+              <div class="relative flex h-4 w-4 justify-center items-center">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${isActive ? 'bg-[#1D9E75]' : 'bg-[#993C1D]'} opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 ${isActive ? 'bg-[#1D9E75]' : 'bg-[#993C1D]'} border border-white/20"></span>
+              </div>
+            `,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          });
+
+          const marker = L.marker([soc.lat, soc.lng], { icon: pulseIcon }).addTo(map);
           marker.bindPopup(`
             <div style="color: #0b0e10; font-family: sans-serif; font-size: 12px; padding: 4px; line-height: 1.4; width: 180px;">
-              <strong style="display: block; font-size: 13px; color: #1D9E75; margin-bottom: 2px;">🏢 ${soc.name}</strong>
+              <strong style="display: block; font-size: 13px; color: ${isActive ? '#1D9E75' : '#993C1D'}; margin-bottom: 2px;">🏢 ${soc.name}</strong>
               <span style="font-size: 10px; color: #8a8f91; display: block; margin-bottom: 4px;">${soc.address}</span>
-              <span style="font-size: 9px; font-weight: bold; background: #1D9E75/10; color: #1D9E75; padding: 2px 4px; border-radius: 4px; border: 1px solid #1D9E75/30;">
-                Verified Partner Community
+              <span style="font-size: 9px; font-weight: bold; padding: 2px 5px; border-radius: 4px; display: inline-block; ${
+                isActive 
+                  ? 'background: rgba(29, 158, 117, 0.1); color: #1D9E75; border: 1px solid rgba(29, 158, 117, 0.3);' 
+                  : 'background: rgba(153, 60, 29, 0.1); color: #993C1D; border: 1px solid rgba(153, 60, 29, 0.3);'
+              }">
+                ${isActive ? 'Active Community' : 'Suspended / Maintenance'}
               </span>
             </div>
           `);
@@ -268,8 +279,17 @@ export default function LandingPage() {
               <div id="leaflet-map-landing" className="w-full h-full relative" style={{ zIndex: 1, filter: 'invert(90%) hue-rotate(185deg) brightness(85%) contrast(110%)' }} />
             </div>
             <div className="flex justify-between items-center mt-3 text-[11px] text-[#8a8f91]">
-              <span>🟢 Pins indicate verified active residential societies</span>
-              <span>Showing {allSocietiesMap.length} active communities</span>
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#1D9E75]"></span>
+                  Active Community
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#993C1D]"></span>
+                  Suspended / Offline
+                </span>
+              </div>
+              <span>Showing {allSocietiesMap.length} verified societies</span>
             </div>
           </div>
         </div>
