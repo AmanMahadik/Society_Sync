@@ -543,7 +543,7 @@ export default function SocietyAdminDashboard() {
           <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
             <Link href="/dashboard" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">Overview</Link>
             <Link href="/dashboard/chanda" className="text-muted-foreground hover:text-foreground transition-colors">Billing</Link>
-            <span className="text-zinc-600 dark:text-zinc-800 cursor-not-allowed">Parking</span>
+            <Link href="/dashboard/parking" className="text-muted-foreground hover:text-foreground transition-colors">Parking</Link>
             <Link href="/dashboard/forum" className="text-muted-foreground hover:text-foreground transition-colors">Forum</Link>
           </nav>
           
