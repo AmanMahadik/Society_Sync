@@ -61,6 +61,7 @@ export default function ForumPage() {
   // Dropdown states
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Theme settings state
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark');
@@ -324,6 +325,15 @@ export default function ForumPage() {
       {/* NAVBAR */}
       <header className="border-b border-border bg-background px-6 py-4 flex justify-between items-center relative z-50">
         <div className="flex items-center gap-3">
+          {/* Hamburger Menu Icon for Mobile View */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-zinc-800/20 dark:hover:bg-zinc-100/10 focus:outline-none cursor-pointer"
+            aria-label="Open menu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="SocietySync Logo" className="h-7 w-7 rounded object-contain" />
             <span className="font-extrabold text-base tracking-tight">SocietySync</span>
@@ -340,6 +350,73 @@ export default function ForumPage() {
             <Link href="/dashboard/parking" className="text-muted-foreground hover:text-foreground transition-colors">Parking</Link>
             <Link href="/dashboard/forum" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">Forum</Link>
           </nav>
+
+      {/* MOBILE NAVIGATION SIDE DRAWER */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] md:hidden">
+          {/* Backdrop overlay */}
+          <div 
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+          />
+          
+          {/* Drawer body container */}
+          <div className="fixed top-0 left-0 bottom-0 w-72 max-w-[80vw] bg-card border-r border-border p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 transform translate-x-0 z-50 text-foreground">
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex justify-between items-center pb-4 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <img src="/logo.png" alt="SocietySync Logo" className="h-7 w-7 rounded object-contain" />
+                  <span className="font-extrabold text-base tracking-tight">SocietySync</span>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-zinc-800/20 dark:hover:bg-zinc-100/10 cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+
+              {/* Links stack */}
+              <nav className="flex flex-col gap-4 text-xs font-semibold uppercase tracking-wider">
+                <Link 
+                  href="/dashboard" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
+                >
+                  Overview
+                </Link>
+                <Link 
+                  href="/dashboard/chanda" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
+                >
+                  Billing
+                </Link>
+                <Link 
+                  href="/dashboard/parking" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
+                >
+                  Parking
+                </Link>
+                <Link 
+                  href="/dashboard/forum" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 px-4 rounded-lg transition-all bg-[#0F6E56]/10 text-[#1D9E75] border border-[#1D9E75]/20 font-bold"
+                >
+                  Forum
+                </Link>
+              </nav>
+            </div>
+
+            {/* Footer info */}
+            <div className="border-t border-border pt-4 text-[10px] text-muted-foreground uppercase tracking-widest text-center font-bold">
+              Society Admin Console
+            </div>
+          </div>
+        </div>
+      )}
           
           {/* Circular Admin Avatar Button */}
           <div className="relative">
