@@ -380,7 +380,7 @@ export default function MasterDashboard() {
             <span className="font-extrabold text-base tracking-tight">SocietySync</span>
           </div>
           <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-red-950/20 text-red-500 border border-red-500/30">
-            Master admin
+            MASTER ADMIN
           </span>
         </div>
         
@@ -395,7 +395,7 @@ export default function MasterDashboard() {
           <div className="relative">
             <button 
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="h-8 w-8 rounded-full bg-red-950/20 border border-red-500/30 flex items-center justify-center font-extrabold text-xs text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+              className="h-8 w-8 rounded-full bg-[#dc2626] flex items-center justify-center font-extrabold text-xs text-white shadow-lg shadow-[#dc2626]/20 hover:bg-[#b91c1c] transition-all cursor-pointer"
             >
               MA
             </button>
@@ -449,6 +449,46 @@ export default function MasterDashboard() {
                       <span className="text-muted-foreground">Security Role:</span>
                       <span className="text-foreground font-bold">SysAdmin</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Theme Selector inside Dropdown */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Theme</span>
+                  <div className="grid grid-cols-3 gap-2 bg-background border border-border rounded p-1">
+                    <button
+                      onClick={() => handleThemeChange('light')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'light' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Sun className="h-3 w-3" />
+                      Light
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('dark')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'dark' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Moon className="h-3 w-3" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('system')}
+                      className={`py-1 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        theme === 'system' 
+                          ? 'bg-card text-foreground border border-border shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Laptop className="h-3 w-3" />
+                      System
+                    </button>
                   </div>
                 </div>
 

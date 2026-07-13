@@ -176,7 +176,7 @@ export default function UsersListPage() {
             <span className="font-extrabold text-base tracking-tight">SocietySync</span>
           </div>
           <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-red-950/20 text-red-500 border border-red-500/30">
-            Master admin
+            MASTER ADMIN
           </span>
         </div>
         
@@ -191,7 +191,7 @@ export default function UsersListPage() {
           <div className="relative">
             <button 
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="h-8 w-8 rounded-full bg-red-950/20 border border-red-500/30 flex items-center justify-center font-extrabold text-xs text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+              className="h-8 w-8 rounded-full bg-[#dc2626] flex items-center justify-center font-extrabold text-xs text-white shadow-lg shadow-[#dc2626]/20 hover:bg-[#b91c1c] transition-all cursor-pointer"
             >
               MA
             </button>
