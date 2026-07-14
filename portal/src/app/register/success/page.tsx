@@ -38,11 +38,20 @@ export default function RegisterSuccess() {
           Thank you for registering. Your details are now pending physical verification by the Master Admin. We have sent a confirmation email to <span className="text-white font-medium">{adminEmail || 'your email'}</span>.
         </p>
 
-        <div className="flex items-center gap-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800 text-left mb-8">
+        <div className="flex items-center gap-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800 text-left mb-4">
           <Clock className="h-5 w-5 text-amber-500 shrink-0" />
           <div>
             <h4 className="font-bold text-sm text-[#fafafa]">Estimated Review Timeline</h4>
             <p className="text-zinc-500 text-xs mt-0.5">1 — 3 business days. You will receive an email as soon as your Society Code is active.</p>
+          </div>
+        </div>
+
+        {/* VIP registration notice */}
+        <div className="flex items-center gap-3 bg-emerald-950/15 p-4 rounded-xl border border-[#00d4aa]/20 text-left mb-8">
+          <div className="h-5 w-5 text-[#00d4aa] flex items-center justify-center font-bold text-xs bg-[#00d4aa]/10 rounded-full shrink-0 border border-[#00d4aa]/25">★</div>
+          <div>
+            <h4 className="font-bold text-sm text-[#00d4aa]">VIP Registration</h4>
+            <p className="text-zinc-400 text-xs mt-0.5">For immediate activation, contact us at <a href="mailto:societysync5@gmail.com" className="text-[#00d4aa] hover:underline font-semibold">societysync5@gmail.com</a>.</p>
           </div>
         </div>
 
