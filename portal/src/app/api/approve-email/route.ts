@@ -1,7 +1,7 @@
+import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import path from 'path';
-import fs from 'fs';
 
 export async function OPTIONS(req: NextRequest) {
   const origin = req.headers.get('origin') || '*';
@@ -70,6 +70,7 @@ You can now log in to the Web Admin Portal to manage your society operations. To
 1. Ask them to install the mobile app via the download link: https://expo.dev/accounts/aman1611/projects/society-sync/builds/83da809f-7ae0-4cd1-ba99-559bdab33899
 2. Tell them to register using the Society Code: ${societyCode}
 3. Approve their profiles in the Roster.
+4. Note: The first user who registers using this Society Code will automatically be assigned the Administrator (Admin) role. All subsequent users will be registered as residents and will require approval before accessing society services.
 
 Welcome to SocietySync!`;
 
@@ -305,7 +306,7 @@ The SocietySync Master Admin Team`;
     // Attempt to send email via Gmail (if App Password is provided)
     if (gmailPass) {
       console.log(`Sending email using Nodemailer (Gmail) from ${gmailUser}...`);
-      
+
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -315,7 +316,7 @@ The SocietySync Master Admin Team`;
       });
 
       const attachments = [];
-      
+
       if (status === 'approved') {
         // 1. Attach QR Code inline
         const qrPath = path.join(process.cwd(), 'public', 'qr_code.png');
@@ -329,7 +330,7 @@ The SocietySync Master Admin Team`;
         } else {
           console.warn('QR code image not found at path:', qrPath);
         }
-        
+
         // 2. Scan public folder for user_manual files (e.g. user_manual.pdf, user_manual.docx)
         const publicDir = path.join(process.cwd(), 'public');
         if (fs.existsSync(publicDir)) {
@@ -376,7 +377,7 @@ The SocietySync Master Admin Team`;
     // Fallback: Send email via FormSubmit (free static email delivery tool)
     console.log('Gmail App Password not found in environment variables. Falling back to FormSubmit...');
     const token = '19bcd09a7561ac0a204d32703f974dbb';
-    
+
     // Replace inline cid with public URL for FormSubmit compatibility
     const fallbackHtml = messageHtml.replace('cid:app_qr_code', 'https://society-sync-portal.vercel.app/qr_code.png');
 
