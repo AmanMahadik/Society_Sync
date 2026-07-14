@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { ArrowLeft, CheckCircle, Clock, Smartphone } from 'lucide-react';
 import Link from 'next/link';
-import { CheckCircle, Clock, ArrowLeft, Smartphone } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function RegisterSuccess() {
   const [societyName, setSocietyName] = useState('Your Residential Society');
@@ -29,7 +29,7 @@ export default function RegisterSuccess() {
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
           Registration Received!
         </h1>
-        
+
         <p className="text-[#00d4aa] font-bold text-lg mb-6">
           {societyName}
         </p>
@@ -50,7 +50,7 @@ export default function RegisterSuccess() {
         <div className="flex items-center gap-3 bg-emerald-950/15 p-4 rounded-xl border border-[#00d4aa]/20 text-left mb-8">
           <div className="h-5 w-5 text-[#00d4aa] flex items-center justify-center font-bold text-xs bg-[#00d4aa]/10 rounded-full shrink-0 border border-[#00d4aa]/25">★</div>
           <div>
-            <h4 className="font-bold text-sm text-[#00d4aa]">VIP Registration</h4>
+            <h4 className="font-bold text-sm text-[#00d4aa]">VIP Number Registration</h4>
             <p className="text-zinc-400 text-xs mt-0.5">For immediate activation, contact us at <a href="mailto:societysync5@gmail.com" className="text-[#00d4aa] hover:underline font-semibold">societysync5@gmail.com</a>.</p>
           </div>
         </div>
