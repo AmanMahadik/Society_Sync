@@ -33,6 +33,10 @@ export default function SocietiesListPage() {
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Registered users states
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [selectedSocietyForUsers, setSelectedSocietyForUsers] = useState<Society | null>(null);
 
   // Theme settings state
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark');
@@ -95,6 +99,15 @@ export default function SocietiesListPage() {
 
       if (error) throw error;
       setSocieties(data || []);
+
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!profilesError) {
+        setProfiles(profilesData || []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -506,6 +519,7 @@ export default function SocietiesListPage() {
                     <th className="p-4">Admin Email</th>
                     <th className="p-4 text-center">Society Code</th>
                     <th className="p-4 text-center">Units</th>
+                    <th className="p-4 text-center">Users</th>
                     <th className="p-4 text-center">Status</th>
                     <th className="p-4 text-center">Actions</th>
                   </tr>
@@ -518,6 +532,16 @@ export default function SocietiesListPage() {
                       <td className="p-4">{soc.admin_email}</td>
                       <td className="p-4 text-center font-mono text-xs text-[#1D9E75] font-bold">{soc.society_code}</td>
                       <td className="p-4 text-center">{soc.total_units}</td>
+                      <td className="p-4 text-center">
+                        <button
+                          onClick={() => setSelectedSocietyForUsers(soc)}
+                          className="px-2.5 py-1 rounded bg-[#dc2626]/10 border border-[#dc2626]/20 hover:bg-[#dc2626]/20 text-[#dc2626] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 mx-auto"
+                          title="View registered users in this society"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                          <span>{profiles.filter(p => p.society_id === soc.id).length}</span>
+                        </button>
+                      </td>
                       <td className="p-4 text-center">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                           soc.status === 'active' ? 'bg-[#1D9E75]/15 text-[#1D9E75] border border-[#1D9E75]/30' : 'bg-[#993C1D]/15 text-[#FAECE7] border border-[#993C1D]/30'
@@ -572,6 +596,107 @@ export default function SocietiesListPage() {
           )}
         </div>
       </main>
+      {/* REGISTERED USERS MODAL */}
+      {selectedSocietyForUsers && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            onClick={() => setSelectedSocietyForUsers(null)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          />
+          
+          {/* Modal Content */}
+          <div className="bg-card border border-border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl relative z-10 overflow-hidden text-foreground">
+            {/* Header */}
+            <div className="p-5 border-b border-border flex justify-between items-center bg-background/20">
+              <div>
+                <h3 className="text-base font-extrabold tracking-tight flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  <span>Registered Members</span>
+                </h3>
+                <p className="text-muted-foreground text-[11px] mt-0.5 font-medium">{selectedSocietyForUsers.name} ({selectedSocietyForUsers.society_code})</p>
+              </div>
+              <button
+                onClick={() => setSelectedSocietyForUsers(null)}
+                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-zinc-800/20 dark:hover:bg-zinc-100/10 transition-colors cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {profiles.filter(p => p.society_id === selectedSocietyForUsers.id).length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-xs font-medium">
+                  No members are currently registered in this society yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-border rounded-lg bg-background/30">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-background/50 text-muted-foreground font-semibold uppercase tracking-wider">
+                        <th className="p-3">Full Name</th>
+                        <th className="p-3">Email Address</th>
+                        <th className="p-3">Flat & Wing</th>
+                        <th className="p-3 text-center">App Role</th>
+                        <th className="p-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {profiles
+                        .filter(p => p.society_id === selectedSocietyForUsers.id)
+                        .map((user) => (
+                          <tr key={user.id} className="hover:bg-background/25 transition-colors">
+                            <td className="p-3 font-bold text-foreground flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-full bg-[#dc2626]/10 border border-[#dc2626]/20 flex items-center justify-center font-extrabold text-[10px] text-[#dc2626]">
+                                {(user.full_name || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <span>{user.full_name || 'Unnamed Resident'}</span>
+                            </td>
+                            <td className="p-3 text-muted-foreground font-mono text-[10px]">{user.email}</td>
+                            <td className="p-3 text-foreground font-medium">
+                              {user.wing || user.flat_number ? `${user.wing || ''}-${user.flat_number || ''}` : <span className="text-muted-foreground italic">Not set</span>}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                user.role === 'admin' 
+                                  ? 'bg-[#dc2626]/15 text-[#dc2626] border border-[#dc2626]/30' 
+                                  : user.role === 'guard'
+                                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                  : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                              }`}>
+                                {user.role || 'resident'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest ${
+                                user.status === 'active' 
+                                  ? 'bg-[#1D9E75]/15 text-[#1D9E75]' 
+                                  : 'bg-amber-500/15 text-amber-500'
+                              }`}>
+                                {user.status || 'pending'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-border flex justify-end bg-background/20">
+              <button
+                onClick={() => setSelectedSocietyForUsers(null)}
+                className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-white transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
