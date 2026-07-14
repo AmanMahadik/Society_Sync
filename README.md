@@ -3,7 +3,7 @@
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0F2027,50:203A43,100:6C5CE7&height=220&section=header&text=SocietySync&fontSize=46&fontColor=A3FFB0&animation=fadeIn&fontAlignY=38&desc=Track.%20Connect.%20Protect.%20Repeat.&descAlignY=58&descSize=18" width="100%" alt="SocietySync banner"/>
 
 <br/>
-<img width="1024" height="1024" alt="logo" src="https://github.com/user-attachments/assets/1c5a3458-a8b0-4e01-a8a3-bcef9cd937cc" />
+<img width="150" height="150" alt="logo" src="https://github.com/user-attachments/assets/1c5a3458-a8b0-4e01-a8a3-bcef9cd937cc" />
 
 
 [![Made with Supabase](https://img.shields.io/badge/Backend-Supabase-2EA043?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
