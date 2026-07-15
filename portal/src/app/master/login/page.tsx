@@ -82,7 +82,7 @@ export default function MasterLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="societysync5@gmail.com"
+                placeholder="master@email.com"
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-red-500 text-white"
                 required
               />
