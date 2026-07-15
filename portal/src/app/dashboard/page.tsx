@@ -628,9 +628,17 @@ export default function SocietyAdminDashboard() {
           <div className="relative">
             <button 
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="h-8 w-8 rounded-full bg-[#1D9E75] flex items-center justify-center font-extrabold text-xs text-white shadow-lg shadow-[#1D9E75]/20 hover:bg-[#15803d] transition-all cursor-pointer"
+              className="h-8 w-8 rounded-full bg-[#1D9E75] flex items-center justify-center font-extrabold text-xs text-white shadow-lg shadow-[#1D9E75]/20 hover:bg-[#15803d] overflow-hidden transition-all cursor-pointer"
             >
-              {getInitials(adminProfile?.full_name)}
+              {adminProfile?.google_picture_url ? (
+                <img 
+                  src={adminProfile.google_picture_url} 
+                  alt="Admin Profile" 
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                getInitials(adminProfile?.full_name)
+              )}
             </button>
 
             {/* Profile & settings dropdown modal */}
@@ -650,8 +658,16 @@ export default function SocietyAdminDashboard() {
                 <div className="space-y-3">
                   <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Profile</span>
                   <div className="flex items-center gap-3 bg-background/50 border border-border p-3 rounded-lg">
-                    <div className="h-10 w-10 rounded-full bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center font-bold text-[#1D9E75] text-sm">
-                      {getInitials(adminProfile?.full_name)}
+                    <div className="h-10 w-10 rounded-full bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center font-bold text-[#1D9E75] text-sm overflow-hidden shrink-0">
+                      {adminProfile?.google_picture_url ? (
+                        <img 
+                          src={adminProfile.google_picture_url} 
+                          alt="Admin Profile" 
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        getInitials(adminProfile?.full_name)
+                      )}
                     </div>
                     <div>
                       <h4 className="font-bold text-foreground">{adminProfile?.full_name || 'Society Admin'}</h4>
