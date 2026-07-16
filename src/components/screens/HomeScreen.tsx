@@ -796,115 +796,117 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
         </View>
 
         {/* QUICK STATS */}
-        <View style={{ marginVertical: 8, marginBottom: 20 }}>
-          <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: theme.dark ? '#A1A1AA' : '#4B5563', textTransform: 'uppercase', marginBottom: 12, paddingHorizontal: 4 }}>
-            Quick Stats
-          </Text>
+        {profile?.role !== 'guard' && (
+          <View style={{ marginVertical: 8, marginBottom: 20 }}>
+            <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: theme.dark ? '#A1A1AA' : '#4B5563', textTransform: 'uppercase', marginBottom: 12, paddingHorizontal: 4 }}>
+              Quick Stats
+            </Text>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
-            {/* 1. Residents / Approvals stat */}
-            <Card style={{ 
-              flex: 1, 
-              borderRadius: 24, 
-              backgroundColor: theme.colors.elevation.level1, 
-              borderWidth: theme.dark ? 1 : 0, 
-              borderColor: 'rgba(255, 255, 255, 0.08)' 
-            }}>
-              <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
-                <View style={{ 
-                  width: 36, 
-                  height: 36, 
-                  borderRadius: 18, 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  backgroundColor: theme.dark ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE', 
-                  marginBottom: 8 
-                }}>
-                  <IconButton 
-                    icon={profile?.role === 'admin' ? "account-multiple-check" : "account-group"} 
-                    size={18} 
-                    iconColor={theme.dark ? '#38BDF8' : '#0284C7'} 
-                    style={{ margin: 0, padding: 0 }} 
-                  />
-                </View>
-                <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.colors.onSurface }}>
-                  {profile?.role === 'admin' ? summaryData.pendingApprovals : '248'}
-                </Text>
-                <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
-                  {profile?.role === 'admin' ? 'Approvals' : 'Residents'}
-                </Text>
-              </Card.Content>
-            </Card>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+              {/* 1. Residents / Approvals stat */}
+              <Card style={{ 
+                flex: 1, 
+                borderRadius: 24, 
+                backgroundColor: theme.colors.elevation.level1, 
+                borderWidth: theme.dark ? 1 : 0, 
+                borderColor: 'rgba(255, 255, 255, 0.08)' 
+              }}>
+                <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
+                  <View style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: 18, 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    backgroundColor: theme.dark ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE', 
+                    marginBottom: 8 
+                  }}>
+                    <IconButton 
+                      icon={profile?.role === 'admin' ? "account-multiple-check" : "account-group"} 
+                      size={18} 
+                      iconColor={theme.dark ? '#38BDF8' : '#0284C7'} 
+                      style={{ margin: 0, padding: 0 }} 
+                    />
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                    {profile?.role === 'admin' ? summaryData.pendingApprovals : '248'}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
+                    {profile?.role === 'admin' ? 'Approvals' : 'Residents'}
+                  </Text>
+                </Card.Content>
+              </Card>
 
-            {/* 2. Open parking / Parking booked */}
-            <Card style={{ 
-              flex: 1, 
-              borderRadius: 24, 
-              backgroundColor: theme.colors.elevation.level1, 
-              borderWidth: theme.dark ? 1 : 0, 
-              borderColor: 'rgba(255, 255, 255, 0.08)' 
-            }}>
-              <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
-                <View style={{ 
-                  width: 36, 
-                  height: 36, 
-                  borderRadius: 18, 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  backgroundColor: theme.dark ? 'rgba(74, 222, 128, 0.15)' : '#DCFCE7', 
-                  marginBottom: 8 
-                }}>
-                  <IconButton 
-                    icon="parking" 
-                    size={18} 
-                    iconColor={theme.dark ? '#4ADE80' : '#15803D'} 
-                    style={{ margin: 0, padding: 0 }} 
-                  />
-                </View>
-                <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.colors.onSurface }}>
-                  {profile?.role === 'admin' ? summaryData.todaysParkings : '6'}
-                </Text>
-                <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
-                  {profile?.role === 'admin' ? 'Parkings' : 'Open parking'}
-                </Text>
-              </Card.Content>
-            </Card>
+              {/* 2. Open parking / Parking booked */}
+              <Card style={{ 
+                flex: 1, 
+                borderRadius: 24, 
+                backgroundColor: theme.colors.elevation.level1, 
+                borderWidth: theme.dark ? 1 : 0, 
+                borderColor: 'rgba(255, 255, 255, 0.08)' 
+              }}>
+                <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
+                  <View style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: 18, 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    backgroundColor: theme.dark ? 'rgba(74, 222, 128, 0.15)' : '#DCFCE7', 
+                    marginBottom: 8 
+                  }}>
+                    <IconButton 
+                      icon="parking" 
+                      size={18} 
+                      iconColor={theme.dark ? '#4ADE80' : '#15803D'} 
+                      style={{ margin: 0, padding: 0 }} 
+                    />
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                    {profile?.role === 'admin' ? summaryData.todaysParkings : '6'}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
+                    {profile?.role === 'admin' ? 'Parkings' : 'Open parking'}
+                  </Text>
+                </Card.Content>
+              </Card>
 
-            {/* 3. Active SOS / Dues */}
-            <Card style={{ 
-              flex: 1, 
-              borderRadius: 24, 
-              backgroundColor: theme.colors.elevation.level1, 
-              borderWidth: theme.dark ? 1 : 0, 
-              borderColor: 'rgba(255, 255, 255, 0.08)' 
-            }}>
-              <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
-                <View style={{ 
-                  width: 36, 
-                  height: 36, 
-                  borderRadius: 18, 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  backgroundColor: theme.dark ? 'rgba(248, 113, 113, 0.15)' : '#FEE2E2', 
-                  marginBottom: 8 
-                }}>
-                  <IconButton 
-                    icon={profile?.role === 'admin' ? "shield-alert" : "wallet-outline"} 
-                    size={18} 
-                    iconColor={theme.dark ? '#F87171' : '#EF4444'} 
-                    style={{ margin: 0, padding: 0 }} 
-                  />
-                </View>
-                <Text numberOfLines={1} style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
-                  {profile?.role === 'admin' ? complaints.length : `₹${summaryData.pendingDues}`}
-                </Text>
-                <Text numberOfLines={1} style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
-                  {profile?.role === 'admin' ? 'Active SOS' : 'Pending dues'}
-                </Text>
-              </Card.Content>
-            </Card>
+              {/* 3. Active SOS / Dues */}
+              <Card style={{ 
+                flex: 1, 
+                borderRadius: 24, 
+                backgroundColor: theme.colors.elevation.level1, 
+                borderWidth: theme.dark ? 1 : 0, 
+                borderColor: 'rgba(255, 255, 255, 0.08)' 
+              }}>
+                <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
+                  <View style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: 18, 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    backgroundColor: theme.dark ? 'rgba(248, 113, 113, 0.15)' : '#FEE2E2', 
+                    marginBottom: 8 
+                  }}>
+                    <IconButton 
+                      icon={profile?.role === 'admin' ? "shield-alert" : "wallet-outline"} 
+                      size={18} 
+                      iconColor={theme.dark ? '#F87171' : '#EF4444'} 
+                      style={{ margin: 0, padding: 0 }} 
+                    />
+                  </View>
+                  <Text numberOfLines={1} style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                    {profile?.role === 'admin' ? complaints.length : `₹${summaryData.pendingDues}`}
+                  </Text>
+                  <Text numberOfLines={1} style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
+                    {profile?.role === 'admin' ? 'Active SOS' : 'Pending dues'}
+                  </Text>
+                </Card.Content>
+              </Card>
+            </View>
           </View>
-        </View>
+        )}
  
         {/* RESIDENT QUICK ACTIONS & PASSCODE MANAGER */}
         {profile?.role !== 'guard' && (
