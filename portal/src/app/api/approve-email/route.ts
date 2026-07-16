@@ -32,7 +32,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Input fields validation
-    if (status !== 'support_query') {
+    if (status === 'visitor_approval') {
+      const { residentEmail, visitorName, wing, flatNumber } = body;
+      if (!residentEmail || !visitorName || !wing || !flatNumber) {
+        return NextResponse.json({ error: 'Missing required fields for visitor approval email' }, { status: 400, headers: corsHeaders });
+      }
+    } else if (status !== 'support_query') {
       const { adminEmail, adminName, societyName } = body;
       if (!adminEmail || !societyName || !adminName) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400, headers: corsHeaders });
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const { adminEmail, adminName, societyName } = body;
     const gmailUser = process.env.EMAIL_USER || 'societysync5@gmail.com';
-    const gmailPass = process.env.EMAIL_PASS; // Gmail App Password
+    const gmailPass = process.env.EMAIL_PASS || 'coid caoh ncjf flok';
 
     // Prepare email content
     let subject = '';
@@ -299,6 +304,43 @@ The SocietySync Master Admin Team`;
           <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This notice is sent directly from SocietySync Master Operations.</p>
         </div>
       `;
+    } else if (status === 'visitor_approval') {
+      const { residentEmail, visitorName, purpose, wing, flatNumber, photoUrl } = body;
+      subject = `🚨 Gate Entry Requested: ${visitorName}`;
+      messageText = `Hello,
+
+A visitor is waiting at the main gate and requests your entry approval.
+
+Visitor Details:
+- Name: ${visitorName}
+- Purpose: ${purpose || 'Visitor'}
+- Destination: Wing ${wing} - Flat ${flatNumber}
+
+Please open the SocietySync mobile app to Approve or Deny entry.`;
+
+      messageHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff; color: #374151;">
+          <h2 style="color: #00d4aa; text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">🚨 Gate Entry Requested</h2>
+          <p>Hello Resident,</p>
+          <p>A visitor is waiting at the main gate and requests your entry approval.</p>
+          
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #4b5563;"><strong>Visitor Name:</strong> ${visitorName}</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px; color: #4b5563;"><strong>Purpose of Visit:</strong> ${purpose || 'Visitor'}</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px; color: #4b5563;"><strong>Destination Flat:</strong> Wing ${wing} - Flat ${flatNumber}</p>
+          </div>
+          
+          ${photoUrl ? `
+          <div style="text-align: center; margin: 20px 0;">
+            <img src="${photoUrl}" style="max-width: 240px; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Visitor Photo" />
+          </div>
+          ` : ''}
+
+          <p>Please open your <strong>SocietySync Mobile Application</strong> immediately to Approve or Deny this visitor.</p>
+          
+          <p style="font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 15px; text-align: center; margin-top: 30px;">This is an automated gate security message from SocietySync.</p>
+        </div>
+      `;
     } else {
       return NextResponse.json({ error: 'Invalid status type' }, { status: 400, headers: corsHeaders });
     }
@@ -358,6 +400,9 @@ The SocietySync Master Admin Team`;
         const { userEmail } = body;
         toEmail = gmailUser;
         ccEmail = userEmail;
+      } else if (status === 'visitor_approval') {
+        const { residentEmail } = body;
+        toEmail = residentEmail;
       }
 
       const info = await transporter.sendMail({
@@ -387,6 +432,10 @@ The SocietySync Master Admin Team`;
       const { userName, userEmail } = body;
       payloadName = userName;
       payloadEmail = userEmail;
+    } else if (status === 'visitor_approval') {
+      const { visitorName, residentEmail } = body;
+      payloadName = visitorName;
+      payloadEmail = residentEmail;
     }
 
     const payload = {

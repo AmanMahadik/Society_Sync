@@ -460,6 +460,70 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
       setManualVisitorModalVisible(false);
       fetchRecentVisitors();
 
+      // Trigger Email and Push Notifications
+      try {
+        const allProfiles = await dataManager.getAllProfiles();
+        let targetWing = 'Gen';
+        let targetFlat = manualVisitorFlat.trim();
+        if (manualVisitorFlat.includes('-')) {
+          const parts = manualVisitorFlat.split('-');
+          targetWing = parts[0].trim().toUpperCase();
+          targetFlat = parts[1].trim();
+        }
+
+        const targetResident = allProfiles.find(p => 
+          (p.wing || '').trim().toUpperCase() === targetWing && 
+          (p.flat_number || '').trim() === targetFlat
+        );
+
+        if (targetResident) {
+          // 1. Send Email Notification
+          if (targetResident.email) {
+            fetch('https://society-sync-portal.vercel.app/api/approve-email', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                status: 'visitor_approval',
+                residentEmail: targetResident.email,
+                visitorName: manualVisitorName.trim(),
+                purpose: manualVisitorPurpose,
+                wing: targetWing,
+                flatNumber: targetFlat,
+                photoUrl: photoUrl
+              })
+            }).catch(err => console.warn('Email API trigger failed', err));
+          }
+
+          // 2. Send Expo Push Notification
+          if (targetResident.notification_token) {
+            fetch('https://exp.host/--/api/v2/push/send', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+              },
+              body: JSON.stringify({
+                to: targetResident.notification_token,
+                sound: 'default',
+                title: '🚨 Gate Entry Requested',
+                body: `${manualVisitorName.trim()} requests entry to Flat ${targetWing}-${targetFlat} (Purpose: ${manualVisitorPurpose}).`,
+                data: {
+                  type: 'visitor_approval',
+                  visitorId: req.id,
+                  wing: targetWing,
+                  flatNumber: targetFlat
+                },
+              })
+            }).catch(err => console.warn('Push notification API trigger failed', err));
+          }
+        }
+      } catch (err) {
+        console.warn('Notification trigger error:', err);
+      }
+
       addNotification({
         type: 'confirmation',
         message: '🔔 Approval Request Sent',
@@ -545,6 +609,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     const interval = setInterval(fetchMyPendingApprovals, 3000);
     return () => clearInterval(interval);
   }, [profile]);
+
+  // Trigger alarm vibration on resident phone when gate entry requested
+  useEffect(() => {
+    if (approvalModalVisible) {
+      Vibration.vibrate([0, 500, 500, 500, 500, 500, 500, 500, 500, 500], false);
+      const timer = setTimeout(() => {
+        Vibration.cancel();
+      }, 10000);
+
+      return () => {
+        clearTimeout(timer);
+        Vibration.cancel();
+      };
+    }
+  }, [approvalModalVisible]);
 
   const handleReviewApproval = async (status: 'approved' | 'denied') => {
     if (!activeApprovalToReview) return;
