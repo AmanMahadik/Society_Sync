@@ -8,6 +8,7 @@ import { useNotifications } from '../../lib/notification-context';
 // @ts-ignore
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
+import Svg, { Circle } from 'react-native-svg';
 
 interface HomeScreenProps {
   jumpTo?: (key: string) => void;
@@ -1063,26 +1064,57 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
 
         {/* 4. GIANT RED SOS BUTTON (RESIDENTS & ADMINS ONLY) */}
         {profile?.role !== 'guard' && (
-          <Card style={[styles.sosCard, { backgroundColor: '#1E1E1E', borderColor: '#FF3B30', borderWidth: 1.5 }]}>
+          <Card style={[styles.sosCard, { 
+            backgroundColor: theme.colors.elevation.level1, 
+            borderColor: 'rgba(255, 59, 48, 0.25)', 
+            borderWidth: 1,
+            borderRadius: 24,
+          }]}>
             <Card.Content style={styles.sosCardContent}>
               <Text variant="titleMedium" style={[styles.sosTitle, { color: theme.colors.onSurface }]}>Need Urgent Utilities or Security Help?</Text>
               <Text variant="bodySmall" style={styles.sosSubtitle}>
                 Tap the Red Shield to trigger a persistent alarm on the Guard Desk and Admin panels instantly.
               </Text>
    
-              <Animated.View style={[styles.sosRippleOuter, { transform: [{ scale: pulseAnim }] }]}>
-                <Animated.View style={[styles.sosRippleInner, { transform: [{ scale: pulseAnim }] }]}>
-                  <IconButton
-                    icon="shield-alert"
-                    iconColor="#FFFFFF"
-                    size={70}
-                    style={[styles.giantSosButton, { backgroundColor: '#FF3B30', margin: 0 }]}
-                    onPress={() => setSosModalVisible(true)}
+              <View style={{ position: 'relative', width: 160, height: 160, justifyContent: 'center', alignItems: 'center', marginVertical: 12 }}>
+                <Svg width={150} height={150} style={{ position: 'absolute' }}>
+                  <Circle
+                    cx="75"
+                    cy="75"
+                    r="68"
+                    fill="none"
+                    stroke="#FF3B30"
+                    strokeWidth="3"
+                    strokeOpacity="0.15"
                   />
+                  <Circle
+                    cx="75"
+                    cy="75"
+                    r="68"
+                    fill="none"
+                    stroke="#FF3B30"
+                    strokeWidth="3.5"
+                    strokeDasharray="427"
+                    strokeDashoffset="120"
+                    strokeLinecap="round"
+                    strokeOpacity="0.85"
+                  />
+                </Svg>
+
+                <Animated.View style={[styles.sosRippleOuter, { transform: [{ scale: pulseAnim }] }]}>
+                  <Animated.View style={[styles.sosRippleInner, { transform: [{ scale: pulseAnim }] }]}>
+                    <IconButton
+                      icon="shield-alert"
+                      iconColor="#FFFFFF"
+                      size={64}
+                      style={[styles.giantSosButton, { backgroundColor: '#FF3B30', margin: 0, shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8 }]}
+                      onPress={() => setSosModalVisible(true)}
+                    />
+                  </Animated.View>
                 </Animated.View>
-              </Animated.View>
+              </View>
    
-              <Text variant="labelLarge" style={{ color: '#FF3B30', fontWeight: 'bold', marginTop: 12, letterSpacing: 0.5 }}>
+              <Text variant="labelLarge" style={{ color: '#FF3B30', fontWeight: 'bold', marginTop: 8, letterSpacing: 0.8, textTransform: 'uppercase', fontSize: 11 }}>
                 TAP TO TRIGGER SOS SHIELD
               </Text>
             </Card.Content>

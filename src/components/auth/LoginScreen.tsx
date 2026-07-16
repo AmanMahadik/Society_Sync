@@ -141,7 +141,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ScrollView contentContainerStyle={styles.container}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: -100,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.08 : 0.05,
+        }}
+      />
+
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.logoWrapper}>
             <Image 
@@ -150,15 +165,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               resizeMode="contain"
             />
           </View>
-          <Text variant="headlineMedium" style={styles.appName}>SocietySync</Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>
+          <Text variant="headlineMedium" style={[styles.appName, { color: theme.colors.onSurface }]}>SocietySync</Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.outline, textAlign: 'center', fontWeight: '500' }}>
             Trust, Transparency, and Role-Based Communication
           </Text>
         </View>
 
-        <Card style={styles.card}>
+        <Card style={[styles.card, { 
+          borderRadius: 24, 
+          borderWidth: theme.dark ? 1 : 0, 
+          borderColor: 'rgba(255, 255, 255, 0.08)',
+          backgroundColor: theme.colors.elevation.level1
+        }]}>
           <Card.Content style={styles.cardContent}>
-            <Text variant="titleMedium" style={styles.cardTitle}>Sign In to Your Society</Text>
+            <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Sign In to Your Society</Text>
             
             {error && (
               <Text style={[styles.errorText, { color: theme.colors.error }]}>
@@ -173,7 +193,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               mode="outlined"
               keyboardType="email-address"
               autoCapitalize="none"
-              style={styles.input}
+              style={[styles.input, { borderRadius: 12 }]}
               activeOutlineColor="#00D4AA"
               left={<TextInput.Icon icon="email" />}
               right={hasBiometrics ? <TextInput.Icon icon="fingerprint" onPress={triggerBiometricLogin} /> : undefined}
@@ -186,7 +206,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               mode="outlined"
-              style={styles.input}
+              style={[styles.input, { borderRadius: 12 }]}
               activeOutlineColor="#00D4AA"
               left={<TextInput.Icon icon="lock" />}
               right={<TextInput.Icon icon={showPassword ? "eye-off" : "eye"} onPress={() => setShowPassword(!showPassword)} />}
@@ -196,7 +216,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               mode="text"
               onPress={() => setResetDialogVisible(true)}
               style={styles.forgotPasswordButton}
-              labelStyle={{ fontSize: 12, color: '#00D4AA' }}
+              labelStyle={{ fontSize: 12, color: '#00D4AA', fontWeight: 'bold' }}
               compact
             >
               Forgot Password?
@@ -209,7 +229,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               disabled={loading}
               buttonColor="#00D4AA"
               textColor="#09090b"
-              style={[styles.button, { borderRadius: 28 }]}
+              style={[styles.button, { borderRadius: 28, paddingVertical: 2 }]}
               labelStyle={{ fontWeight: 'bold' }}
             >
               Sign In
@@ -234,11 +254,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
               Sign in with Google
             </Button>
 
+            {hasBiometrics && (
+              <View style={{ alignItems: 'center', marginTop: 16 }}>
+                <IconButton 
+                  icon="fingerprint" 
+                  iconColor="#00D4AA" 
+                  size={32} 
+                  style={{
+                    backgroundColor: theme.dark ? 'rgba(0, 212, 170, 0.1)' : '#E6F4F1',
+                    borderRadius: 24,
+                    borderWidth: 1,
+                    borderColor: 'rgba(0, 212, 170, 0.2)',
+                    margin: 0
+                  }}
+                  onPress={triggerBiometricLogin}
+                />
+                <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 4, fontWeight: 'bold' }}>
+                  Tap to sign in with biometrics
+                </Text>
+              </View>
+            )}
+
             <Button
               mode="text"
               onPress={onNavigateToRegister}
               style={styles.textButton}
               textColor="#00D4AA"
+              labelStyle={{ fontWeight: 'bold' }}
             >
               Don't have an account? Register Flat
             </Button>
