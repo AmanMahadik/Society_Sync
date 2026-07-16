@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated, Share, Alert } from 'react-native';
-import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput } from 'react-native-paper';
+import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint, Announcement, VisitorPreApproval, Visitor } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../lib/notification-context';
-// @ts-ignore
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase, uriToArrayBuffer } from '../../lib/supabase';
 
 interface HomeScreenProps {
   jumpTo?: (key: string) => void;
@@ -76,6 +76,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const [manualVisitorFlat, setManualVisitorFlat] = useState('');
   const [manualVisitorPurpose, setManualVisitorPurpose] = useState('Delivery');
   const [submittingManualVisitor, setSubmittingManualVisitor] = useState(false);
+
+  // MyGate Visitor Approval states
+  const [visitorPhotoUri, setVisitorPhotoUri] = useState<string | null>(null);
+  const [uploadingVisitorPhoto, setUploadingVisitorPhoto] = useState(false);
+  const [awaitingResidentApproval, setAwaitingResidentApproval] = useState(false);
+  const [currentActiveApprovalRequest, setCurrentActiveApprovalRequest] = useState<Visitor | null>(null);
+  const [residentApprovalState, setResidentApprovalState] = useState<'pending' | 'approved' | 'denied' | 'none'>('none');
+  const [myPendingApprovals, setMyPendingApprovals] = useState<Visitor[]>([]);
+  const [approvalModalVisible, setApprovalModalVisible] = useState(false);
+  const [activeApprovalToReview, setActiveApprovalToReview] = useState<Visitor | null>(null);
 
   const fetchSummaryData = async () => {
     try {
@@ -351,6 +361,208 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
       });
     } catch (e) {
       console.error('Error checking in verified guest', e);
+    }
+  };
+
+  const handleSelectVisitorPhoto = () => {
+    Alert.alert(
+      '📸 Capture Visitor Photo',
+      'Open camera to photograph the visitor or delivery package',
+      [
+        { text: 'Open Camera', onPress: () => handlePickVisitorPhoto() },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handlePickVisitorPhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Denied', 'Camera permission is required to capture visitor photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setVisitorPhotoUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.error('Visitor photo capture error', e);
+      Alert.alert('Error', 'Failed to capture photo.');
+    }
+  };
+
+  const uploadVisitorPhoto = async (localUri: string): Promise<string | null> => {
+    try {
+      setUploadingVisitorPhoto(true);
+      const arrayBuffer = await uriToArrayBuffer(localUri);
+      const fileExt = localUri.split('.').pop() || 'jpg';
+      const fileName = `visitor_${Date.now()}.${fileExt}`;
+      const filePath = `visitor-photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, arrayBuffer, {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (e) {
+      console.error('Visitor photo upload error', e);
+      return null;
+    } finally {
+      setUploadingVisitorPhoto(false);
+    }
+  };
+
+  const handleRequestVisitorApproval = async () => {
+    if (profile?.society_status === 'suspended') {
+      Alert.alert('Suspended', 'Visitor features are disabled because your society has been suspended.');
+      return;
+    }
+    if (!manualVisitorName.trim() || !manualVisitorFlat.trim()) {
+      Alert.alert('Missing Fields', 'Please enter visitor name and flat number.');
+      return;
+    }
+
+    setSubmittingManualVisitor(true);
+    try {
+      let photoUrl = null;
+      if (visitorPhotoUri) {
+        photoUrl = await uploadVisitorPhoto(visitorPhotoUri);
+      }
+
+      const req = await dataManager.createVisitorApprovalRequest(
+        manualVisitorName.trim(),
+        manualVisitorVehicle.trim(),
+        manualVisitorFlat.trim(),
+        manualVisitorPurpose,
+        photoUrl
+      );
+
+      setCurrentActiveApprovalRequest(req);
+      setAwaitingResidentApproval(true);
+      setResidentApprovalState('pending');
+      
+      setManualVisitorModalVisible(false);
+      fetchRecentVisitors();
+
+      addNotification({
+        type: 'confirmation',
+        message: '🔔 Approval Request Sent',
+        subtext: `Request sent to Flat ${manualVisitorFlat}. Waiting for host response...`,
+        autoDismiss: true,
+        dismissAfterMs: 4000
+      });
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Error', e.message || 'Failed to submit visitor approval request.');
+    } finally {
+      setSubmittingManualVisitor(false);
+    }
+  };
+
+  // Guard Real-Time approval check effect
+  useEffect(() => {
+    if (!awaitingResidentApproval || !currentActiveApprovalRequest) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('visitors')
+          .select('status')
+          .eq('id', currentActiveApprovalRequest.id)
+          .single();
+
+        if (!error && data) {
+          if (data.status === 'approved') {
+            setResidentApprovalState('approved');
+            setAwaitingResidentApproval(false);
+            clearInterval(interval);
+            Vibration.vibrate([0, 100, 100, 100]);
+            addNotification({
+              type: 'confirmation',
+              message: '✅ Gate Entry Approved',
+              subtext: `Resident approved entry for ${currentActiveApprovalRequest.name}.`,
+              autoDismiss: true,
+              dismissAfterMs: 5000
+            });
+            fetchRecentVisitors();
+          } else if (data.status === 'denied') {
+            setResidentApprovalState('denied');
+            setAwaitingResidentApproval(false);
+            clearInterval(interval);
+            Vibration.vibrate(400);
+            addNotification({
+              type: 'sos_full',
+              message: '❌ Entry Denied',
+              subtext: `Resident denied entry for ${currentActiveApprovalRequest.name}.`,
+              autoDismiss: true,
+              dismissAfterMs: 5000
+            });
+            fetchRecentVisitors();
+          }
+        }
+      } catch (e) {
+        console.warn('Error polling approval status', e);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [awaitingResidentApproval, currentActiveApprovalRequest]);
+
+  // Resident Pending Approvals Poll effect
+  const fetchMyPendingApprovals = async () => {
+    if (profile?.role === 'guard' || !profile?.flat_number) return;
+    try {
+      const list = await dataManager.getPendingApprovalsForFlat(profile.wing || '', profile.flat_number);
+      setMyPendingApprovals(list);
+      if (list.length > 0 && !approvalModalVisible) {
+        setActiveApprovalToReview(list[0]);
+        setApprovalModalVisible(true);
+      }
+    } catch (e) {
+      console.warn('Error checking visitor approvals:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (profile?.role === 'guard' || !profile?.flat_number) return;
+    fetchMyPendingApprovals();
+    const interval = setInterval(fetchMyPendingApprovals, 3000);
+    return () => clearInterval(interval);
+  }, [profile]);
+
+  const handleReviewApproval = async (status: 'approved' | 'denied') => {
+    if (!activeApprovalToReview) return;
+    try {
+      await dataManager.updateVisitorApprovalStatus(activeApprovalToReview.id, status);
+      setApprovalModalVisible(false);
+      setActiveApprovalToReview(null);
+      fetchMyPendingApprovals();
+      addNotification({
+        type: 'confirmation',
+        message: status === 'approved' ? 'Entry Approved' : 'Entry Refused',
+        subtext: `Gate updated successfully for ${activeApprovalToReview.name}.`,
+        autoDismiss: true,
+        dismissAfterMs: 3000
+      });
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to update approval status.');
     }
   };
 
@@ -1113,6 +1325,69 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
             </Card>
             )}
 
+            {/* Real-time Approval Feedback Card (MyGate style) */}
+            {currentActiveApprovalRequest && residentApprovalState !== 'none' && (
+              <Card style={[styles.consoleCard, { 
+                backgroundColor: theme.colors.elevation.level2, 
+                borderColor: residentApprovalState === 'pending' ? '#FFD700' : (residentApprovalState === 'approved' ? '#00D4AA' : '#FF3B30'), 
+                borderWidth: 1, 
+                marginBottom: 16 
+              }]}>
+                <Card.Content style={{ padding: 12 }}>
+                  <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 8, color: '#E2E8F0', fontSize: 13 }}>
+                    🛡️ Unexpected Gate Approval Status
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFF' }}>
+                        {currentActiveApprovalRequest.name}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 2 }}>
+                        Flat: {currentActiveApprovalRequest.flat_number} • Purpose: {currentActiveApprovalRequest.purpose}
+                      </Text>
+                      
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                        <IconButton 
+                          icon={residentApprovalState === 'pending' ? 'clock-outline' : (residentApprovalState === 'approved' ? 'check-circle' : 'close-circle')} 
+                          iconColor={residentApprovalState === 'pending' ? '#FFD700' : (residentApprovalState === 'approved' ? '#00D4AA' : '#FF3B30')} 
+                          size={16} 
+                          style={{ margin: 0, padding: 0 }}
+                        />
+                        <Text style={{ 
+                          fontSize: 11, 
+                          fontWeight: 'bold', 
+                          color: residentApprovalState === 'pending' ? '#FFD700' : (residentApprovalState === 'approved' ? '#00D4AA' : '#FF3B30') 
+                        }}>
+                          {residentApprovalState === 'pending' ? 'WAITING FOR RESIDENT APPROVAL...' : `ENTRY ${residentApprovalState.toUpperCase()}`}
+                        </Text>
+                      </View>
+                    </View>
+                    {currentActiveApprovalRequest.photo_url && (
+                      <Image 
+                        source={{ uri: currentActiveApprovalRequest.photo_url }} 
+                        style={{ width: 50, height: 50, borderRadius: 8 }} 
+                      />
+                    )}
+                  </View>
+
+                  {residentApprovalState !== 'pending' && (
+                    <Button 
+                      mode="outlined" 
+                      compact 
+                      onPress={() => {
+                        setResidentApprovalState('none');
+                        setCurrentActiveApprovalRequest(null);
+                      }} 
+                      style={{ marginTop: 10, alignSelf: 'flex-end', borderRadius: 8 }}
+                      textColor={theme.colors.outline}
+                    >
+                      Clear Status
+                    </Button>
+                  )}
+                </Card.Content>
+              </Card>
+            )}
+
             {/* Active Visitors Log */}
             <Text variant="titleMedium" style={[styles.sectionTitle, { marginBottom: 8, fontWeight: 'bold', fontSize: 14 }]}>
               🚗 Active Visitor Logs ({recentVisitors.filter(v => !v.check_out).length})
@@ -1662,6 +1937,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
             mode="outlined"
             style={{ marginBottom: 12 }}
           />
+          {/* Visitor Photo Selector */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <Button
+              mode="outlined"
+              icon="camera"
+              onPress={handleSelectVisitorPhoto}
+              style={{ flex: 1, borderRadius: 8, borderColor: '#00D4AA' }}
+              textColor="#00D4AA"
+              disabled={submittingManualVisitor}
+            >
+              {visitorPhotoUri ? 'Retake Photo' : 'Take Photo'}
+            </Button>
+            {visitorPhotoUri && (
+              <View style={{ position: 'relative' }}>
+                <Image 
+                  source={{ uri: visitorPhotoUri }} 
+                  style={{ width: 46, height: 46, borderRadius: 8, borderWidth: 1, borderColor: '#00D4AA' }} 
+                />
+                <IconButton
+                  icon="close-circle"
+                  iconColor="#FF3B30"
+                  size={18}
+                  style={{ position: 'absolute', top: -14, right: -14, margin: 0 }}
+                  onPress={() => setVisitorPhotoUri(null)}
+                />
+              </View>
+            )}
+          </View>
           
           <Text variant="labelLarge" style={{ marginBottom: 8, color: '#E2E8F0' }}>Purpose of Visit:</Text>
           <View style={{ flexDirection: 'row', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -1678,28 +1981,109 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
             ))}
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Button
-              mode="outlined"
-              onPress={() => setManualVisitorModalVisible(false)}
-              style={{ flex: 1, borderRadius: 8 }}
-              disabled={submittingManualVisitor}
-            >
-              Cancel
-            </Button>
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setManualVisitorModalVisible(false);
+                  setVisitorPhotoUri(null);
+                }}
+                style={{ flex: 1, borderRadius: 8 }}
+                disabled={submittingManualVisitor}
+              >
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleCheckInManualGuest}
+                buttonColor="#555"
+                textColor="#FFF"
+                style={{ flex: 1, borderRadius: 8 }}
+                disabled={submittingManualVisitor || !manualVisitorName.trim() || !manualVisitorFlat.trim()}
+                loading={submittingManualVisitor}
+              >
+                Direct Entry
+              </Button>
+            </View>
+            
             <Button
               mode="contained"
-              onPress={handleCheckInManualGuest}
+              onPress={handleRequestVisitorApproval}
               buttonColor="#00D4AA"
               textColor="#0F0F0F"
-              style={{ flex: 1, borderRadius: 8 }}
+              style={{ borderRadius: 8 }}
               disabled={submittingManualVisitor || !manualVisitorName.trim() || !manualVisitorFlat.trim()}
-              loading={submittingManualVisitor}
+              loading={submittingManualVisitor || uploadingVisitorPhoto}
+              icon="bell-ring"
+              labelStyle={{ fontWeight: 'bold' }}
             >
-              Check In
+              Request Resident Approval
             </Button>
           </View>
         </Modal>
+      </Portal>
+
+      {/* MYGATE STYLE RESIDENT VISITOR APPROVAL MODAL */}
+      <Portal>
+        <Dialog
+          visible={approvalModalVisible}
+          onDismiss={() => {}} 
+          style={{ backgroundColor: theme.colors.elevation.level3, borderRadius: 24, borderWidth: 1, borderColor: '#00D4AA' }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold', color: '#00D4AA', textAlign: 'center', fontSize: 18 }}>
+            🚨 Gate Entry Requested
+          </Dialog.Title>
+          <Dialog.Content style={{ alignItems: 'center', gap: 12 }}>
+            {activeApprovalToReview?.photo_url ? (
+              <Image 
+                source={{ uri: activeApprovalToReview.photo_url }} 
+                style={{ width: 140, height: 140, borderRadius: 20, borderWidth: 2, borderColor: '#00D4AA' }} 
+              />
+            ) : (
+              <Avatar.Icon 
+                size={80} 
+                icon="account-question" 
+                style={{ backgroundColor: 'rgba(0, 212, 170, 0.15)' }} 
+                color="#00D4AA" 
+              />
+            )}
+            
+            <View style={{ alignItems: 'center' }}>
+              <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#FFF' }}>
+                {activeApprovalToReview?.name}
+              </Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, marginTop: 2 }}>
+                Purpose: {activeApprovalToReview?.purpose} {activeApprovalToReview?.vehicle_number ? `• Vehicle: ${activeApprovalToReview.vehicle_number}` : ''}
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 4 }}>
+                Waiting at main gate for your approval.
+              </Text>
+            </View>
+          </Dialog.Content>
+          <Dialog.Actions style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingBottom: 16 }}>
+            <Button
+              mode="contained"
+              buttonColor={theme.colors.error}
+              textColor="#FFF"
+              onPress={() => handleReviewApproval('denied')}
+              style={{ flex: 1, borderRadius: 28 }}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Deny
+            </Button>
+            <Button
+              mode="contained"
+              buttonColor="#00D4AA"
+              textColor="#09090b"
+              onPress={() => handleReviewApproval('approved')}
+              style={{ flex: 1, borderRadius: 28 }}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Approve
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </View>
   );

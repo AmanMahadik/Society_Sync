@@ -220,6 +220,8 @@ export interface Visitor {
   check_in: string;
   check_out?: string;
   pre_approval_id?: string;
+  status?: 'pending_approval' | 'approved' | 'denied';
+  photo_url?: string;
 }
 
 // Helper: Check if Supabase project keys are configured
@@ -1383,6 +1385,65 @@ class DataManager {
 
     if (error) return [];
     return data;
+  }
+
+  async createVisitorApprovalRequest(
+    name: string,
+    vehicleNumber: string,
+    flatNumber: string,
+    purpose: string,
+    photoUrl: string | null
+  ): Promise<Visitor> {
+    if (!this.societyId) throw new Error('No active society session');
+
+    let wing = 'Gen';
+    if (flatNumber.includes('-')) {
+      wing = flatNumber.split('-')[0];
+    }
+
+    const { data, error } = await supabase
+      .from('visitors')
+      .insert({
+        society_id: this.societyId,
+        name,
+        vehicle_number: vehicleNumber || null,
+        flat_number: flatNumber,
+        wing,
+        purpose: purpose || null,
+        check_in: new Date().toISOString(),
+        status: 'pending_approval',
+        photo_url: photoUrl || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getPendingApprovalsForFlat(wing: string, flatNumber: string): Promise<Visitor[]> {
+    if (!this.societyId) return [];
+    const { data, error } = await supabase
+      .from('visitors')
+      .select('*')
+      .eq('society_id', this.societyId)
+      .eq('wing', wing)
+      .eq('flat_number', flatNumber)
+      .eq('status', 'pending_approval');
+    
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data || [];
+  }
+
+  async updateVisitorApprovalStatus(visitorId: string, status: 'approved' | 'denied'): Promise<void> {
+    const { error } = await supabase
+      .from('visitors')
+      .update({ status })
+      .eq('id', visitorId);
+    if (error) throw error;
   }
 }
 
