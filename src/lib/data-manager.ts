@@ -1340,10 +1340,12 @@ class DataManager {
   ): Promise<Visitor> {
     if (!this.societyId) throw new Error('No active society session');
 
-    // Extract wing from flatNumber if formatted as "E-102"
     let wing = 'Gen';
+    let cleanFlat = flatNumber;
     if (flatNumber.includes('-')) {
-      wing = flatNumber.split('-')[0];
+      const parts = flatNumber.split('-');
+      wing = parts[0].trim().toUpperCase();
+      cleanFlat = parts[1].trim();
     }
 
     const { data, error } = await supabase
@@ -1352,7 +1354,7 @@ class DataManager {
         society_id: this.societyId,
         name,
         vehicle_number: vehicleNumber || null,
-        flat_number: flatNumber,
+        flat_number: cleanFlat,
         wing,
         purpose: purpose || null,
         check_in: new Date().toISOString(),
@@ -1373,8 +1375,24 @@ class DataManager {
     if (error) throw error;
   }
 
+  async cleanupOldPendingApprovals(): Promise<void> {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    try {
+      await supabase
+        .from('visitors')
+        .delete()
+        .eq('status', 'pending_approval')
+        .lt('check_in', yesterday);
+    } catch (e) {
+      console.warn('Error cleaning up old pending approvals:', e);
+    }
+  }
+
   async getRecentVisitors(): Promise<Visitor[]> {
     if (!this.societyId) return [];
+
+    // Clean up old requests older than 24 hours
+    await this.cleanupOldPendingApprovals();
 
     const { data, error } = await supabase
       .from('visitors')
@@ -1397,8 +1415,11 @@ class DataManager {
     if (!this.societyId) throw new Error('No active society session');
 
     let wing = 'Gen';
+    let cleanFlat = flatNumber;
     if (flatNumber.includes('-')) {
-      wing = flatNumber.split('-')[0];
+      const parts = flatNumber.split('-');
+      wing = parts[0].trim().toUpperCase();
+      cleanFlat = parts[1].trim();
     }
 
     const { data, error } = await supabase
@@ -1407,7 +1428,7 @@ class DataManager {
         society_id: this.societyId,
         name,
         vehicle_number: vehicleNumber || null,
-        flat_number: flatNumber,
+        flat_number: cleanFlat,
         wing,
         purpose: purpose || null,
         check_in: new Date().toISOString(),
@@ -1423,13 +1444,15 @@ class DataManager {
 
   async getPendingApprovalsForFlat(wing: string, flatNumber: string): Promise<Visitor[]> {
     if (!this.societyId) return [];
+
+    // Clean up old requests older than 24 hours
+    await this.cleanupOldPendingApprovals();
     
-    // Fetch all pending approvals in the same wing for the society
+    // Fetch all pending approvals for the society to ensure case-insensitive matching
     const { data, error } = await supabase
       .from('visitors')
       .select('*')
       .eq('society_id', this.societyId)
-      .eq('wing', wing)
       .eq('status', 'pending_approval');
     
     if (error) {
@@ -1438,13 +1461,15 @@ class DataManager {
     }
     if (!data) return [];
 
-    // Normalize target flatNumber (e.g. "F-102" -> "102", "102" -> "102")
-    const cleanTarget = flatNumber.includes('-') ? flatNumber.split('-')[1].trim() : flatNumber.trim();
+    const cleanTargetWing = (wing || '').trim().toUpperCase();
+    const cleanTargetFlat = flatNumber.includes('-') ? flatNumber.split('-')[1].trim() : flatNumber.trim();
 
     return data.filter(visitor => {
+      const visitorWing = (visitor.wing || '').trim().toUpperCase();
       const visitorFlat = visitor.flat_number || '';
       const cleanVisitorFlat = visitorFlat.includes('-') ? visitorFlat.split('-')[1].trim() : visitorFlat.trim();
-      return cleanVisitorFlat.toLowerCase() === cleanTarget.toLowerCase();
+
+      return visitorWing === cleanTargetWing && cleanVisitorFlat.toLowerCase() === cleanTargetFlat.toLowerCase();
     });
   }
 
