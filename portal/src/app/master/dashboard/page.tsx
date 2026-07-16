@@ -406,6 +406,7 @@ export default function MasterDashboard() {
             <Link href="/master/dashboard" className="text-[#dc2626] transition-colors border-b-2 border-[#dc2626] pb-1">Requests</Link>
             <Link href="/master/societies" className="text-muted-foreground hover:text-foreground transition-colors">Societies</Link>
             <Link href="/master/users" className="text-muted-foreground hover:text-foreground transition-colors">Users</Link>
+            <Link href="/master/security" className="text-muted-foreground hover:text-foreground transition-colors">Security</Link>
           </nav>
 
       {/* MOBILE NAVIGATION SIDE DRAWER */}
@@ -458,6 +459,13 @@ export default function MasterDashboard() {
                   className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
                 >
                   Users
+                </Link>
+                <Link 
+                  href="/master/security" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
+                >
+                  Security
                 </Link>
               </nav>
             </div>
@@ -570,6 +578,14 @@ export default function MasterDashboard() {
                     </button>
                   </div>
                 </div>
+
+                {/* Security Console Link */}
+                <Link
+                  href="/master/security"
+                  className="w-full py-2 bg-[#dc2626]/10 text-white border border-[#dc2626]/20 hover:bg-[#dc2626]/20 font-bold rounded text-center transition-all cursor-pointer block text-xs"
+                >
+                  🛡️ Security Console
+                </Link>
 
                 {/* Sign Out Button */}
                 <button
