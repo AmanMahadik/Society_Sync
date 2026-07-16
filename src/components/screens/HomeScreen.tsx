@@ -8,7 +8,6 @@ import { useNotifications } from '../../lib/notification-context';
 // @ts-ignore
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import Svg, { Circle } from 'react-native-svg';
 
 interface HomeScreenProps {
   jumpTo?: (key: string) => void;
@@ -1181,29 +1180,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               </Text>
    
               <View style={{ position: 'relative', width: 160, height: 160, justifyContent: 'center', alignItems: 'center', marginVertical: 12 }}>
-                <Svg width={150} height={150} style={{ position: 'absolute' }}>
-                  <Circle
-                    cx="75"
-                    cy="75"
-                    r="68"
-                    fill="none"
-                    stroke="#FF3B30"
-                    strokeWidth="3"
-                    strokeOpacity="0.15"
-                  />
-                  <Circle
-                    cx="75"
-                    cy="75"
-                    r="68"
-                    fill="none"
-                    stroke="#FF3B30"
-                    strokeWidth="3.5"
-                    strokeDasharray="427"
-                    strokeDashoffset="120"
-                    strokeLinecap="round"
-                    strokeOpacity="0.85"
-                  />
-                </Svg>
+                {/* Glowing border ring */}
+                <View 
+                  style={{
+                    position: 'absolute',
+                    width: 140,
+                    height: 140,
+                    borderRadius: 70,
+                    borderWidth: 3,
+                    borderColor: 'rgba(255, 59, 48, 0.7)',
+                    borderStyle: 'dashed',
+                  }}
+                />
 
                 <Animated.View style={[styles.sosRippleOuter, { transform: [{ scale: pulseAnim }] }]}>
                   <Animated.View style={[styles.sosRippleInner, { transform: [{ scale: pulseAnim }] }]}>
