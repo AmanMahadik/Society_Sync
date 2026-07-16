@@ -1423,19 +1423,29 @@ class DataManager {
 
   async getPendingApprovalsForFlat(wing: string, flatNumber: string): Promise<Visitor[]> {
     if (!this.societyId) return [];
+    
+    // Fetch all pending approvals in the same wing for the society
     const { data, error } = await supabase
       .from('visitors')
       .select('*')
       .eq('society_id', this.societyId)
       .eq('wing', wing)
-      .eq('flat_number', flatNumber)
       .eq('status', 'pending_approval');
     
     if (error) {
       console.error(error);
       return [];
     }
-    return data || [];
+    if (!data) return [];
+
+    // Normalize target flatNumber (e.g. "F-102" -> "102", "102" -> "102")
+    const cleanTarget = flatNumber.includes('-') ? flatNumber.split('-')[1].trim() : flatNumber.trim();
+
+    return data.filter(visitor => {
+      const visitorFlat = visitor.flat_number || '';
+      const cleanVisitorFlat = visitorFlat.includes('-') ? visitorFlat.split('-')[1].trim() : visitorFlat.trim();
+      return cleanVisitorFlat.toLowerCase() === cleanTarget.toLowerCase();
+    });
   }
 
   async updateVisitorApprovalStatus(visitorId: string, status: 'approved' | 'denied'): Promise<void> {
