@@ -69,82 +69,114 @@ export default function ChandaListScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
-        <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
-        <Appbar.Content title="Chanda Campaigns" titleStyle={{ fontWeight: 'bold' }} />
-        <Appbar.Action 
-          icon="history" 
-          onPress={() => router.push('/chanda-history' as any)} 
-          color={theme.colors.onSurface} 
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={['bottom']}>
+        <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
+          <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
+          <Appbar.Content title="Chanda Campaigns" titleStyle={{ fontWeight: 'bold' }} />
+          <Appbar.Action 
+            icon="history" 
+            onPress={() => router.push('/chanda-history' as any)} 
+            color={theme.colors.onSurface} 
+          />
+        </Appbar.Header>
+
+        {/* Soft brand glow backdrop */}
+        <View 
+          style={{
+            position: 'absolute',
+            top: 50,
+            left: '50%',
+            transform: [{ translateX: -150 }],
+            width: 300,
+            height: 300,
+            borderRadius: 150,
+            backgroundColor: '#00D4AA',
+            opacity: theme.dark ? 0.04 : 0.02,
+            pointerEvents: 'none',
+          }}
         />
-      </Appbar.Header>
 
-      {loading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{ marginTop: 10, color: theme.colors.outline }}>Loading campaigns...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-          }
-        >
-          {campaigns.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text variant="bodyLarge" style={{ color: theme.colors.outline, textAlign: 'center' }}>
-                No active or past chanda campaigns found for your society.
-              </Text>
-            </View>
-          ) : (
-            campaigns.map((item) => (
-              <Card 
-                key={item.id} 
-                style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}
-                onPress={() => item.status === 'active' && router.push(`/chanda-detail?campaignId=${item.id}` as any)}
-              >
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <Text variant="titleMedium" style={styles.cardTitle}>
-                      {item.title}
-                    </Text>
-                    <Badge 
-                      style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15', color: getStatusColor(item.status), borderColor: getStatusColor(item.status) + '30' }]}
-                    >
-                      {item.status.toUpperCase()}
-                    </Badge>
-                  </View>
-                  
-                  {item.description && (
-                    <Text variant="bodyMedium" style={[styles.description, { color: theme.colors.onSurfaceVariant }]}>
-                      {item.description}
-                    </Text>
-                  )}
-
-                  <View style={styles.cardFooter}>
-                    <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-                      Started: {new Date(item.start_date).toLocaleDateString()}
-                    </Text>
-                    {item.status === 'active' && (
-                      <Button 
-                        mode="contained" 
-                        compact 
-                        buttonColor={theme.colors.primary} 
-                        textColor={theme.colors.onPrimary}
+        {loading ? (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#00D4AA" />
+            <Text style={{ marginTop: 10, color: theme.colors.outline }}>Loading campaigns...</Text>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#00D4AA"]} />
+            }
+          >
+            {campaigns.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text variant="bodyLarge" style={{ color: theme.colors.outline, textAlign: 'center' }}>
+                  No active or past chanda campaigns found for your society.
+                </Text>
+              </View>
+            ) : (
+              campaigns.map((item) => (
+                <Card 
+                  key={item.id} 
+                  style={[styles.card, { 
+                    backgroundColor: theme.colors.elevation.level1,
+                    borderRadius: 20, 
+                    borderWidth: theme.dark ? 1 : 0, 
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                  }]}
+                  onPress={() => item.status === 'active' && router.push(`/chanda-detail?campaignId=${item.id}` as any)}
+                >
+                  <Card.Content style={styles.cardContent}>
+                    <View style={styles.cardHeader}>
+                      <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
+                        {item.title}
+                      </Text>
+                      <Badge 
+                        style={[
+                          styles.statusBadge, 
+                          { 
+                            backgroundColor: getStatusColor(item.status) + '15', 
+                            color: getStatusColor(item.status) === theme.colors.primary ? '#00D4AA' : getStatusColor(item.status), 
+                            borderColor: (getStatusColor(item.status) === theme.colors.primary ? '#00D4AA' : getStatusColor(item.status)) + '30' 
+                          }
+                        ]}
                       >
-                        Contribute
-                      </Button>
+                        {item.status.toUpperCase()}
+                      </Badge>
+                    </View>
+                    
+                    {item.description && (
+                      <Text variant="bodyMedium" style={[styles.description, { color: theme.colors.outline }]}>
+                        {item.description}
+                      </Text>
                     )}
-                  </View>
-                </Card.Content>
-              </Card>
-            ))
-          )}
-        </ScrollView>
-      )}
-    </SafeAreaView>
+
+                    <View style={styles.cardFooter}>
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline, fontWeight: '500' }}>
+                        📅 Started: {new Date(item.start_date).toLocaleDateString()}
+                      </Text>
+                      {item.status === 'active' && (
+                        <Button 
+                          mode="contained" 
+                          compact 
+                          buttonColor="#00D4AA" 
+                          textColor="#09090b"
+                          style={{ borderRadius: 28 }}
+                          labelStyle={{ fontWeight: 'bold', fontSize: 11 }}
+                        >
+                          Contribute
+                        </Button>
+                      )}
+                    </View>
+                  </Card.Content>
+                </Card>
+              ))
+            )}
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 

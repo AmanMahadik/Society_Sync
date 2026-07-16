@@ -151,74 +151,97 @@ export const ParkingScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-      <View style={styles.screenHeader}>
-        <Image 
-          source={require('../../../assets/images/logo.png')} 
-          style={[styles.screenHeaderLogo, { borderColor: '#3B82F6' }]} 
-          resizeMode="contain"
-        />
-        <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
-          SocietySync Parking
-        </Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.04 : 0.02,
+          pointerEvents: 'none',
+        }}
+      />
 
-      {/* Date Switcher Navigation */}
-      <View style={[styles.dateBar, { backgroundColor: theme.colors.surfaceVariant }]}>
-        <IconButton icon="chevron-left" size={24} onPress={() => shiftDate(-1)} />
-        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
-          📅 {new Date(selectedDate).toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' })}
-        </Text>
-        <IconButton icon="chevron-right" size={24} onPress={() => shiftDate(1)} />
-      </View>
+      <View style={[styles.container, { backgroundColor: 'transparent', paddingTop: insets.top }]}>
+        <View style={styles.screenHeader}>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={[styles.screenHeaderLogo, { borderColor: '#00D4AA' }]} 
+            resizeMode="contain"
+          />
+          <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+            SocietySync Parking
+          </Text>
+        </View>
 
-      {/* Time Slot Switcher */}
-      <View style={styles.timeSlotBar}>
-        <SegmentedButtons
-          value={selectedTimeSlot}
-          onValueChange={(val) => setSelectedTimeSlot(val as ParkingTimeSlot)}
-          buttons={[
-            { value: 'morning', label: 'Morning', icon: 'weather-sunny' },
-            { value: 'afternoon', label: 'Afternoon', icon: 'weather-partly-cloudy' },
-            { value: 'evening', label: 'Evening', icon: 'weather-sunset' },
-            { value: 'overnight', label: 'Night', icon: 'weather-night' },
-          ]}
-          style={styles.segmentedButtons}
-        />
-      </View>
+        {/* Date Switcher Navigation */}
+        <View style={[styles.dateBar, { backgroundColor: theme.colors.elevation.level1, borderBottomWidth: 0.5, borderBottomColor: theme.colors.outline + '15' }]}>
+          <IconButton icon="chevron-left" size={24} onPress={() => shiftDate(-1)} />
+          <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+            📅 {new Date(selectedDate).toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' })}
+          </Text>
+          <IconButton icon="chevron-right" size={24} onPress={() => shiftDate(1)} />
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {isOffline && (
-          <Chip 
-            icon="wifi-off" 
-            style={{ marginHorizontal: 16, marginVertical: 8, alignSelf: 'center', backgroundColor: '#FBEAE3' }} 
-            textStyle={{ color: '#A8401C', fontSize: 11, fontWeight: 'bold' }}
-          >
-            Offline Mode (Showing Cached Bookings)
-          </Chip>
-        )}
-        {/* Visual Legend Header */}
-        <Card style={styles.infoCard}>
-          <Card.Content>
-            <Text variant="titleMedium" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, color: '#3B82F6' }}>
-              🚗 {getTimeSlotLabel(selectedTimeSlot)}
-            </Text>
-            <View style={styles.legendRow}>
-              <View style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: '#3B82F6' }]} />
-                <Text variant="bodySmall">Available</Text>
+        {/* Time Slot Switcher */}
+        <View style={styles.timeSlotBar}>
+          <SegmentedButtons
+            value={selectedTimeSlot}
+            onValueChange={(val) => setSelectedTimeSlot(val as ParkingTimeSlot)}
+            buttons={[
+              { value: 'morning', label: 'Morning', icon: 'weather-sunny' },
+              { value: 'afternoon', label: 'Afternoon', icon: 'weather-partly-cloudy' },
+              { value: 'evening', label: 'Evening', icon: 'weather-sunset' },
+              { value: 'overnight', label: 'Night', icon: 'weather-night' },
+            ]}
+            style={styles.segmentedButtons}
+          />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {isOffline && (
+            <Chip 
+              icon="wifi-off" 
+              style={{ marginHorizontal: 16, marginVertical: 8, alignSelf: 'center', backgroundColor: '#FBEAE3' }} 
+              textStyle={{ color: '#A8401C', fontSize: 11, fontWeight: 'bold' }}
+            >
+              Offline Mode (Showing Cached Bookings)
+            </Chip>
+          )}
+
+          {/* Visual Legend Header */}
+          <Card style={[styles.infoCard, { 
+            borderRadius: 20, 
+            backgroundColor: theme.colors.elevation.level1,
+            borderWidth: theme.dark ? 1 : 0,
+            borderColor: 'rgba(255, 255, 255, 0.08)'
+          }]}>
+            <Card.Content>
+              <Text variant="titleMedium" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, color: '#00D4AA' }}>
+                🚗 {getTimeSlotLabel(selectedTimeSlot)}
+              </Text>
+              <View style={styles.legendRow}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#00D4AA' }]} />
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>Available</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#FFD700' }]} />
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>Pending</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#FF3B30' }]} />
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>Occupied</Text>
+                </View>
               </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: '#FFD700' }]} />
-                <Text variant="bodySmall">Pending</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: '#FF3B30' }]} />
-                <Text variant="bodySmall">Occupied</Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
+            </Card.Content>
+          </Card>
 
         {/* Interactive Slots Grid */}
         <Text variant="titleMedium" style={styles.sectionTitle}>Interactive Parking Lot Grid</Text>
@@ -480,6 +503,7 @@ export const ParkingScreen: React.FC = () => {
           </Button>
         </Modal>
       </Portal>
+      </View>
     </View>
   );
 };

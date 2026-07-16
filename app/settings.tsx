@@ -176,54 +176,81 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
-        <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
-        <Appbar.Content title="Settings" titleStyle={{ fontWeight: 'bold' }} />
-      </Appbar.Header>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.04 : 0.02,
+          pointerEvents: 'none',
+        }}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* 1. Theme Configuration */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
-          <Card.Content>
-            <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.primary }]}>
-              Theme Preference
-            </Text>
-            <RadioButton.Group onValueChange={value => setThemeMode(value as ThemeMode)} value={themeMode}>
-              <View style={styles.radioRow}>
-                <RadioButton.Android value="dark" color={theme.colors.primary} />
-                <Text variant="bodyLarge" style={styles.radioLabel}>🌙 Dark Mode</Text>
-              </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={['bottom']}>
+        <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
+          <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
+          <Appbar.Content title="Settings" titleStyle={{ fontWeight: 'bold' }} />
+        </Appbar.Header>
+
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* 1. Theme Configuration */}
+          <Card style={[styles.card, { 
+            backgroundColor: theme.colors.elevation.level1,
+            borderRadius: 20, 
+            borderWidth: theme.dark ? 1 : 0, 
+            borderColor: 'rgba(255, 255, 255, 0.08)'
+          }]}>
+            <Card.Content>
+              <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
+                Theme Preference
+              </Text>
+              <RadioButton.Group onValueChange={value => setThemeMode(value as ThemeMode)} value={themeMode}>
+                <View style={styles.radioRow}>
+                  <RadioButton.Android value="dark" color="#00D4AA" />
+                  <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>🌙 Dark Mode</Text>
+                </View>
+                <Divider style={styles.divider} />
+                <View style={styles.radioRow}>
+                  <RadioButton.Android value="light" color="#00D4AA" />
+                  <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>☀️ Light Mode</Text>
+                </View>
               <Divider style={styles.divider} />
               <View style={styles.radioRow}>
-                <RadioButton.Android value="light" color={theme.colors.primary} />
-                <Text variant="bodyLarge" style={styles.radioLabel}>☀️ Light Mode</Text>
-              </View>
-              <Divider style={styles.divider} />
-              <View style={styles.radioRow}>
-                <RadioButton.Android value="system" color={theme.colors.primary} />
-                <Text variant="bodyLarge" style={styles.radioLabel}>📱 System Default</Text>
+                <RadioButton.Android value="system" color="#00D4AA" />
+                <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>📱 System Default</Text>
               </View>
             </RadioButton.Group>
           </Card.Content>
         </Card>
 
         {/* 2. Notification Preferences */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
+        <Card style={[styles.card, { 
+          backgroundColor: theme.colors.elevation.level1,
+          borderRadius: 20, 
+          borderWidth: theme.dark ? 1 : 0, 
+          borderColor: 'rgba(255, 255, 255, 0.08)'
+        }]}>
           <Card.Content>
-            <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.primary }]}>
+            <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
               Notification Settings
             </Text>
             
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600' }}>SOS Emergency Alerts</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>SOS Emergency Alerts</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Immediate alerts for safety and security</Text>
               </View>
               <Switch
                 value={notifSOS}
                 onValueChange={val => saveNotifPref('sync_notif_sos', val, setNotifSOS)}
-                color={theme.colors.primary}
+                color="#00D4AA"
               />
             </View>
 
@@ -231,13 +258,13 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600' }}>Maintenance Updates</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Maintenance Updates</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Reminders for dues and payment confirmations</Text>
               </View>
               <Switch
                 value={notifMaintenance}
                 onValueChange={val => saveNotifPref('sync_notif_maintenance', val, setNotifMaintenance)}
-                color={theme.colors.primary}
+                color="#00D4AA"
               />
             </View>
 
@@ -245,13 +272,13 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600' }}>Parking Allocations</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Parking Allocations</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Approval/rejection notifications for slot requests</Text>
               </View>
               <Switch
                 value={notifParking}
                 onValueChange={val => saveNotifPref('sync_notif_parking', val, setNotifParking)}
-                color={theme.colors.primary}
+                color="#00D4AA"
               />
             </View>
 
@@ -259,13 +286,13 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600' }}>Community Messages</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Community Messages</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Chat mentions and thread discussions</Text>
               </View>
               <Switch
                 value={notifCommunity}
                 onValueChange={val => saveNotifPref('sync_notif_community', val, setNotifCommunity)}
-                color={theme.colors.primary}
+                color="#00D4AA"
               />
             </View>
 
@@ -273,27 +300,32 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600' }}>Festival & Event Updates</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Festival & Event Updates</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Announcements for society cultural programs</Text>
               </View>
               <Switch
                 value={notifFestivals}
                 onValueChange={val => saveNotifPref('sync_notif_festivals', val, setNotifFestivals)}
-                color={theme.colors.primary}
+                color="#00D4AA"
               />
             </View>
           </Card.Content>
         </Card>
 
         {/* 3. Language Selection */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
+        <Card style={[styles.card, { 
+          backgroundColor: theme.colors.elevation.level1,
+          borderRadius: 20, 
+          borderWidth: theme.dark ? 1 : 0, 
+          borderColor: 'rgba(255, 255, 255, 0.08)'
+        }]}>
           <Card.Content>
-            <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.primary }]}>
+            <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
               Language Support
             </Text>
             <View style={styles.langRow}>
               <View style={{ flex: 1 }}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600' }}>App Language</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>App Language</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
                   Selected: {language === 'english' ? 'English (Active)' : 'मराठी (Future Ready)'}
                 </Text>
@@ -322,43 +354,57 @@ export default function SettingsScreen() {
         </Card>
 
         {/* 4. Account Information */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
+        <Card style={[styles.card, { 
+          backgroundColor: theme.colors.elevation.level1,
+          borderRadius: 20, 
+          borderWidth: theme.dark ? 1 : 0, 
+          borderColor: 'rgba(255, 255, 255, 0.08)'
+        }]}>
           <Card.Content>
-            <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.primary }]}>
+            <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
               Account Details
             </Text>
             
             <List.Item
               title="Registered Email"
+              titleStyle={{ color: theme.colors.onSurface }}
               description={user?.email || 'N/A'}
-              left={props => <List.Icon {...props} icon="email-outline" color={theme.colors.primary} />}
+              descriptionStyle={{ color: theme.colors.outline }}
+              left={props => <List.Icon {...props} icon="email-outline" color="#00D4AA" />}
             />
             <Divider />
             <List.Item
               title="Role Profile"
+              titleStyle={{ color: theme.colors.onSurface }}
               description={formatRole(profile?.role)}
-              left={props => <List.Icon {...props} icon="shield-account-outline" color={theme.colors.primary} />}
+              descriptionStyle={{ color: theme.colors.outline }}
+              left={props => <List.Icon {...props} icon="shield-account-outline" color="#00D4AA" />}
             />
             <Divider />
             <View style={styles.infoRowGrid}>
               <View style={{ flex: 1 }}>
                 <List.Item
                   title="Wing"
+                  titleStyle={{ color: theme.colors.onSurface }}
                   description={profile?.wing || 'N/A'}
-                  left={props => <List.Icon {...props} icon="office-building" color={theme.colors.primary} />}
+                  descriptionStyle={{ color: theme.colors.outline }}
+                  left={props => <List.Icon {...props} icon="office-building" color="#00D4AA" />}
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <List.Item
                   title="Flat Number"
+                  titleStyle={{ color: theme.colors.onSurface }}
                   description={profile?.flat_number || 'N/A'}
-                  left={props => <List.Icon {...props} icon="home-outline" color={theme.colors.primary} />}
+                  descriptionStyle={{ color: theme.colors.outline }}
+                  left={props => <List.Icon {...props} icon="home-outline" color="#00D4AA" />}
                 />
               </View>
             </View>
             <Divider />
             <List.Item
               title="Verified Status"
+              titleStyle={{ color: theme.colors.onSurface }}
               description={profile?.status === 'approved' ? 'Verified (Active)' : 'Pending Review'}
               descriptionStyle={{ color: profile?.status === 'approved' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}
               left={props => (
@@ -372,25 +418,36 @@ export default function SettingsScreen() {
             <Divider />
             <List.Item
               title="Account Created"
+              titleStyle={{ color: theme.colors.onSurface }}
               description={formatDate(profile?.created_at || user?.created_at)}
-              left={props => <List.Icon {...props} icon="calendar-account" color={theme.colors.primary} />}
+              descriptionStyle={{ color: theme.colors.outline }}
+              left={props => <List.Icon {...props} icon="calendar-account" color="#00D4AA" />}
             />
             <Divider />
             <List.Item
               title="Last Signed In"
+              titleStyle={{ color: theme.colors.onSurface }}
               description={formatDate(user?.last_sign_in_at)}
-              left={props => <List.Icon {...props} icon="login" color={theme.colors.primary} />}
+              descriptionStyle={{ color: theme.colors.outline }}
+              left={props => <List.Icon {...props} icon="login" color="#00D4AA" />}
             />
           </Card.Content>
         </Card>
 
         {/* 5. Security Access */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
+        <Card style={[styles.card, { 
+          backgroundColor: theme.colors.elevation.level1,
+          borderRadius: 20, 
+          borderWidth: theme.dark ? 1 : 0, 
+          borderColor: 'rgba(255, 255, 255, 0.08)'
+        }]}>
           <Card.Content style={{ padding: 4 }}>
             <List.Item
               title="Security & Password"
+              titleStyle={{ color: theme.colors.onSurface }}
               description="Change your account password"
-              left={props => <List.Icon {...props} icon="lock-outline" color={theme.colors.primary} />}
+              descriptionStyle={{ color: theme.colors.outline }}
+              left={props => <List.Icon {...props} icon="lock-outline" color="#00D4AA" />}
               right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
               onPress={() => router.push('/change-password' as any)}
             />
@@ -398,45 +455,50 @@ export default function SettingsScreen() {
         </Card>
 
         {/* 6. App & Network Diagnostics */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
+        <Card style={[styles.card, { 
+          backgroundColor: theme.colors.elevation.level1,
+          borderRadius: 20, 
+          borderWidth: theme.dark ? 1 : 0, 
+          borderColor: 'rgba(255, 255, 255, 0.08)'
+        }]}>
           <Card.Content>
-            <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.primary }]}>
+            <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
               App Information
             </Text>
             
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600' }}>App Version</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>App Version</Text>
               <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>v1.0.0</Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600' }}>Build Number</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Build Number</Text>
               <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>1</Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600' }}>Database Connection</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Database Connection</Text>
               <Text variant="bodyMedium" style={{ color: dbStatus === 'Connected' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}>
                 {dbStatus}
               </Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600' }}>Realtime Sync Engine</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Realtime Sync Engine</Text>
               <Text variant="bodyMedium" style={{ color: realtimeStatus === 'Active' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}>
                 {realtimeStatus}
               </Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600' }}>Notifications Service</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Notifications Service</Text>
               <Text variant="bodyMedium" style={{ color: notifPermission === 'Active' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}>
                 {notifPermission}
               </Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600' }}>Supabase Connection</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Supabase Connection</Text>
               <Text variant="bodyMedium" style={{ color: '#10B981', fontWeight: 'bold' }}>Active</Text>
             </View>
             <Divider style={[styles.divider, { marginVertical: 12 }]} />
@@ -446,7 +508,10 @@ export default function SettingsScreen() {
               onPress={handleRunDiagnostics}
               loading={testingDiag}
               disabled={testingDiag}
-              style={{ marginTop: 8 }}
+              buttonColor="#00D4AA"
+              textColor="#09090b"
+              style={{ marginTop: 8, borderRadius: 28 }}
+              labelStyle={{ fontWeight: 'bold' }}
             >
               Run Diagnostics & Test Alert
             </Button>
@@ -454,6 +519,7 @@ export default function SettingsScreen() {
         </Card>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 

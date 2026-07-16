@@ -157,134 +157,164 @@ export default function ChandaLogEntryScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
-        <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
-        <Appbar.Content title="Log Collection" titleStyle={{ fontWeight: 'bold' }} />
-      </Appbar.Header>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={['bottom']}>
+        <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
+          <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
+          <Appbar.Content title="Log Collection" titleStyle={{ fontWeight: 'bold' }} />
+        </Appbar.Header>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
-          <Card.Content style={styles.cardContent}>
-            <Text variant="titleMedium" style={styles.label}>Select Payer / Resident</Text>
-            
-            <Button 
-              mode="outlined" 
-              onPress={() => setShowResidentSelector(!showResidentSelector)}
-              style={styles.pickerButton}
-              textColor={theme.colors.onSurface}
-            >
-              {payerName || 'Tap to select Resident...'}
-            </Button>
+        {/* Soft brand glow backdrop */}
+        <View 
+          style={{
+            position: 'absolute',
+            top: 50,
+            left: '50%',
+            transform: [{ translateX: -150 }],
+            width: 300,
+            height: 300,
+            borderRadius: 150,
+            backgroundColor: '#00D4AA',
+            opacity: theme.dark ? 0.04 : 0.02,
+            pointerEvents: 'none',
+          }}
+        />
 
-            {showResidentSelector && (
-              <Card style={{ backgroundColor: theme.colors.elevation.level2, marginVertical: 8 }}>
-                <Card.Content style={{ padding: 0 }}>
-                  <List.Item
-                    title="Guest / Unregistered User"
-                    description="Enter custom payer name manually below"
-                    onPress={() => {
-                      setSelectedResidentId(null);
-                      setPayerName('');
-                      setShowResidentSelector(false);
-                    }}
-                  />
-                  {residents.map((r) => (
-                    <List.Item
-                      key={r.id}
-                      title={`${r.full_name} (Flat ${r.flat_number})`}
-                      onPress={() => handleSelectResident(r)}
-                    />
-                  ))}
-                </Card.Content>
-              </Card>
-            )}
-
-            {!selectedResidentId && (
-              <View style={styles.inputGroup}>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline, marginBottom: 4 }}>Custom Payer Name</Text>
-                <TextInput
-                  value={payerName}
-                  onChangeText={setPayerName}
-                  placeholder="e.g. Ramesh Kumar"
-                  placeholderTextColor={theme.colors.outline}
-                  style={[styles.textInput, { color: theme.colors.onSurface, borderColor: theme.colors.outline + '40' }]}
-                />
-              </View>
-            )}
-
-            <View style={styles.inputGroup}>
-              <Text variant="titleMedium" style={styles.label}>Amount Collected (INR)</Text>
-              <TextInput
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="e.g. 500"
-                keyboardType="numeric"
-                placeholderTextColor={theme.colors.outline}
-                style={[styles.textInput, { color: theme.colors.onSurface, borderColor: theme.colors.outline + '40' }]}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text variant="titleMedium" style={styles.label}>Collection Mode</Text>
-              <View style={styles.modeRow}>
-                {['upi', 'cash', 'bank_transfer'].map((m) => (
-                  <Button
-                    key={m}
-                    mode={mode === m ? 'contained' : 'outlined'}
-                    onPress={() => setMode(m as any)}
-                    compact
-                    style={{ flex: 1 }}
-                    buttonColor={mode === m ? theme.colors.primary : undefined}
-                    textColor={mode === m ? theme.colors.onPrimary : theme.colors.primary}
-                  >
-                    {m.replace('_', ' ').toUpperCase()}
-                  </Button>
-                ))}
-              </View>
-            </View>
-
-            {mode !== 'cash' && (
-              <View style={styles.inputGroup}>
-                <Text variant="titleMedium" style={styles.label}>Transaction / UTR Reference ID</Text>
-                <TextInput
-                  value={refId}
-                  onChangeText={setRefId}
-                  placeholder="e.g. 320914920231"
-                  placeholderTextColor={theme.colors.outline}
-                  style={[styles.textInput, { color: theme.colors.onSurface, borderColor: theme.colors.outline + '40' }]}
-                />
-              </View>
-            )}
-
-            <View style={styles.inputGroup}>
-              <Text variant="titleMedium" style={styles.label}>Proof / Receipt Screenshot (Optional)</Text>
-              <Button
-                mode="outlined"
-                icon={proofImage ? "check" : "camera"}
-                onPress={handlePickImage}
-                style={{ marginTop: 6 }}
-                textColor={theme.colors.primary}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Card style={[styles.card, { 
+            backgroundColor: theme.colors.elevation.level1,
+            borderRadius: 20, 
+            borderWidth: theme.dark ? 1 : 0, 
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+          }]}>
+            <Card.Content style={styles.cardContent}>
+              <Text variant="titleMedium" style={[styles.label, { color: theme.colors.onSurface }]}>Select Payer / Resident</Text>
+              
+              <Button 
+                mode="outlined" 
+                onPress={() => setShowResidentSelector(!showResidentSelector)}
+                style={[styles.pickerButton, { borderRadius: 12, borderColor: '#00D4AA' }]}
+                textColor={theme.colors.onSurface}
+                labelStyle={{ fontWeight: 'bold' }}
               >
-                {proofImage ? 'Screenshot Attached' : 'Attach Payment Proof'}
+                {payerName || 'Tap to select Resident...'}
               </Button>
-            </View>
 
-            <Button
-              mode="contained"
-              onPress={handleSubmit}
-              loading={submitting}
-              disabled={submitting}
-              style={{ marginTop: 24 }}
-              buttonColor={theme.colors.primary}
-              textColor={theme.colors.onPrimary}
-            >
-              Log Contribution
-            </Button>
-          </Card.Content>
-        </Card>
-      </ScrollView>
-    </SafeAreaView>
+              {showResidentSelector && (
+                <Card style={{ backgroundColor: theme.colors.elevation.level2, marginVertical: 8, borderRadius: 12 }}>
+                  <Card.Content style={{ padding: 0 }}>
+                    <List.Item
+                      title="Guest / Unregistered User"
+                      description="Enter custom payer name manually below"
+                      titleStyle={{ color: theme.colors.onSurface }}
+                      descriptionStyle={{ color: theme.colors.outline }}
+                      onPress={() => {
+                        setSelectedResidentId(null);
+                        setPayerName('');
+                        setShowResidentSelector(false);
+                      }}
+                    />
+                    {residents.map((r) => (
+                      <List.Item
+                        key={r.id}
+                        title={`${r.full_name} (Flat ${r.flat_number})`}
+                        titleStyle={{ color: theme.colors.onSurface }}
+                        onPress={() => handleSelectResident(r)}
+                      />
+                    ))}
+                  </Card.Content>
+                </Card>
+              )}
+
+              {!selectedResidentId && (
+                <View style={styles.inputGroup}>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, marginBottom: 4 }}>Custom Payer Name</Text>
+                  <TextInput
+                    value={payerName}
+                    onChangeText={setPayerName}
+                    placeholder="e.g. Ramesh Kumar"
+                    placeholderTextColor={theme.colors.outline}
+                    style={[styles.textInput, { color: theme.colors.onSurface, borderColor: '#00D4AA', borderRadius: 12, backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC' }]}
+                  />
+                </View>
+              )}
+
+              <View style={styles.inputGroup}>
+                <Text variant="titleMedium" style={[styles.label, { color: theme.colors.onSurface }]}>Amount Collected (INR)</Text>
+                <TextInput
+                  value={amount}
+                  onChangeText={setAmount}
+                  placeholder="e.g. 500"
+                  keyboardType="numeric"
+                  placeholderTextColor={theme.colors.outline}
+                  style={[styles.textInput, { color: theme.colors.onSurface, borderColor: '#00D4AA', borderRadius: 12, backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC' }]}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text variant="titleMedium" style={[styles.label, { color: theme.colors.onSurface }]}>Collection Mode</Text>
+                <View style={styles.modeRow}>
+                  {['upi', 'cash', 'bank_transfer'].map((m) => (
+                    <Button
+                      key={m}
+                      mode={mode === m ? 'contained' : 'outlined'}
+                      onPress={() => setMode(m as any)}
+                      compact
+                      style={{ flex: 1, borderRadius: 28, borderColor: '#00D4AA' }}
+                      buttonColor={mode === m ? '#00D4AA' : undefined}
+                      textColor={mode === m ? '#09090b' : '#00D4AA'}
+                      labelStyle={{ fontWeight: 'bold', fontSize: 10 }}
+                    >
+                      {m.replace('_', ' ').toUpperCase()}
+                    </Button>
+                  ))}
+                </View>
+              </View>
+
+              {mode !== 'cash' && (
+                <View style={styles.inputGroup}>
+                  <Text variant="titleMedium" style={[styles.label, { color: theme.colors.onSurface }]}>Transaction / UTR Reference ID</Text>
+                  <TextInput
+                    value={refId}
+                    onChangeText={setRefId}
+                    placeholder="e.g. 320914920231"
+                    placeholderTextColor={theme.colors.outline}
+                    style={[styles.textInput, { color: theme.colors.onSurface, borderColor: '#00D4AA', borderRadius: 12, backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC' }]}
+                  />
+                </View>
+              )}
+
+              <View style={styles.inputGroup}>
+                <Text variant="titleMedium" style={[styles.label, { color: theme.colors.onSurface }]}>Proof / Receipt Screenshot (Optional)</Text>
+                <Button
+                  mode="outlined"
+                  icon={proofImage ? "check" : "camera"}
+                  onPress={handlePickImage}
+                  style={{ marginTop: 6, borderRadius: 28, borderColor: '#00D4AA' }}
+                  textColor="#00D4AA"
+                  labelStyle={{ fontWeight: 'bold' }}
+                >
+                  {proofImage ? 'Screenshot Attached' : 'Attach Payment Proof'}
+                </Button>
+              </View>
+
+              <Button
+                mode="contained"
+                onPress={handleSubmit}
+                loading={submitting}
+                disabled={submitting}
+                style={{ marginTop: 24, borderRadius: 28 }}
+                buttonColor="#00D4AA"
+                textColor="#09090b"
+                labelStyle={{ fontWeight: 'bold' }}
+              >
+                Log Contribution
+              </Button>
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 

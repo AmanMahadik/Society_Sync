@@ -656,75 +656,100 @@ export const FinancesScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-      <View style={styles.screenHeader}>
-        <Image 
-          source={require('../../../assets/images/logo.png')} 
-          style={[styles.screenHeaderLogo, { borderColor: '#FFD700' }]} 
-          resizeMode="contain"
-        />
-        <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
-          SocietySync Finances
-        </Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.04 : 0.02,
+          pointerEvents: 'none',
+        }}
+      />
 
-      <View style={styles.tabHeader}>
-        <SegmentedButtons
-          value={activeTab}
-          onValueChange={setActiveTab}
-          buttons={[
-            { value: 'ledger', label: 'Festival Ledger', icon: 'cash-register' },
-            { value: 'dues', label: 'Maintenance Dues', icon: 'clipboard-list' },
-          ]}
-          style={styles.segmentedButtons}
-        />
-      </View>
+      <View style={[styles.container, { backgroundColor: 'transparent', paddingTop: insets.top }]}>
+        <View style={styles.screenHeader}>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={[styles.screenHeaderLogo, { borderColor: '#00D4AA' }]} 
+            resizeMode="contain"
+          />
+          <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+            SocietySync Finances
+          </Text>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* ==================== TAB 1: FESTIVAL LEDGER ==================== */}
-        {activeTab === 'ledger' && !selectedEvent && (
-          <View>
-            {/* CHANDA Campaigns Quick Access Card */}
-            <Card 
-              style={{ backgroundColor: theme.colors.elevation.level1, borderColor: 'rgba(0, 212, 170, 0.2)', borderWidth: 1, borderRadius: 12, marginBottom: 16 }}
-              onPress={() => router.push('/chanda' as any)}
-            >
-              <Card.Content style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <IconButton icon="hand-coin" containerColor="rgba(0, 212, 170, 0.1)" iconColor="#00D4AA" size={24} style={{ margin: 0 }} />
-                  <View>
-                    <Text variant="titleMedium" style={{ fontWeight: 'bold', fontSize: 14 }}>Chanda Collection Desk</Text>
-                    <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 11 }}>Contribute to active community festival funds</Text>
-                  </View>
-                </View>
-                <IconButton icon="chevron-right" iconColor={theme.colors.onSurface} size={20} style={{ margin: 0 }} />
-              </Card.Content>
-            </Card>
+        <View style={styles.tabHeader}>
+          <SegmentedButtons
+            value={activeTab}
+            onValueChange={setActiveTab}
+            buttons={[
+              { value: 'ledger', label: 'Festival Ledger', icon: 'cash-register' },
+              { value: 'dues', label: 'Maintenance Dues', icon: 'clipboard-list' },
+            ]}
+            style={styles.segmentedButtons}
+          />
+        </View>
 
-            <View style={styles.sectionHeaderRow}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>Festival Events & Ledgers</Text>
-              {(profile?.role === 'admin') && (
-                <Button 
-                  mode="contained" 
-                  icon="plus" 
-                  onPress={() => setEventModalVisible(true)}
-                  style={styles.actionButton}
-                >
-                  New Event
-                </Button>
-              )}
-            </View>
-
-            {events.map((event) => (
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {/* ==================== TAB 1: FESTIVAL LEDGER ==================== */}
+          {activeTab === 'ledger' && !selectedEvent && (
+            <View>
+              {/* CHANDA Campaigns Quick Access Card */}
               <Card 
-                key={event.id} 
-                style={styles.eventCard}
-                onPress={async () => {
-                  setSelectedEvent(event);
-                  const txList = await dataManager.getTransactions(event.id);
-                  setTransactions(txList);
-                }}
+                style={{ backgroundColor: theme.colors.elevation.level1, borderColor: 'rgba(0, 212, 170, 0.25)', borderWidth: 1, borderRadius: 20, marginBottom: 16 }}
+                onPress={() => router.push('/chanda' as any)}
               >
+                <Card.Content style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <IconButton icon="hand-coin" containerColor="rgba(0, 212, 170, 0.15)" iconColor="#00D4AA" size={24} style={{ margin: 0 }} />
+                    <View>
+                      <Text variant="titleMedium" style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>Chanda Collection Desk</Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 11 }}>Contribute to active community festival funds</Text>
+                    </View>
+                  </View>
+                  <IconButton icon="chevron-right" iconColor={theme.colors.onSurface} size={20} style={{ margin: 0 }} />
+                </Card.Content>
+              </Card>
+
+              <View style={styles.sectionHeaderRow}>
+                <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Festival Events & Ledgers</Text>
+                {(profile?.role === 'admin') && (
+                  <Button 
+                    mode="contained" 
+                    icon="plus" 
+                    onPress={() => setEventModalVisible(true)}
+                    style={[styles.actionButton, { borderRadius: 28 }]}
+                    buttonColor="#00D4AA"
+                    textColor="#09090b"
+                    labelStyle={{ fontWeight: 'bold' }}
+                  >
+                    New Event
+                  </Button>
+                )}
+              </View>
+
+              {events.map((event) => (
+                <Card 
+                  key={event.id} 
+                  style={[styles.eventCard, { 
+                    borderRadius: 20, 
+                    borderWidth: theme.dark ? 1 : 0, 
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    backgroundColor: theme.colors.elevation.level1
+                  }]}
+                  onPress={async () => {
+                    setSelectedEvent(event);
+                    const txList = await dataManager.getTransactions(event.id);
+                    setTransactions(txList);
+                  }}
+                >
                 <Card.Content>
                   <View style={styles.eventHeaderRow}>
                     <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
@@ -1313,6 +1338,7 @@ export const FinancesScreen: React.FC = () => {
           </View>
         </Modal>
       </Portal>
+      </View>
     </View>
   );
 };

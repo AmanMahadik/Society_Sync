@@ -275,10 +275,26 @@ export const ChatScreen: React.FC = () => {
   if (!activeThread) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+        {/* Soft brand glow backdrop */}
+        <View 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            transform: [{ translateX: -150 }],
+            width: 300,
+            height: 300,
+            borderRadius: 150,
+            backgroundColor: '#00D4AA',
+            opacity: theme.dark ? 0.04 : 0.02,
+            pointerEvents: 'none',
+          }}
+        />
+
         <View style={styles.screenHeader}>
           <Image 
             source={require('../../../assets/images/logo.png')} 
-            style={[styles.screenHeaderLogo, { borderColor: '#8B5CF6' }]} 
+            style={[styles.screenHeaderLogo, { borderColor: '#00D4AA' }]} 
             resizeMode="contain"
           />
           <View style={{ flex: 1 }}>
@@ -293,13 +309,16 @@ export const ChatScreen: React.FC = () => {
 
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.sectionHeaderRow}>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Active Discussion Threads</Text>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Active Discussion Threads</Text>
             {profile?.role !== 'renter' && (
               <Button 
                 mode="contained" 
                 icon="plus" 
                 onPress={() => setThreadModalVisible(true)}
-                style={styles.actionButton}
+                style={[styles.actionButton, { borderRadius: 28 }]}
+                buttonColor="#00D4AA"
+                textColor="#09090b"
+                labelStyle={{ fontWeight: 'bold' }}
               >
                 Create Thread
               </Button>
@@ -307,16 +326,21 @@ export const ChatScreen: React.FC = () => {
           </View>
           
           {threads.length === 0 ? (
-            <Card style={styles.emptyCard}>
+            <Card style={[styles.emptyCard, { borderRadius: 20, backgroundColor: theme.colors.elevation.level1 }]}>
               <Card.Content style={{ alignItems: 'center', paddingVertical: 24 }}>
-                <Text variant="bodyMedium">No active discussion channels.</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>No active discussion channels.</Text>
               </Card.Content>
             </Card>
           ) : (
             threads.map((thread) => (
               <Card 
                 key={thread.id} 
-                style={[styles.threadCard, { borderColor: '#8B5CF6', borderWidth: 0.5 }]}
+                style={[styles.threadCard, { 
+                  borderColor: 'rgba(0, 212, 170, 0.25)', 
+                  borderWidth: theme.dark ? 1 : 0.5,
+                  borderRadius: 20,
+                  backgroundColor: theme.colors.elevation.level1
+                }]}
                 onPress={() => {
                   setActiveThread(thread);
                   setThreadTab('chat');
@@ -325,16 +349,17 @@ export const ChatScreen: React.FC = () => {
                 <Card.Title
                   title={thread.title}
                   subtitle={`Category: ${getCategoryLabel(thread.category)}`}
-                  titleStyle={{ fontWeight: 'bold', color: '#8B5CF6' }}
+                  titleStyle={{ fontWeight: 'bold', color: theme.colors.onSurface }}
+                  subtitleStyle={{ color: theme.colors.outline }}
                   left={(props) => (
                     <Avatar.Icon 
                       {...props} 
                       icon={getCategoryIcon(thread.category)} 
-                      style={{ backgroundColor: 'rgba(139, 92, 246, 0.15)' }} 
-                      color="#8B5CF6"
+                      style={{ backgroundColor: 'rgba(0, 212, 170, 0.15)' }} 
+                      color="#00D4AA"
                     />
                   )}
-                  right={(props) => <IconButton {...props} icon="chevron-right" iconColor="#8B5CF6" />}
+                  right={(props) => <IconButton {...props} icon="chevron-right" iconColor="#00D4AA" />}
                 />
               </Card>
             ))
@@ -499,21 +524,21 @@ export const ChatScreen: React.FC = () => {
 
       {/* Pinned Message Banner */}
       {threadTab === 'chat' && pinnedMessage && (
-        <Card style={[styles.pinnedBanner, { backgroundColor: '#1E1E1E', borderColor: '#8B5CF6', borderWidth: 1 }]}>
+        <Card style={[styles.pinnedBanner, { backgroundColor: theme.colors.elevation.level1, borderColor: '#00D4AA', borderWidth: 1, borderRadius: 16 }]}>
           <Card.Content style={{ flexDirection: 'row', alignItems: 'center', padding: 8 }}>
-            <IconButton icon="pin" iconColor="#8B5CF6" size={20} style={{ margin: 0 }} />
+            <IconButton icon="pin" iconColor="#00D4AA" size={20} style={{ margin: 0 }} />
             <View style={{ flex: 1 }}>
-              <Text variant="bodySmall" style={{ fontWeight: 'bold', color: '#8B5CF6' }}>
+              <Text variant="bodySmall" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
                 PINNED RESOLUTION:
               </Text>
-              <Text variant="bodySmall" numberOfLines={2} style={{ color: '#FFFFFF' }}>
+              <Text variant="bodySmall" numberOfLines={2} style={{ color: theme.colors.onSurface }}>
                 {pinnedMessage.content}
               </Text>
             </View>
             {(profile?.role === 'admin' || profile?.role === 'owner') && (
               <IconButton 
                 icon="close-circle" 
-                iconColor="#8B5CF6"
+                iconColor="#00D4AA"
                 size={18} 
                 style={{ margin: 0 }} 
                 onPress={() => handlePinToggle(pinnedMessage.id, true)} 
@@ -601,16 +626,17 @@ export const ChatScreen: React.FC = () => {
                       style={[
                         styles.messageBubble, 
                         isMe 
-                          ? [styles.bubbleMe, { backgroundColor: '#8B5CF6' }] 
-                          : [styles.bubbleOther, { backgroundColor: theme.colors.surfaceVariant }]
+                          ? [styles.bubbleMe, { backgroundColor: '#00D4AA', borderRadius: 16, borderTopRightRadius: 2 }] 
+                          : [styles.bubbleOther, { backgroundColor: theme.colors.surfaceVariant, borderRadius: 16, borderTopLeftRadius: 2 }]
                       ]}
                       onLongPress={() => handlePinToggle(msg.id, msg.is_pinned)}
                     >
                       <Card.Content style={styles.bubbleContent}>
                         <Text 
                           style={{ 
-                            color: isMe ? '#FFFFFF' : theme.colors.onSurface,
+                            color: isMe ? '#09090b' : theme.colors.onSurface,
                             fontSize: 13.5,
+                            fontWeight: isMe ? '600' : 'normal',
                           }}
                         >
                           {msg.content}
@@ -958,7 +984,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabItemActive: {
-    backgroundColor: '#06B6D4',
+    backgroundColor: '#00D4AA',
   },
   tabText: {
     fontSize: 13,

@@ -231,130 +231,172 @@ export default function ChandaDetailScreen() {
   const isCollector = wing?.collector_user_id === user?.id;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
-        <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
-        <Appbar.Content title="Contribution Desk" titleStyle={{ fontWeight: 'bold' }} />
-      </Appbar.Header>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={['bottom']}>
+        <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
+          <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
+          <Appbar.Content title="Contribution Desk" titleStyle={{ fontWeight: 'bold' }} />
+        </Appbar.Header>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
-          <Card.Content>
-            <Text variant="headlineSmall" style={styles.title}>{campaign.title}</Text>
-            {campaign.description && (
-              <Text variant="bodyMedium" style={[styles.desc, { color: theme.colors.onSurfaceVariant }]}>
-                {campaign.description}
-              </Text>
-            )}
-          </Card.Content>
-        </Card>
+        {/* Soft brand glow backdrop */}
+        <View 
+          style={{
+            position: 'absolute',
+            top: 50,
+            left: '50%',
+            transform: [{ translateX: -150 }],
+            width: 300,
+            height: 300,
+            borderRadius: 150,
+            backgroundColor: '#00D4AA',
+            opacity: theme.dark ? 0.04 : 0.02,
+            pointerEvents: 'none',
+          }}
+        />
 
-        <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
-          <Card.Content style={styles.amountCardContent}>
-            <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 12 }}>Enter Contribution Amount</Text>
-            
-            <View style={[styles.amountInputRow, { borderBottomColor: theme.colors.primary }]}>
-              <Text variant="headlineMedium" style={{ marginRight: 6 }}>₹</Text>
-              <TextInput
-                value={amount}
-                onChangeText={setAmount}
-                placeholder={campaign.min_amount.toString()}
-                keyboardType="numeric"
-                editable={!isFixed}
-                style={[styles.input, { color: theme.colors.onSurface }]}
-              />
-            </View>
-            <HelperText type="info" visible>
-              {isFixed ? `Fixed contribution: ₹${campaign.suggested_amount}` : `Minimum amount: ₹${campaign.min_amount}`}
-            </HelperText>
-
-            <Button
-              mode="contained"
-              onPress={handlePayOnline}
-              loading={paying}
-              disabled={paying}
-              style={styles.payButton}
-              buttonColor={theme.colors.primary}
-              textColor={theme.colors.onPrimary}
-            >
-              Pay Online (Razorpay)
-            </Button>
-          </Card.Content>
-        </Card>
-
-        {wing && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Card style={[styles.card, { 
+            backgroundColor: theme.colors.elevation.level1,
+            borderRadius: 20, 
+            borderWidth: theme.dark ? 1 : 0, 
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+          }]}>
             <Card.Content>
-              <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 8 }}>Offline Wing Collection</Text>
-              
-              {wing.collector_name ? (
-                <>
-                  <Text variant="bodyMedium" style={{ marginBottom: 4 }}>
-                    Wing coordinator <Text style={{ fontWeight: 'bold' }}>{wing.collector_name}</Text> is collecting chanda for Wing {wing.name}.
-                  </Text>
-                  {wing.collector_upi_id && (
-                    <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: theme.colors.primary, marginVertical: 6 }}>
-                      UPI ID: {wing.collector_upi_id}
-                    </Text>
-                  )}
-                  {wing.collector_phone && (
-                    <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-                      Phone: {wing.collector_phone}
-                    </Text>
-                  )}
-                </>
-              ) : (
-                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>
-                  No coordinator assigned to Wing {wing.name} yet.
+              <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onSurface }]}>{campaign.title}</Text>
+              {campaign.description && (
+                <Text variant="bodyMedium" style={[styles.desc, { color: theme.colors.outline }]}>
+                  {campaign.description}
                 </Text>
               )}
+            </Card.Content>
+          </Card>
+
+          <Card style={[styles.card, { 
+            backgroundColor: theme.colors.elevation.level1,
+            borderRadius: 20, 
+            borderWidth: theme.dark ? 1 : 0, 
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+          }]}>
+            <Card.Content style={styles.amountCardContent}>
+              <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 12, color: theme.colors.onSurface }}>Enter Contribution Amount</Text>
+              
+              <View style={[styles.amountInputRow, { borderBottomColor: '#00D4AA' }]}>
+                <Text variant="headlineMedium" style={{ marginRight: 6, color: '#00D4AA', fontWeight: 'bold' }}>₹</Text>
+                <TextInput
+                  value={amount}
+                  onChangeText={setAmount}
+                  placeholder={campaign.min_amount.toString()}
+                  keyboardType="numeric"
+                  editable={!isFixed}
+                  style={[styles.input, { color: '#00D4AA' }]}
+                />
+              </View>
+              <HelperText type="info" visible style={{ paddingLeft: 0 }}>
+                {isFixed ? `Fixed contribution: ₹${campaign.suggested_amount}` : `Minimum amount: ₹${campaign.min_amount}`}
+              </HelperText>
 
               <Button
-                mode="outlined"
-                onPress={() => router.push(`/chanda-log-entry?campaignId=${campaign.id}` as any)}
-                style={{ marginTop: 12 }}
-                textColor={theme.colors.primary}
+                mode="contained"
+                onPress={handlePayOnline}
+                loading={paying}
+                disabled={paying}
+                style={[styles.payButton, { borderRadius: 28 }]}
+                buttonColor="#00D4AA"
+                textColor="#09090b"
+                labelStyle={{ fontWeight: 'bold' }}
               >
-                Log Coordinator Payment
+                Pay Online (Razorpay)
               </Button>
             </Card.Content>
           </Card>
-        )}
 
-        {isCollector && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1, borderColor: theme.colors.primary + '50', borderWidth: 1 }]}>
-            <Card.Content>
-              <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8 }}>
-                🛡️ Wing Collector Panel
-              </Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.outline, marginBottom: 12 }}>
-                You are the coordinator for Wing {wing?.name}. Log entries or view submissions from this wing.
-              </Text>
+          {wing && (
+            <Card style={[styles.card, { 
+              backgroundColor: theme.colors.elevation.level1,
+              borderRadius: 20, 
+              borderWidth: theme.dark ? 1 : 0, 
+              borderColor: 'rgba(255, 255, 255, 0.08)',
+            }]}>
+              <Card.Content>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 8, color: theme.colors.onSurface }}>Offline Wing Collection</Text>
+                
+                {wing.collector_name ? (
+                  <>
+                    <Text variant="bodyMedium" style={{ marginBottom: 4, color: theme.colors.outline }}>
+                      Wing coordinator <Text style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>{wing.collector_name}</Text> is collecting chanda for Wing {wing.name}.
+                    </Text>
+                    {wing.collector_upi_id && (
+                      <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: '#00D4AA', marginVertical: 6 }}>
+                        UPI ID: {wing.collector_upi_id}
+                      </Text>
+                    )}
+                    {wing.collector_phone && (
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                        Phone: {wing.collector_phone}
+                      </Text>
+                    )}
+                  </>
+                ) : (
+                  <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>
+                    No coordinator assigned to Wing {wing.name} yet.
+                  </Text>
+                )}
 
-              <View style={styles.collectorActions}>
-                <Button
-                  mode="contained"
-                  buttonColor={theme.colors.primary}
-                  textColor={theme.colors.onPrimary}
-                  onPress={() => router.push(`/chanda-log-entry?campaignId=${campaign.id}` as any)}
-                  style={{ flex: 1 }}
-                >
-                  Log Collection
-                </Button>
                 <Button
                   mode="outlined"
-                  textColor={theme.colors.primary}
-                  onPress={() => router.push(`/chanda-my-entries?campaignId=${campaign.id}` as any)}
-                  style={{ flex: 1 }}
+                  onPress={() => router.push(`/chanda-log-entry?campaignId=${campaign.id}` as any)}
+                  style={{ marginTop: 12, borderRadius: 28, borderColor: '#00D4AA' }}
+                  textColor="#00D4AA"
+                  labelStyle={{ fontWeight: 'bold' }}
                 >
-                  Track Collections
+                  Log Coordinator Payment
                 </Button>
-              </View>
-            </Card.Content>
-          </Card>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+              </Card.Content>
+            </Card>
+          )}
+
+          {isCollector && (
+            <Card style={[styles.card, { 
+              backgroundColor: theme.colors.elevation.level1, 
+              borderColor: 'rgba(0, 212, 170, 0.25)', 
+              borderWidth: 1,
+              borderRadius: 20,
+            }]}>
+              <Card.Content>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#00D4AA', marginBottom: 8 }}>
+                  🛡️ Wing Collector Panel
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline, marginBottom: 12 }}>
+                  You are the coordinator for Wing {wing?.name}. Log entries or view submissions from this wing.
+                </Text>
+
+                <View style={styles.collectorActions}>
+                  <Button
+                    mode="contained"
+                    buttonColor="#00D4AA"
+                    textColor="#09090b"
+                    onPress={() => router.push(`/chanda-log-entry?campaignId=${campaign.id}` as any)}
+                    style={{ flex: 1, borderRadius: 28 }}
+                    labelStyle={{ fontWeight: 'bold' }}
+                  >
+                    Log Collection
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    textColor="#00D4AA"
+                    onPress={() => router.push(`/chanda-my-entries?campaignId=${campaign.id}` as any)}
+                    style={{ flex: 1, borderRadius: 28, borderColor: '#00D4AA' }}
+                    labelStyle={{ fontWeight: 'bold' }}
+                  >
+                    Track Collections
+                  </Button>
+                </View>
+              </Card.Content>
+            </Card>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 

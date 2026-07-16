@@ -18,27 +18,47 @@ export const PendingApprovalScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Card style={styles.card}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: -100,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.08 : 0.05,
+        }}
+      />
+
+      <Card style={[styles.card, { 
+        borderRadius: 24, 
+        borderWidth: theme.dark ? 1 : 0, 
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: theme.colors.elevation.level1
+      }]}>
         <Card.Content style={styles.cardContent}>
-          <View style={[styles.iconContainer, { backgroundColor: theme.colors.errorContainer }]}>
-            <ActivityIndicator size="large" color={theme.colors.error} />
+          <View style={[styles.iconContainer, { backgroundColor: theme.dark ? 'rgba(0, 212, 170, 0.1)' : '#E6F4F1' }]}>
+            <ActivityIndicator size="large" color="#00D4AA" />
           </View>
           
-          <Text variant="headlineSmall" style={styles.title}>Approval Pending</Text>
+          <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onSurface }]}>Approval Pending</Text>
           
           <Text variant="bodyMedium" style={[styles.description, { color: theme.colors.outline }]}>
             Your registration request has been submitted successfully.
           </Text>
 
-          <Card style={[styles.detailsCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Card style={[styles.detailsCard, { backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.03)' : '#F1F5F9', borderRadius: 16 }]}>
             <Card.Content style={styles.detailsContent}>
-              <Text variant="titleSmall">Resident: <Text style={styles.value}>{profile?.full_name}</Text></Text>
-              <Text variant="titleSmall">Flat Address: <Text style={styles.value}>Wing {profile?.wing || '?'}, Flat {profile?.flat_number || '?'}</Text></Text>
-              <Text variant="titleSmall">Requested Role: <Text style={[styles.value, { textTransform: 'capitalize' }]}>{profile?.role}</Text></Text>
+              <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>Resident: <Text style={[styles.value, { fontWeight: 'bold' }]}>{profile?.full_name}</Text></Text>
+              <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>Flat Address: <Text style={[styles.value, { fontWeight: 'bold' }]}>Wing {profile?.wing || '?'}, Flat {profile?.flat_number || '?'}</Text></Text>
+              <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>Requested Role: <Text style={[styles.value, { textTransform: 'capitalize', fontWeight: 'bold' }]}>{profile?.role}</Text></Text>
             </Card.Content>
           </Card>
 
-          <Text variant="bodySmall" style={styles.instruction}>
+          <Text variant="bodySmall" style={[styles.instruction, { color: theme.colors.outline }]}>
             For security and financial integrity, your society's Secretary/Chairman must verify your details before granting access.
           </Text>
 
@@ -47,7 +67,10 @@ export const PendingApprovalScreen: React.FC = () => {
             onPress={handleCheckStatus}
             loading={checking}
             disabled={checking}
-            style={styles.button}
+            style={[styles.button, { borderRadius: 28 }]}
+            buttonColor="#00D4AA"
+            textColor="#09090b"
+            labelStyle={{ fontWeight: 'bold' }}
             icon="refresh"
           >
             Check Approval Status
@@ -56,7 +79,9 @@ export const PendingApprovalScreen: React.FC = () => {
           <Button
             mode="outlined"
             onPress={signOut}
-            style={styles.signOutButton}
+            style={[styles.signOutButton, { borderRadius: 28, borderColor: theme.colors.outline }]}
+            textColor={theme.dark ? '#FFFFFF' : theme.colors.onSurface}
+            labelStyle={{ fontWeight: 'bold' }}
             icon="logout"
           >
             Log Out & Switch User

@@ -113,78 +113,104 @@ export default function ChandaHistoryScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
-        <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
-        <Appbar.Content title="Contribution History" titleStyle={{ fontWeight: 'bold' }} />
-      </Appbar.Header>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={['bottom']}>
+        <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
+          <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
+          <Appbar.Content title="Contribution History" titleStyle={{ fontWeight: 'bold' }} />
+        </Appbar.Header>
 
-      {loading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-          }
-        >
-          {history.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text variant="bodyLarge" style={{ color: theme.colors.outline, textAlign: 'center' }}>
-                You have not made any contribution entries yet.
-              </Text>
-            </View>
-          ) : (
-            history.map((item) => (
-              <Card key={item.id} style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.headerRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
-                        {item.campaignTitle}
-                      </Text>
-                      <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
-                        Date: {new Date(item.date).toLocaleDateString()}
+        {/* Soft brand glow backdrop */}
+        <View 
+          style={{
+            position: 'absolute',
+            top: 50,
+            left: '50%',
+            transform: [{ translateX: -150 }],
+            width: 300,
+            height: 300,
+            borderRadius: 150,
+            backgroundColor: '#00D4AA',
+            opacity: theme.dark ? 0.04 : 0.02,
+            pointerEvents: 'none',
+          }}
+        />
+
+        {loading ? (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#00D4AA" />
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#00D4AA"]} />
+            }
+          >
+            {history.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text variant="bodyLarge" style={{ color: theme.colors.outline, textAlign: 'center' }}>
+                  You have not made any contribution entries yet.
+                </Text>
+              </View>
+            ) : (
+              history.map((item) => (
+                <Card 
+                  key={item.id} 
+                  style={[styles.card, { 
+                    backgroundColor: theme.colors.elevation.level1,
+                    borderRadius: 20, 
+                    borderWidth: theme.dark ? 1 : 0, 
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                  }]}
+                >
+                  <Card.Content style={styles.cardContent}>
+                    <View style={styles.headerRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                          {item.campaignTitle}
+                        </Text>
+                        <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
+                          Date: {new Date(item.date).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <Text variant="titleLarge" style={[styles.amount, { color: '#00D4AA', fontWeight: 'bold' }]}>
+                        {formatINR(item.amount)}
                       </Text>
                     </View>
-                    <Text variant="titleLarge" style={[styles.amount, { color: theme.colors.primary }]}>
-                      {formatINR(item.amount)}
-                    </Text>
-                  </View>
 
-                  <View style={styles.footerRow}>
-                    <View style={styles.badgeRow}>
-                      <Badge 
-                        style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '15', color: getStatusColor(item.status), borderColor: getStatusColor(item.status) + '30' }]}
-                      >
-                        {getStatusLabel(item.status)}
-                      </Badge>
-                      <Badge style={styles.channelBadge}>
-                        {item.channel.toUpperCase()}
-                      </Badge>
+                    <View style={styles.footerRow}>
+                      <View style={styles.badgeRow}>
+                        <Badge 
+                          style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '15', color: getStatusColor(item.status), borderColor: getStatusColor(item.status) + '30' }]}
+                        >
+                          {getStatusLabel(item.status)}
+                        </Badge>
+                        <Badge style={styles.channelBadge}>
+                          {item.channel.toUpperCase()}
+                        </Badge>
+                      </View>
+
+                      {(item.status === 'paid' || item.status === 'verified') && (
+                        <IconButton
+                          icon="download"
+                          mode="contained-tonal"
+                          containerColor={theme.colors.secondaryContainer}
+                          iconColor={theme.colors.onSecondaryContainer}
+                          size={18}
+                          onPress={() => handleDownloadReceipt(item.id)}
+                          style={{ margin: 0 }}
+                        />
+                      )}
                     </View>
-
-                    {(item.status === 'paid' || item.status === 'verified') && (
-                      <IconButton
-                        icon="download"
-                        mode="contained-tonal"
-                        containerColor={theme.colors.secondaryContainer}
-                        iconColor={theme.colors.onSecondaryContainer}
-                        size={20}
-                        onPress={() => handleDownloadReceipt(item.id)}
-                        style={{ margin: 0 }}
-                      />
-                    )}
-                  </View>
-                </Card.Content>
-              </Card>
-            ))
-          )}
-        </ScrollView>
-      )}
-    </SafeAreaView>
+                  </Card.Content>
+                </Card>
+              ))
+            )}
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 

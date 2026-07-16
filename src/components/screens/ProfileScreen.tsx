@@ -356,91 +356,113 @@ export const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-      <View style={styles.screenHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-          <Image 
-            source={require('../../../assets/images/logo.png')} 
-            style={[styles.screenHeaderLogo, { borderColor: '#06B6D4' }]} 
-            resizeMode="contain"
-          />
-          <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
-            SocietySync Profile
-          </Text>
-        </View>
-        <IconButton 
-          icon="cog" 
-          iconColor={theme.colors.onSurface} 
-          size={24} 
-          onPress={() => router.push('/settings' as any)} 
-          style={{ margin: 0 }}
-        />
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.04 : 0.02,
+          pointerEvents: 'none',
+        }}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* 1. RESIDENT CARD */}
-        <Card style={styles.profileCard}>
-          <Card.Content style={styles.profileContent}>
-            {profile?.google_picture_url ? (
-              <Avatar.Image 
-                size={70} 
-                source={{ uri: profile.google_picture_url }} 
-                style={{ marginBottom: 8 }}
-              />
-            ) : (
-              <Avatar.Text 
-                size={70} 
-                label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
-                style={{ backgroundColor: '#06B6D4', marginBottom: 8 }}
-                color="#0F0F0F"
-              />
-            )}
-            <Text variant="headlineSmall" style={[styles.profileName, { color: theme.colors.onSurface }]}>{profile?.full_name}</Text>
-            {profile?.bio ? (
-              <Text variant="bodyMedium" style={{ color: theme.colors.outline, fontStyle: 'italic', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 16 }}>
-                "{profile.bio}"
-              </Text>
-            ) : null}
-            <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-              Wing {profile?.wing || '?'}-{profile?.flat_number || '?'} • {profile?.society_name || 'My Society'}
+      <View style={[styles.container, { backgroundColor: 'transparent', paddingTop: insets.top }]}>
+        <View style={styles.screenHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+            <Image 
+              source={require('../../../assets/images/logo.png')} 
+              style={[styles.screenHeaderLogo, { borderColor: '#00D4AA' }]} 
+              resizeMode="contain"
+            />
+            <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+              SocietySync Profile
             </Text>
-            
-            {(() => {
-              const badge = getRoleBadge(profile?.role);
-              const contrastColor = getContrastColor(profile?.role);
-              return (
-                <View 
-                  style={{ 
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: contrastColor + '15', 
-                    borderColor: contrastColor, 
-                    borderWidth: 1,
-                    borderRadius: 16,
-                    paddingHorizontal: 12,
-                    paddingVertical: 4,
-                    marginTop: 8,
-                  }}
-                >
-                  <IconButton 
-                    icon={badge.icon} 
-                    iconColor={contrastColor} 
-                    size={14} 
-                    style={{ margin: 0, padding: 0, width: 16, height: 16 }} 
-                  />
-                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: contrastColor, textTransform: 'uppercase', marginLeft: 4 }}>
-                    {badge.text}
-                  </Text>
-                </View>
-              );
-            })()}
+          </View>
+          <IconButton 
+            icon="cog" 
+            iconColor={theme.colors.onSurface} 
+            size={24} 
+            onPress={() => router.push('/settings' as any)} 
+            style={{ margin: 0 }}
+          />
+        </View>
 
-            <Divider style={styles.divider} />
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {/* 1. RESIDENT CARD */}
+          <Card style={[styles.profileCard, { 
+            borderRadius: 20, 
+            borderWidth: theme.dark ? 1 : 0, 
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            backgroundColor: theme.colors.elevation.level1
+          }]}>
+            <Card.Content style={styles.profileContent}>
+              {profile?.google_picture_url ? (
+                <Avatar.Image 
+                  size={70} 
+                  source={{ uri: profile.google_picture_url }} 
+                  style={{ marginBottom: 8 }}
+                />
+              ) : (
+                <Avatar.Text 
+                  size={70} 
+                  label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
+                  style={{ backgroundColor: '#00D4AA', marginBottom: 8 }}
+                  color="#09090b"
+                />
+              )}
+              <Text variant="headlineSmall" style={[styles.profileName, { color: theme.colors.onSurface }]}>{profile?.full_name}</Text>
+              {profile?.bio ? (
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline, fontStyle: 'italic', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 16 }}>
+                  "{profile.bio}"
+                </Text>
+              ) : null}
+              <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                Wing {profile?.wing || '?'}-{profile?.flat_number || '?'} • {profile?.society_name || 'My Society'}
+              </Text>
+              
+              {(() => {
+                const badge = getRoleBadge(profile?.role);
+                const contrastColor = getContrastColor(profile?.role) === '#06B6D4' ? '#00D4AA' : getContrastColor(profile?.role);
+                return (
+                  <View 
+                    style={{ 
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: contrastColor + '15', 
+                      borderColor: contrastColor + '30', 
+                      borderWidth: 1,
+                      borderRadius: 16,
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      marginTop: 8,
+                    }}
+                  >
+                    <IconButton 
+                      icon={badge.icon} 
+                      iconColor={contrastColor} 
+                      size={14} 
+                      style={{ margin: 0, padding: 0, width: 16, height: 16 }} 
+                    />
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: contrastColor, textTransform: 'uppercase', marginLeft: 4 }}>
+                      {badge.text}
+                    </Text>
+                  </View>
+                );
+              })()}
 
-            <View style={styles.detailsRow}>
-              <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Phone Number:</Text>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{profile?.phone || 'N/A'}</Text>
-            </View>
+              <Divider style={styles.divider} />
+
+              <View style={styles.detailsRow}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Phone Number:</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{profile?.phone || 'N/A'}</Text>
+              </View>
             {profile?.vehicle_number ? (
               <View style={styles.detailsRow}>
                 <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Vehicle Number:</Text>
@@ -1184,6 +1206,7 @@ export const ProfileScreen: React.FC = () => {
       >
         {snackbarMessage}
       </Snackbar>
+      </View>
     </View>
   );
 };

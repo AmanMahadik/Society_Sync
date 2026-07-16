@@ -722,85 +722,189 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Pinned Announcements Carousel */}
-        {(() => {
-          const pinnedNotices = announcements.filter(n => n.is_pinned);
-          if (pinnedNotices.length === 0) return null;
-          return (
-            <View style={styles.pinnedContainer}>
-              {pinnedNotices.map((notice) => (
-                <Card key={notice.id} style={[styles.pinnedCard, { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error, borderWidth: 0.5 }]}>
-                  <Card.Content style={styles.pinnedContent}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <View style={{ 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
-                        backgroundColor: theme.colors.error, 
-                        borderRadius: 12, 
-                        paddingHorizontal: 8, 
-                        paddingVertical: 4,
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase' }}>
-                          📌 Pinned Notice
-                        </Text>
-                      </View>
-                      {profile?.role === 'admin' && (
-                        <IconButton 
-                          icon="pin-off" 
-                          size={16} 
-                          iconColor={theme.colors.error}
-                          onPress={() => handleTogglePin(notice.id.toString(), false)} 
-                          style={{ margin: 0 }}
-                        />
-                      )}
-                    </View>
-                    <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onErrorContainer }}>
-                      {notice.title}
-                    </Text>
-                    <Text variant="bodyMedium" style={{ marginTop: 4, color: theme.colors.onErrorContainer }}>
-                      {notice.body}
-                    </Text>
-                    <Text variant="bodySmall" style={{ marginTop: 8, fontStyle: 'italic', color: theme.colors.outline }}>
-                      Posted by {notice.creator_name} on {new Date(notice.created_at).toLocaleDateString()}
-                    </Text>
-                  </Card.Content>
-                </Card>
-              ))}
-            </View>
-          );
-        })()}
+        {/* NOTICE BOARD CAROUSEL */}
+        <View style={{ marginVertical: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 }}>
+            <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: theme.dark ? '#A1A1AA' : '#4B5563', textTransform: 'uppercase' }}>
+              Notice Board
+            </Text>
+            <TouchableOpacity onPress={() => jumpTo && jumpTo('chat')}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#00D4AA' }}>
+                See all ›
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* 3. HOME SUMMARY CARDS GRID */}
-        <View style={styles.summaryRow}>
-          {profile?.role === 'admin' && (
-            <Card style={[styles.summaryCard, { borderColor: '#06B6D4', borderWidth: 1 }]}>
-              <Card.Content style={styles.summaryContent}>
-                <IconButton icon="account-multiple-check" size={20} iconColor="#06B6D4" style={styles.summaryIconOverride} />
-                <Text variant="titleMedium" style={[styles.summaryVal, { color: '#06B6D4' }]}>{summaryData.pendingApprovals}</Text>
-                <Text variant="bodySmall" numberOfLines={1} style={styles.summaryLabel}>Approvals</Text>
+          {announcements.length === 0 ? (
+            <Card style={{ borderRadius: 24, backgroundColor: theme.colors.elevation.level1, borderWidth: theme.dark ? 1 : 0, borderColor: 'rgba(255, 255, 255, 0.08)' }}>
+              <Card.Content style={{ alignItems: 'center', padding: 20 }}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>No notices posted yet.</Text>
               </Card.Content>
             </Card>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
+              {announcements.map((notice) => {
+                const noticeDate = new Date(notice.created_at);
+                const diffTime = Math.abs(new Date().getTime() - noticeDate.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const timeLabel = diffDays <= 1 ? 'Today' : `${diffDays}d ago`;
+
+                return (
+                  <Card 
+                    key={notice.id} 
+                    style={{ 
+                      width: 280, 
+                      borderRadius: 24, 
+                      backgroundColor: theme.colors.elevation.level1, 
+                      borderWidth: theme.dark ? 1 : 0, 
+                      borderColor: 'rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <Card.Content style={{ padding: 16 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <View style={{ 
+                          backgroundColor: theme.dark ? 'rgba(0, 212, 170, 0.15)' : '#E6F4F1', 
+                          borderRadius: 12, 
+                          paddingHorizontal: 8, 
+                          paddingVertical: 4 
+                        }}>
+                          <Text style={{ color: '#00D4AA', fontSize: 9, fontWeight: '900', textTransform: 'uppercase' }}>
+                            Notice
+                          </Text>
+                        </View>
+                        {notice.is_pinned && (
+                          <IconButton icon="pin" size={14} iconColor="#FF3B30" style={{ margin: 0, padding: 0 }} />
+                        )}
+                      </View>
+                      
+                      <Text variant="titleMedium" numberOfLines={1} style={{ fontWeight: 'bold', color: theme.colors.onSurface, fontSize: 15 }}>
+                        {notice.title}
+                      </Text>
+                      
+                      <Text variant="bodySmall" numberOfLines={2} style={{ color: theme.colors.outline, marginTop: 4, height: 32, fontSize: 12 }}>
+                        {notice.body}
+                      </Text>
+
+                      <Text variant="labelSmall" style={{ color: theme.colors.outline, marginTop: 8, fontSize: 10 }}>
+                        {timeLabel}
+                      </Text>
+                    </Card.Content>
+                  </Card>
+                );
+              })}
+            </ScrollView>
           )}
- 
-          <Card style={[styles.summaryCard, { borderColor: '#3B82F6', borderWidth: 1 }]}>
-            <Card.Content style={styles.summaryContent}>
-              <IconButton icon="car-connected" size={20} iconColor="#3B82F6" style={styles.summaryIconOverride} />
-              <Text variant="titleMedium" style={[styles.summaryVal, { color: '#3B82F6' }]}>{summaryData.todaysParkings}</Text>
-              <Text variant="bodySmall" numberOfLines={1} style={styles.summaryLabel}>Today's Parking</Text>
-            </Card.Content>
-          </Card>
- 
-          {profile?.role !== 'guard' && (
-            <Card style={[styles.summaryCard, { borderColor: '#FFD700', borderWidth: 1 }]}>
-              <Card.Content style={styles.summaryContent}>
-                <IconButton icon="wallet-outline" size={20} iconColor="#FFD700" style={styles.summaryIconOverride} />
-                <Text variant="titleMedium" numberOfLines={1} style={[styles.summaryVal, { fontSize: 11.5, color: '#FFD700' }]}>
-                  ₹{summaryData.pendingDues.toLocaleString('en-IN')}
+        </View>
+
+        {/* QUICK STATS */}
+        <View style={{ marginVertical: 8, marginBottom: 20 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: theme.dark ? '#A1A1AA' : '#4B5563', textTransform: 'uppercase', marginBottom: 12, paddingHorizontal: 4 }}>
+            Quick Stats
+          </Text>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+            {/* 1. Residents / Approvals stat */}
+            <Card style={{ 
+              flex: 1, 
+              borderRadius: 24, 
+              backgroundColor: theme.colors.elevation.level1, 
+              borderWidth: theme.dark ? 1 : 0, 
+              borderColor: 'rgba(255, 255, 255, 0.08)' 
+            }}>
+              <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
+                <View style={{ 
+                  width: 36, 
+                  height: 36, 
+                  borderRadius: 18, 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  backgroundColor: theme.dark ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE', 
+                  marginBottom: 8 
+                }}>
+                  <IconButton 
+                    icon={profile?.role === 'admin' ? "account-multiple-check" : "account-group"} 
+                    size={18} 
+                    iconColor={theme.dark ? '#38BDF8' : '#0284C7'} 
+                    style={{ margin: 0, padding: 0 }} 
+                  />
+                </View>
+                <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                  {profile?.role === 'admin' ? summaryData.pendingApprovals : '248'}
                 </Text>
-                <Text variant="bodySmall" numberOfLines={1} style={styles.summaryLabel}>Pending Dues</Text>
+                <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
+                  {profile?.role === 'admin' ? 'Approvals' : 'Residents'}
+                </Text>
               </Card.Content>
             </Card>
-          )}
+
+            {/* 2. Open parking / Parking booked */}
+            <Card style={{ 
+              flex: 1, 
+              borderRadius: 24, 
+              backgroundColor: theme.colors.elevation.level1, 
+              borderWidth: theme.dark ? 1 : 0, 
+              borderColor: 'rgba(255, 255, 255, 0.08)' 
+            }}>
+              <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
+                <View style={{ 
+                  width: 36, 
+                  height: 36, 
+                  borderRadius: 18, 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  backgroundColor: theme.dark ? 'rgba(74, 222, 128, 0.15)' : '#DCFCE7', 
+                  marginBottom: 8 
+                }}>
+                  <IconButton 
+                    icon="parking" 
+                    size={18} 
+                    iconColor={theme.dark ? '#4ADE80' : '#15803D'} 
+                    style={{ margin: 0, padding: 0 }} 
+                  />
+                </View>
+                <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                  {profile?.role === 'admin' ? summaryData.todaysParkings : '6'}
+                </Text>
+                <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
+                  {profile?.role === 'admin' ? 'Parkings' : 'Open parking'}
+                </Text>
+              </Card.Content>
+            </Card>
+
+            {/* 3. Active SOS / Dues */}
+            <Card style={{ 
+              flex: 1, 
+              borderRadius: 24, 
+              backgroundColor: theme.colors.elevation.level1, 
+              borderWidth: theme.dark ? 1 : 0, 
+              borderColor: 'rgba(255, 255, 255, 0.08)' 
+            }}>
+              <Card.Content style={{ padding: 12, alignItems: 'flex-start' }}>
+                <View style={{ 
+                  width: 36, 
+                  height: 36, 
+                  borderRadius: 18, 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  backgroundColor: theme.dark ? 'rgba(248, 113, 113, 0.15)' : '#FEE2E2', 
+                  marginBottom: 8 
+                }}>
+                  <IconButton 
+                    icon={profile?.role === 'admin' ? "shield-alert" : "wallet-outline"} 
+                    size={18} 
+                    iconColor={theme.dark ? '#F87171' : '#EF4444'} 
+                    style={{ margin: 0, padding: 0 }} 
+                  />
+                </View>
+                <Text numberOfLines={1} style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                  {profile?.role === 'admin' ? complaints.length : `₹${summaryData.pendingDues}`}
+                </Text>
+                <Text numberOfLines={1} style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2, fontWeight: '500' }}>
+                  {profile?.role === 'admin' ? 'Active SOS' : 'Pending dues'}
+                </Text>
+              </Card.Content>
+            </Card>
+          </View>
         </View>
  
         {/* RESIDENT QUICK ACTIONS & PASSCODE MANAGER */}

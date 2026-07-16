@@ -184,15 +184,130 @@ export const ProfileCompletionScreen: React.FC = () => {
 
   if (!societyValidated) {
     return (
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        {/* Soft brand glow backdrop */}
+        <View 
+          style={{
+            position: 'absolute',
+            top: -100,
+            left: '50%',
+            transform: [{ translateX: -150 }],
+            width: 300,
+            height: 300,
+            borderRadius: 150,
+            backgroundColor: '#00D4AA',
+            opacity: theme.dark ? 0.08 : 0.05,
+          }}
+        />
+
+        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: 'transparent' }]}>
+          <View style={styles.header}>
+            <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>Join a Housing Complex</Text>
+            <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.outline }]}>
+              Enter your unique 10-character Society Code to connect your profile
+            </Text>
+          </View>
+
+          <Card style={[styles.card, { 
+            borderRadius: 24, 
+            borderWidth: theme.dark ? 1 : 0, 
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            backgroundColor: theme.colors.elevation.level1
+          }]}>
+            <Card.Content style={styles.cardContent}>
+              {error && (
+                <HelperText type="error" visible={!!error} style={styles.errorText}>
+                  {error}
+                </HelperText>
+              )}
+
+              <TextInput
+                label="Enter Society Code"
+                placeholder="e.g. SS-MH-2847"
+                value={societyCode}
+                onChangeText={(text) => {
+                  const clean = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                  let formatted = clean;
+                  if (clean.length > 8) {
+                    formatted = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 6) + '-' + clean.substring(6, 8) + '-' + clean.substring(8, 12);
+                  } else if (clean.length > 4) {
+                    formatted = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 8);
+                  } else if (clean.length > 2) {
+                    formatted = clean.substring(0, 2) + '-' + clean.substring(2);
+                  }
+                  setSocietyCode(formatted);
+                  setError(null);
+                }}
+                mode="outlined"
+                style={styles.input}
+                activeOutlineColor="#00D4AA"
+                autoCapitalize="characters"
+                left={<TextInput.Icon icon="key" />}
+                right={<TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} />}
+              />
+
+              <Button
+                mode="contained"
+                onPress={handleValidateCode}
+                loading={validatingCode}
+                disabled={validatingCode}
+                buttonColor="#00D4AA"
+                textColor="#09090b"
+                style={[styles.button, { borderRadius: 28, paddingVertical: 2 }]}
+                labelStyle={{ fontWeight: 'bold' }}
+                icon="check-decagram"
+              >
+                Validate Code
+              </Button>
+
+              <Button
+                mode="text"
+                onPress={signOut}
+                textColor={theme.colors.error}
+                style={{ marginTop: 8 }}
+                labelStyle={{ fontWeight: 'bold' }}
+                icon="logout"
+              >
+                Cancel & Sign Out
+              </Button>
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: -100,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.08 : 0.05,
+        }}
+      />
+
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: 'transparent' }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text variant="headlineMedium" style={styles.title}>Join a Housing Complex</Text>
+          <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>Complete Profile</Text>
           <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.outline }]}>
-            Enter your unique 10-character Society Code to connect your profile
+            One last step to register your flat in the society ledger
           </Text>
         </View>
 
-        <Card style={styles.card}>
+        <Card style={[styles.card, { 
+          borderRadius: 24, 
+          borderWidth: theme.dark ? 1 : 0, 
+          borderColor: 'rgba(255, 255, 255, 0.08)',
+          backgroundColor: theme.colors.elevation.level1
+        }]}>
           <Card.Content style={styles.cardContent}>
             {error && (
               <HelperText type="error" visible={!!error} style={styles.errorText}>
@@ -200,46 +315,117 @@ export const ProfileCompletionScreen: React.FC = () => {
               </HelperText>
             )}
 
+            {societyDetails && (
+              <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer, marginBottom: 16, borderRadius: 12 }]}>
+                <Card.Content style={styles.infoContent}>
+                  <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
+                    ✅ Verified Society Details
+                  </Text>
+                  <Text variant="titleMedium" style={{ fontWeight: 'bold', marginTop: 4, color: '#FFFFFF' }}>
+                    {societyDetails.name}
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
+                    {societyDetails.city}, {societyDetails.state}
+                  </Text>
+                </Card.Content>
+              </Card>
+            )}
+
             <TextInput
-              label="Enter Society Code"
-              placeholder="e.g. SS-MH-2847"
-              value={societyCode}
-              onChangeText={(text) => {
-                const clean = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-                let formatted = clean;
-                if (clean.length > 8) {
-                  formatted = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 6) + '-' + clean.substring(6, 8) + '-' + clean.substring(8, 12);
-                } else if (clean.length > 4) {
-                  formatted = clean.substring(0, 2) + '-' + clean.substring(2, 4) + '-' + clean.substring(4, 8);
-                } else if (clean.length > 2) {
-                  formatted = clean.substring(0, 2) + '-' + clean.substring(2);
-                }
-                setSocietyCode(formatted);
-                setError(null);
-              }}
+              label="Full Name"
+              placeholder="e.g. Amit Patel"
+              value={fullName}
+              onChangeText={setFullName}
               mode="outlined"
               style={styles.input}
-              autoCapitalize="characters"
-              left={<TextInput.Icon icon="key" />}
-              right={<TextInput.Icon icon="qrcode-scan" onPress={startQRScanner} />}
+              activeOutlineColor="#00D4AA"
+              left={<TextInput.Icon icon="account" />}
             />
+
+            <TextInput
+              label="Phone Number"
+              placeholder="10-digit mobile"
+              value={phone}
+              onChangeText={text => setPhone(text.replace(/[^0-9]/g, ''))}
+              keyboardType="phone-pad"
+              maxLength={10}
+              mode="outlined"
+              style={styles.input}
+              activeOutlineColor="#00D4AA"
+              left={<TextInput.Icon icon="phone" />}
+            />
+
+            <Text variant="labelLarge" style={[styles.label, { color: theme.colors.onSurface, marginTop: 8 }]}>Your Roster Rank</Text>
+            <SegmentedButtons
+              value={role}
+              onValueChange={(val) => setRole(val as UserRole)}
+              buttons={[
+                { value: 'owner', label: 'Flat Owner', icon: 'home-lock' },
+                { value: 'renter', label: 'Renter / Tenant', icon: 'home-account' },
+                { value: 'guard', label: 'Guard', icon: 'shield-account' },
+              ]}
+              style={styles.segmentedButtons}
+            />
+
+            {role !== 'guard' && (
+              <View style={styles.row}>
+                <TextInput
+                  label="Wing"
+                  placeholder="e.g. B"
+                  value={wing}
+                  onChangeText={setWing}
+                  mode="outlined"
+                  activeOutlineColor="#00D4AA"
+                  style={[styles.input, styles.halfInput]}
+                  autoCapitalize="characters"
+                />
+                <TextInput
+                  label="Flat Number"
+                  placeholder="e.g. 302"
+                  value={flatNumber}
+                  onChangeText={setFlatNumber}
+                  mode="outlined"
+                  activeOutlineColor="#00D4AA"
+                  keyboardType="numeric"
+                  style={[styles.input, styles.halfInput]}
+                />
+              </View>
+            )}
 
             <Button
               mode="contained"
-              onPress={handleValidateCode}
-              loading={validatingCode}
-              disabled={validatingCode}
-              style={styles.button}
-              icon="check-decagram"
+              onPress={handleSubmit}
+              loading={loading}
+              disabled={loading}
+              buttonColor="#00D4AA"
+              textColor="#09090b"
+              style={[styles.button, { borderRadius: 28, paddingVertical: 2 }]}
+              labelStyle={{ fontWeight: 'bold' }}
+              icon="check-circle"
             >
-              Validate Code
+              Complete Setup & Join
+            </Button>
+
+            <Button
+              mode="text"
+              onPress={() => {
+                setSocietyValidated(false);
+                setSocietyCode('');
+                setSocietyDetails(null);
+              }}
+              textColor="#00D4AA"
+              labelStyle={{ fontWeight: 'bold' }}
+              style={{ marginTop: 8 }}
+            >
+              Change Society Code
             </Button>
 
             <Button
               mode="text"
               onPress={signOut}
               textColor={theme.colors.error}
-              style={{ marginTop: 8 }}
+              labelStyle={{ fontWeight: 'bold' }}
+              style={{ marginTop: 4 }}
               icon="logout"
             >
               Cancel & Sign Out
@@ -247,135 +433,7 @@ export const ProfileCompletionScreen: React.FC = () => {
           </Card.Content>
         </Card>
       </ScrollView>
-    );
-  }
-
-  return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        <Text variant="headlineMedium" style={styles.title}>Complete Profile</Text>
-        <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.outline }]}>
-          One last step to register your flat in the society ledger
-        </Text>
-      </View>
-
-      <Card style={styles.card}>
-        <Card.Content style={styles.cardContent}>
-          {error && (
-            <HelperText type="error" visible={!!error} style={styles.errorText}>
-              {error}
-            </HelperText>
-          )}
-
-          {societyDetails && (
-            <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer, marginBottom: 16 }]}>
-              <Card.Content style={styles.infoContent}>
-                <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
-                  ✅ Verified Society Details
-                </Text>
-                <Text variant="titleMedium" style={{ fontWeight: 'bold', marginTop: 4, color: '#FFFFFF' }}>
-                  {societyDetails.name}
-                </Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
-                  {societyDetails.city}, {societyDetails.state}
-                </Text>
-              </Card.Content>
-            </Card>
-          )}
-
-          <TextInput
-            label="Full Name"
-            placeholder="e.g. Amit Patel"
-            value={fullName}
-            onChangeText={setFullName}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="account" />}
-          />
-
-          <TextInput
-            label="Phone Number"
-            placeholder="10-digit mobile"
-            value={phone}
-            onChangeText={text => setPhone(text.replace(/[^0-9]/g, ''))}
-            keyboardType="phone-pad"
-            maxLength={10}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="phone" />}
-          />
-
-          <Text variant="labelLarge" style={styles.label}>Your Roster Rank</Text>
-          <SegmentedButtons
-            value={role}
-            onValueChange={(val) => setRole(val as UserRole)}
-            buttons={[
-              { value: 'owner', label: 'Flat Owner', icon: 'home-lock' },
-              { value: 'renter', label: 'Renter / Tenant', icon: 'home-account' },
-              { value: 'guard', label: 'Guard', icon: 'shield-account' },
-            ]}
-            style={styles.segmentedButtons}
-          />
-
-          {role !== 'guard' && (
-            <View style={styles.row}>
-              <TextInput
-                label="Wing"
-                placeholder="e.g. B"
-                value={wing}
-                onChangeText={setWing}
-                mode="outlined"
-                style={[styles.input, styles.halfInput]}
-                autoCapitalize="characters"
-              />
-              <TextInput
-                label="Flat Number"
-                placeholder="e.g. 302"
-                value={flatNumber}
-                onChangeText={setFlatNumber}
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, styles.halfInput]}
-              />
-            </View>
-          )}
-
-          <Button
-            mode="contained"
-            onPress={handleSubmit}
-            loading={loading}
-            disabled={loading}
-            style={styles.button}
-            icon="check-circle"
-          >
-            Complete Setup & Join
-          </Button>
-
-          <Button
-            mode="text"
-            onPress={() => {
-              setSocietyValidated(false);
-              setSocietyCode('');
-              setSocietyDetails(null);
-            }}
-            textColor={theme.colors.outline}
-            style={{ marginTop: 8 }}
-          >
-            Change Society Code
-          </Button>
-
-          <Button
-            mode="text"
-            onPress={signOut}
-            textColor={theme.colors.error}
-            style={{ marginTop: 4 }}
-            icon="logout"
-          >
-            Cancel & Sign Out
-          </Button>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+    </View>
   );
 };
 
