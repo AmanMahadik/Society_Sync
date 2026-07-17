@@ -65,10 +65,12 @@ ALTER TABLE public.security_anomalies ENABLE ROW LEVEL SECURITY;
 -- =================================================================
 
 -- Portal Audit Log
+DROP POLICY IF EXISTS "Allow authenticated users to insert audit logs" ON public.portal_audit_log;
 CREATE POLICY "Allow authenticated users to insert audit logs" ON public.portal_audit_log
   FOR INSERT TO authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow master_admins to select all audit logs" ON public.portal_audit_log;
 CREATE POLICY "Allow master_admins to select all audit logs" ON public.portal_audit_log
   FOR SELECT TO authenticated
   USING (
@@ -76,26 +78,31 @@ CREATE POLICY "Allow master_admins to select all audit logs" ON public.portal_au
   );
 
 -- Master Recovery Settings
+DROP POLICY IF EXISTS "Master admins manage recovery settings" ON public.master_recovery_settings;
 CREATE POLICY "Master admins manage recovery settings" ON public.master_recovery_settings
   FOR ALL TO authenticated
   USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'master_admin')
   WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'master_admin');
 
 -- Master Recovery Requests
+DROP POLICY IF EXISTS "Allow public select recovery requests during forgot password flow" ON public.master_recovery_requests;
 CREATE POLICY "Allow public select recovery requests during forgot password flow" ON public.master_recovery_requests
   FOR SELECT TO anon, authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow public insert recovery requests during forgot password flow" ON public.master_recovery_requests;
 CREATE POLICY "Allow public insert recovery requests during forgot password flow" ON public.master_recovery_requests
   FOR INSERT TO anon, authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow public update recovery requests during forgot password flow" ON public.master_recovery_requests;
 CREATE POLICY "Allow public update recovery requests during forgot password flow" ON public.master_recovery_requests
   FOR UPDATE TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
 -- Security Anomalies
+DROP POLICY IF EXISTS "Master admins manage security anomalies" ON public.security_anomalies;
 CREATE POLICY "Master admins manage security anomalies" ON public.security_anomalies
   FOR ALL TO authenticated
   USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'master_admin')
