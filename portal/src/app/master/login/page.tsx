@@ -13,10 +13,41 @@ export default function MasterLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lockoutActive, setLockoutActive] = useState(false);
+  const [lockoutExpiry, setLockoutExpiry] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const expiry = localStorage.getItem('master_lockout_time');
+      if (expiry) {
+        const expiryTime = parseInt(expiry);
+        if (Date.now() < expiryTime) {
+          setLockoutActive(true);
+          setLockoutExpiry(new Date(expiryTime).toLocaleString());
+          setErrorMsg(`SECURITY BLOCK: This device is locked out from Master Admin access. Lockout expires at: ${new Date(expiryTime).toLocaleString()}`);
+        } else {
+          localStorage.removeItem('master_lockout_time');
+          localStorage.removeItem('master_login_attempts');
+        }
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+
+    if (email.trim().toLowerCase() === 'societysync5@gmail.com') {
+      const expiry = localStorage.getItem('master_lockout_time');
+      if (expiry) {
+        const expiryTime = parseInt(expiry);
+        if (Date.now() < expiryTime) {
+          setErrorMsg(`DEVICE LOCKED OUT: Access blocked due to previous failed attempts. Lockout expires at: ${new Date(expiryTime).toLocaleString()}`);
+          setLockoutActive(true);
+          return;
+        }
+      }
+    }
 
     setLoading(true);
     setErrorMsg(null);
@@ -39,11 +70,33 @@ export default function MasterLoginPage() {
         throw new Error('Access Denied. Only seeded master admin accounts can log in here.');
       }
 
+      // Reset lockout on successful login
+      if (email.trim().toLowerCase() === 'societysync5@gmail.com') {
+        localStorage.removeItem('master_login_attempts');
+        localStorage.removeItem('master_lockout_time');
+      }
+
       router.push('/master/dashboard');
 
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || 'Invalid master admin credentials.');
+      
+      if (email.trim().toLowerCase() === 'societysync5@gmail.com') {
+        const currentAttempts = parseInt(localStorage.getItem('master_login_attempts') || '0') + 1;
+        localStorage.setItem('master_login_attempts', currentAttempts.toString());
+        
+        if (currentAttempts >= 3) {
+          const lockoutTime = Date.now() + 24 * 60 * 60 * 1000; // 24-hour lockout
+          localStorage.setItem('master_lockout_time', lockoutTime.toString());
+          setLockoutActive(true);
+          setLockoutExpiry(new Date(lockoutTime).toLocaleString());
+          setErrorMsg(`SECURITY BLOCK: 3 failed login attempts detected. This device is locked out from Master Admin access for 24 hours. Lockout expires at: ${new Date(lockoutTime).toLocaleString()}`);
+        } else {
+          setErrorMsg(`Invalid master admin credentials. (Attempt ${currentAttempts} of 3 before device lockout)`);
+        }
+      } else {
+        setErrorMsg(err.message || 'Invalid master admin credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -118,10 +171,10 @@ export default function MasterLoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-3.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 glow-hover"
+            disabled={loading || lockoutActive}
+            className="w-full py-3.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Authenticating...' : 'ACCESS CONTROLLER'} <ArrowRight className="h-5 w-5" />
+            {lockoutActive ? 'ACCESS BLOCKED' : (loading ? 'Authenticating...' : 'ACCESS CONTROLLER')} <ArrowRight className="h-5 w-5" />
           </button>
         </form>
 
