@@ -22,8 +22,11 @@ function AppWithTheme() {
   // Biometric App Lock state
   const [isUnlocked, setIsUnlocked] = React.useState(false);
   const appState = React.useRef(AppState.currentState);
+  const isAuthenticatingRef = React.useRef(false);
 
   const authenticate = async () => {
+    if (isAuthenticatingRef.current) return;
+    isAuthenticatingRef.current = true;
     try {
       // Check if user just logged in with biometrics on LoginScreen
       const justAuth = await AsyncStorage.getItem('just_authenticated_biometrics');
@@ -57,6 +60,8 @@ function AppWithTheme() {
     } catch (e) {
       console.warn('Biometric auth failed:', e);
       setIsUnlocked(true); // Fail-safe fallback
+    } finally {
+      isAuthenticatingRef.current = false;
     }
   };
 
@@ -74,9 +79,14 @@ function AppWithTheme() {
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
+        // Skip re-locking if biometric prompt itself triggered the app state change
+        if (isAuthenticatingRef.current) {
+          appState.current = nextAppState;
+          return;
+        }
+
         const enabled = await AsyncStorage.getItem('biometrics_enabled');
         if (enabled === 'true' && user && profile && profile.status === 'approved') {
-          setIsUnlocked(false);
           setTimeout(() => {
             authenticate();
           }, 300);
