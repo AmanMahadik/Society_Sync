@@ -25,6 +25,14 @@ function AppWithTheme() {
 
   const authenticate = async () => {
     try {
+      // Check if user just logged in with biometrics on LoginScreen
+      const justAuth = await AsyncStorage.getItem('just_authenticated_biometrics');
+      if (justAuth && Date.now() - parseInt(justAuth) < 15000) {
+        await AsyncStorage.removeItem('just_authenticated_biometrics');
+        setIsUnlocked(true);
+        return;
+      }
+
       const enabled = await AsyncStorage.getItem('biometrics_enabled');
       if (enabled === 'true') {
         const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -103,7 +111,7 @@ function AppWithTheme() {
       if (!isPendingApproval) {
         router.replace('/pending-approval' as any);
       }
-    } else {
+    } else if (isUnlocked) {
       if (!segments[0]) return;
       const allowedScreens = [
         'settings', 
@@ -122,7 +130,7 @@ function AppWithTheme() {
         router.replace('/(tabs)' as any);
       }
     }
-  }, [user, profile, loading, segments]);
+  }, [user, profile, loading, segments, isUnlocked]);
 
   if (user && profile && profile.status === 'approved' && !isUnlocked) {
     return (

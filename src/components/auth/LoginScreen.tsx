@@ -55,12 +55,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
           fallbackLabel: 'Use PIN/Password',
         });
         if (result.success) {
+          await AsyncStorage.setItem('just_authenticated_biometrics', Date.now().toString());
           setEmail(savedEmail);
           setPassword(savedPassword);
           setLoading(true);
           const { error: signInError } = await signIn(savedEmail, savedPassword);
           setLoading(false);
           if (signInError) {
+            await AsyncStorage.removeItem('just_authenticated_biometrics');
             showError(getErrorMessage(signInError));
           }
         }
@@ -111,6 +113,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
       try {
         await AsyncStorage.setItem('saved_email', email);
         await AsyncStorage.setItem('saved_password', password);
+        await AsyncStorage.setItem('just_authenticated_biometrics', Date.now().toString());
       } catch (e) {
         console.warn('Failed to save credentials:', e);
       }

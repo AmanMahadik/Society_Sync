@@ -86,6 +86,9 @@ export const ProfileScreen: React.FC = () => {
         });
         if (result.success) {
           await AsyncStorage.setItem('biometrics_enabled', 'true');
+          if (user?.email) {
+            await AsyncStorage.setItem('saved_email', user.email);
+          }
           setBiometricsEnabled(true);
           showToast('Biometric app lock enabled!');
         }
