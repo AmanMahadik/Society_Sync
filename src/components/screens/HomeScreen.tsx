@@ -1087,7 +1087,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
         </View>
 
         {/* QUICK STATS */}
-        {profile?.role !== 'guard' && (
+        {profile?.role === 'admin' && (
           <View style={{ marginVertical: 8, marginBottom: 20 }}>
             <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: theme.dark ? '#A1A1AA' : '#4B5563', textTransform: 'uppercase', marginBottom: 12, paddingHorizontal: 4 }}>
               Quick Stats
