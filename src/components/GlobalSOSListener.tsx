@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useNotifications } from '../lib/notification-context';
 import { supabase } from '../lib/supabase';
@@ -11,9 +11,40 @@ export const GlobalSOSListener: React.FC = () => {
   const { addNotification, refreshSOSCount } = useNotifications();
   const router = useRouter();
 
+  const currentSocietyIdRef = useRef<string | null>(null);
+  const activeChannelsRef = useRef<{
+    sos?: any;
+    parking?: any;
+    announcement?: any;
+    chat?: any;
+    visitor?: any;
+  }>({});
+
+  const cleanupChannels = () => {
+    Object.entries(activeChannelsRef.current).forEach(([key, chan]) => {
+      if (chan) {
+        supabase.removeChannel(chan).catch(err => console.warn(`Error removing channel ${key}:`, err));
+      }
+    });
+    activeChannelsRef.current = {};
+    currentSocietyIdRef.current = null;
+  };
+
   // 1. Supabase Realtime Listeners (Insert / Update)
   useEffect(() => {
-    if (!user || !profile) return;
+    if (!user || !profile || !profile.society_id) {
+      cleanupChannels();
+      return;
+    }
+
+    // Skip re-subscribing if already listening to the same society
+    if (currentSocietyIdRef.current === profile.society_id && Object.keys(activeChannelsRef.current).length > 0) {
+      return;
+    }
+
+    // Clean up any old active channels before subscribing
+    cleanupChannels();
+    currentSocietyIdRef.current = profile.society_id;
 
     // A. SOS Alerts Realtime Channel
     const channel = supabase
@@ -95,6 +126,7 @@ export const GlobalSOSListener: React.FC = () => {
         }
       )
       .subscribe();
+    activeChannelsRef.current.sos = channel;
 
     // B. Parking Bookings Realtime Channel (Notify guard for any new parking allocation/request)
     const parkingChannel = supabase
@@ -133,6 +165,7 @@ export const GlobalSOSListener: React.FC = () => {
         }
       )
       .subscribe();
+    activeChannelsRef.current.parking = parkingChannel;
 
     // C. Announcements Realtime Channel (Notify all roles when a new announcement is published)
     const announcementChannel = supabase
@@ -157,6 +190,7 @@ export const GlobalSOSListener: React.FC = () => {
         }
       )
       .subscribe();
+    activeChannelsRef.current.announcement = announcementChannel;
 
     // D. Chat Messages Realtime Channel (Notify all users when a new chat message is sent)
     const chatChannel = supabase
@@ -214,6 +248,7 @@ export const GlobalSOSListener: React.FC = () => {
         }
       )
       .subscribe();
+    activeChannelsRef.current.chat = chatChannel;
 
     // E. Visitors Realtime Channel (Notify resident when their guest checks in)
     const visitorChannel = supabase
@@ -254,13 +289,10 @@ export const GlobalSOSListener: React.FC = () => {
         }
       )
       .subscribe();
+    activeChannelsRef.current.visitor = visitorChannel;
 
     return () => {
-      supabase.removeChannel(channel);
-      supabase.removeChannel(parkingChannel);
-      supabase.removeChannel(announcementChannel);
-      supabase.removeChannel(chatChannel);
-      supabase.removeChannel(visitorChannel);
+      cleanupChannels();
     };
   }, [user, profile, addNotification, refreshSOSCount]);
 

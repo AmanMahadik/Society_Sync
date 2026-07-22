@@ -79,8 +79,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     setNotifications((prev) => {
-      // Prevent duplicates of the same active complaint ID
+      // 1. Prevent duplicates of the same active complaint ID
       if (n.complaintId && prev.some((existing) => existing.complaintId === n.complaintId && existing.type === n.type)) {
+        return prev;
+      }
+      // 2. Prevent exact duplicate messages within the last 3 seconds
+      if (prev.some((existing) => existing.message === n.message && existing.subtext === n.subtext && (new Date().getTime() - existing.created_at.getTime() < 3000))) {
         return prev;
       }
       return [...prev, newNotification];
