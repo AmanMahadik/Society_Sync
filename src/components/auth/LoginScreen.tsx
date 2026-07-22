@@ -21,6 +21,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
 
   // Biometrics login state
   const [hasBiometrics, setHasBiometrics] = useState(false);
+  const isBiometricLoggingInRef = React.useRef(false);
 
   React.useEffect(() => {
     const loadSavedCredentials = async () => {
@@ -46,6 +47,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
   }, []);
 
   const triggerBiometricLogin = async () => {
+    if (isBiometricLoggingInRef.current) return;
+    isBiometricLoggingInRef.current = true;
     try {
       const savedEmail = await AsyncStorage.getItem('saved_email');
       const savedPassword = await AsyncStorage.getItem('saved_password');
@@ -53,6 +56,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
         const result = await LocalAuthentication.authenticateAsync({
           promptMessage: 'Sign in to SocietySync',
           fallbackLabel: 'Use PIN/Password',
+          disableDeviceFallback: false,
         });
         if (result.success) {
           await AsyncStorage.setItem('just_authenticated_biometrics', Date.now().toString());
@@ -69,6 +73,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
       }
     } catch (e) {
       console.warn('Biometric sign-in error:', e);
+    } finally {
+      isBiometricLoggingInRef.current = false;
     }
   };
 

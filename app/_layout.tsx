@@ -25,6 +25,7 @@ function AppWithTheme() {
   const isAuthenticatingRef = React.useRef(false);
 
   const authenticate = async () => {
+    if (isUnlocked) return; // Block calling if already successfully authenticated
     if (isAuthenticatingRef.current) return;
     isAuthenticatingRef.current = true;
     try {
@@ -45,6 +46,7 @@ function AppWithTheme() {
           const result = await LocalAuthentication.authenticateAsync({
             promptMessage: 'Unlock SocietySync',
             fallbackLabel: 'Use PIN/Password',
+            disableDeviceFallback: false,
           });
           if (result.success) {
             setIsUnlocked(true);
@@ -67,11 +69,13 @@ function AppWithTheme() {
 
   useEffect(() => {
     if (user && profile && profile.status === 'approved') {
-      authenticate();
+      if (!isUnlocked) {
+        authenticate();
+      }
     } else {
       setIsUnlocked(true);
     }
-  }, [user, profile]);
+  }, [user, profile, isUnlocked]);
 
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
@@ -86,7 +90,7 @@ function AppWithTheme() {
         }
 
         const enabled = await AsyncStorage.getItem('biometrics_enabled');
-        if (enabled === 'true' && user && profile && profile.status === 'approved') {
+        if (enabled === 'true' && user && profile && profile.status === 'approved' && !isUnlocked) {
           setTimeout(() => {
             authenticate();
           }, 300);

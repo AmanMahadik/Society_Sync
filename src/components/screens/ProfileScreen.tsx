@@ -71,7 +71,11 @@ export const ProfileScreen: React.FC = () => {
     loadBiometrics();
   }, []);
 
+  const isTogglingBiometricsRef = React.useRef(false);
+
   const handleToggleBiometrics = async (newValue: boolean) => {
+    if (isTogglingBiometricsRef.current) return;
+    isTogglingBiometricsRef.current = true;
     try {
       if (newValue) {
         const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -83,6 +87,7 @@ export const ProfileScreen: React.FC = () => {
 
         const result = await LocalAuthentication.authenticateAsync({
           promptMessage: 'Authenticate to enable biometric app lock',
+          disableDeviceFallback: false,
         });
         if (result.success) {
           await AsyncStorage.setItem('biometrics_enabled', 'true');
@@ -99,6 +104,8 @@ export const ProfileScreen: React.FC = () => {
       }
     } catch (e) {
       console.warn(e);
+    } finally {
+      isTogglingBiometricsRef.current = false;
     }
   };
 
