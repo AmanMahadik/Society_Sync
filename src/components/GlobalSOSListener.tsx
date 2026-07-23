@@ -20,6 +20,10 @@ export const GlobalSOSListener: React.FC = () => {
     visitor?: any;
   }>({});
 
+  const lastCheckedIdRef = useRef(0);
+  const lastCheckedParkingIdRef = useRef(0);
+  const lastCheckedAnnouncementIdRef = useRef(0);
+
   const cleanupChannels = () => {
     Object.entries(activeChannelsRef.current).forEach(([key, chan]) => {
       if (chan) {
@@ -28,6 +32,9 @@ export const GlobalSOSListener: React.FC = () => {
     });
     activeChannelsRef.current = {};
     currentSocietyIdRef.current = null;
+    lastCheckedIdRef.current = 0;
+    lastCheckedParkingIdRef.current = 0;
+    lastCheckedAnnouncementIdRef.current = 0;
   };
 
   // 1. Supabase Realtime Listeners (Insert / Update)
@@ -295,14 +302,9 @@ export const GlobalSOSListener: React.FC = () => {
       cleanupChannels();
     };
   }, [user, profile, addNotification, refreshSOSCount]);
-
   // 2. OFFLINE FALLBACK POLLER (Polls every 30s in case Realtime WebSockets disconnect)
   useEffect(() => {
-    if (!user || !profile) return;
-
-    let lastCheckedId = 0;
-    let lastCheckedParkingId = 0;
-    let lastCheckedAnnouncementId = 0;
+    if (!user || !profile || !profile.society_id) return;
 
     const performOfflinePollCheck = async () => {
       try {
@@ -314,13 +316,13 @@ export const GlobalSOSListener: React.FC = () => {
             .eq('type', 'security')
             .eq('status', 'pending')
             .eq('society_id', profile.society_id)
-            .gt('id', lastCheckedId);
+            .gt('id', lastCheckedIdRef.current);
 
           if (!error && data && data.length > 0) {
             const maxId = Math.max(...data.map(d => Number(d.id)));
             
             // Only notify if we already established a baseline to avoid alerts on startup
-            if (lastCheckedId > 0) {
+            if (lastCheckedIdRef.current > 0) {
               data.forEach(newRecord => {
                 if (profile.role === 'guard') {
                   addNotification({
@@ -351,8 +353,8 @@ export const GlobalSOSListener: React.FC = () => {
                 }
               });
             }
-            lastCheckedId = maxId;
-          } else if (!error && lastCheckedId === 0) {
+            lastCheckedIdRef.current = maxId;
+          } else if (!error && lastCheckedIdRef.current === 0) {
             // Establish baseline
             const { data: allPending } = await supabase
               .from('complaints')
@@ -361,9 +363,9 @@ export const GlobalSOSListener: React.FC = () => {
               .eq('status', 'pending')
               .eq('society_id', profile.society_id);
             if (allPending && allPending.length > 0) {
-              lastCheckedId = Math.max(...allPending.map(d => Number(d.id)));
+              lastCheckedIdRef.current = Math.max(...allPending.map(d => Number(d.id)));
             } else {
-              lastCheckedId = 1;
+              lastCheckedIdRef.current = 1;
             }
           }
         }
@@ -374,12 +376,12 @@ export const GlobalSOSListener: React.FC = () => {
             .from('parking_requests')
             .select('*')
             .eq('society_id', profile.society_id)
-            .gt('id', lastCheckedParkingId);
+            .gt('id', lastCheckedParkingIdRef.current);
 
           if (!parkingError && parkingData && parkingData.length > 0) {
             const maxId = Math.max(...parkingData.map(d => Number(d.id)));
             
-            if (lastCheckedParkingId > 0) {
+            if (lastCheckedParkingIdRef.current > 0) {
               parkingData.forEach(async (newRecord) => {
                 const { data: userProfile } = await supabase
                   .from('profiles')
@@ -403,16 +405,16 @@ export const GlobalSOSListener: React.FC = () => {
                 });
               });
             }
-            lastCheckedParkingId = maxId;
-          } else if (!parkingError && lastCheckedParkingId === 0) {
+            lastCheckedParkingIdRef.current = maxId;
+          } else if (!parkingError && lastCheckedParkingIdRef.current === 0) {
             const { data: allPendingParking } = await supabase
               .from('parking_requests')
               .select('id')
               .eq('society_id', profile.society_id);
             if (allPendingParking && allPendingParking.length > 0) {
-              lastCheckedParkingId = Math.max(...allPendingParking.map(d => Number(d.id)));
+              lastCheckedParkingIdRef.current = Math.max(...allPendingParking.map(d => Number(d.id)));
             } else {
-              lastCheckedParkingId = 1;
+              lastCheckedParkingIdRef.current = 1;
             }
           }
         }
@@ -422,12 +424,12 @@ export const GlobalSOSListener: React.FC = () => {
           .from('announcements')
           .select('*')
           .eq('society_id', profile.society_id)
-          .gt('id', lastCheckedAnnouncementId);
+          .gt('id', lastCheckedAnnouncementIdRef.current);
 
         if (!announcementError && announcementData && announcementData.length > 0) {
           const maxId = Math.max(...announcementData.map(d => Number(d.id)));
           
-          if (lastCheckedAnnouncementId > 0) {
+          if (lastCheckedAnnouncementIdRef.current > 0) {
             announcementData.forEach((newRecord) => {
               addNotification({
                 type: 'status_update',
@@ -443,16 +445,16 @@ export const GlobalSOSListener: React.FC = () => {
               });
             });
           }
-          lastCheckedAnnouncementId = maxId;
-        } else if (!announcementError && lastCheckedAnnouncementId === 0) {
+          lastCheckedAnnouncementIdRef.current = maxId;
+        } else if (!announcementError && lastCheckedAnnouncementIdRef.current === 0) {
           const { data: allAnnouncements } = await supabase
             .from('announcements')
             .select('id')
             .eq('society_id', profile.society_id);
           if (allAnnouncements && allAnnouncements.length > 0) {
-            lastCheckedAnnouncementId = Math.max(...allAnnouncements.map(d => Number(d.id)));
+            lastCheckedAnnouncementIdRef.current = Math.max(...allAnnouncements.map(d => Number(d.id)));
           } else {
-            lastCheckedAnnouncementId = 1;
+            lastCheckedAnnouncementIdRef.current = 1;
           }
         }
       } catch (e) {

@@ -138,6 +138,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => clearInterval(interval);
   }, [refreshSOSCount]);
 
+  // Clear in-app notifications on sign out/session expiration
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+    }
+  }, [user]);
+
   return (
     <NotificationContext.Provider
       value={{
