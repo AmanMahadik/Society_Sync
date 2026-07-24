@@ -387,7 +387,7 @@ export default function ChandaDashboard() {
   };
 
   const handleDeleteCampaign = async (campaignId: string) => {
-    if (!window.confirm('Are you sure you want to permanently delete this campaign?')) return;
+    if (!window.confirm('⚠️ WARNING: Deleting this campaign will PERMANENTLY erase all online payment transactions, offline collections, receipts, and history logs associated with it from the database. This action CANNOT be undone.\n\nAre you sure you want to permanently delete this campaign along with all its logs and records?')) return;
     try {
       const res = await fetch(`/api/chanda/campaigns/${campaignId}`, { method: 'DELETE' });
       if (res.ok) {

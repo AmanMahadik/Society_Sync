@@ -136,27 +136,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Only draft or cancelled campaigns can be deleted.' }, { status: 400, headers: corsHeaders });
     }
 
-    // 2. Verify if any active financial contributions exist
-    const { count: onlinePaidCount, error: countErr } = await supabaseServer
-      .from('chanda_payments')
-      .select('id', { count: 'exact', head: true })
-      .eq('campaign_id', id)
-      .in('status', ['paid', 'refunded']);
-
-    if (countErr) throw countErr;
-
-    const { count: offlineVerifiedCount, error: offlineErr } = await supabaseServer
-      .from('chanda_offline_contributions')
-      .select('id', { count: 'exact', head: true })
-      .eq('campaign_id', id)
-      .eq('status', 'verified');
-
-    if (offlineErr) throw offlineErr;
-
-    if ((onlinePaidCount && onlinePaidCount > 0) || (offlineVerifiedCount && offlineVerifiedCount > 0)) {
-      return NextResponse.json({ error: 'Cannot delete campaign: verified payment records exist.' }, { status: 400, headers: corsHeaders });
-    }
-
     // 3. Delete
     const { error: deleteErr } = await supabaseServer
       .from('chanda_campaigns')
