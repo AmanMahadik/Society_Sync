@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, RefreshControl, Linking } from 'react-native';
+import { StyleSheet, View, ScrollView, RefreshControl, Linking, Alert } from 'react-native';
 import { Appbar, Card, Text, Badge, IconButton, useTheme, ActivityIndicator } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -21,6 +21,7 @@ export default function ChandaHistoryScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { user } = useAuth();
+  const { status } = useLocalSearchParams<{ status?: string }>();
 
   const [history, setHistory] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +79,17 @@ export default function ChandaHistoryScreen() {
   useEffect(() => {
     fetchHistory();
   }, [user]);
+
+  useEffect(() => {
+    if (status === 'success') {
+      Alert.alert(
+        'Payment Success',
+        'Your contribution was processed successfully! The receipt has been generated and is ready to download.'
+      );
+      fetchHistory();
+      router.setParams({ status: undefined } as any);
+    }
+  }, [status]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -3,6 +3,7 @@ import { StyleSheet, View, ScrollView, Alert, TextInput, NativeModules } from 'r
 import { Appbar, Card, Text, Button, useTheme, ActivityIndicator, HelperText } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { formatINR } from '@/lib/utils';
@@ -94,9 +95,21 @@ export default function ChandaDetailScreen() {
     }
   };
 
+  const { status } = useLocalSearchParams<{ status?: string }>();
+
   useEffect(() => {
     fetchDetails();
   }, [campaignId, profile]);
+
+  useEffect(() => {
+    if (status === 'failed') {
+      Alert.alert('Payment Failed', 'The payment process was not completed or failed. Please try again.');
+      router.setParams({ status: undefined } as any);
+    } else if (status === 'cancelled') {
+      Alert.alert('Payment Cancelled', 'The payment process was cancelled.');
+      router.setParams({ status: undefined } as any);
+    }
+  }, [status]);
 
   const handlePayOnline = async () => {
     const payAmount = Number(amount);
@@ -130,86 +143,20 @@ export default function ChandaDetailScreen() {
         throw new Error(orderData.error || 'Failed to create order');
       }
 
-      if (RazorpayCheckout && NativeModules.RazorpayCheckout) {
-        const checkoutOptions = {
-          key: orderData.keyId,
-          order_id: orderData.orderId,
-          amount: orderData.amount * 100,
-          currency: 'INR',
-          name: 'SocietySync',
-          description: campaign.title,
-          prefill: {
-            name: profile?.full_name || '',
-            email: profile?.email || '',
-            contact: profile?.phone || '',
-          },
-          theme: { color: theme.colors.primary },
-        };
+      // Redirect to unified Web Pay Desk
+      const payUrl = `https://society-sync-portal.vercel.app/pay?orderId=${
+        orderData.orderId
+      }&keyId=${
+        orderData.keyId
+      }&amount=${
+        orderData.amount
+      }&name=${encodeURIComponent(profile?.full_name || '')}&email=${encodeURIComponent(
+        profile?.email || ''
+      )}&contact=${encodeURIComponent(
+        profile?.phone || ''
+      )}&campaignTitle=${encodeURIComponent(campaign.title)}`;
 
-        try {
-          RazorpayCheckout.open(checkoutOptions)
-            .then(async (data: any) => {
-              await fetch('https://society-sync-portal.vercel.app/api/chanda/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  razorpay_order_id: data.razorpay_order_id,
-                  razorpay_payment_id: data.razorpay_payment_id,
-                  razorpay_signature: data.razorpay_signature,
-                }),
-              });
-              Alert.alert('Success', 'Payment initiated successfully! Receipt will be generated shortly.');
-              router.push('/chanda-history' as any);
-            })
-            .catch((err: any) => {
-              console.error('Checkout error:', err);
-              const errMsg = err?.description || 
-                             (err && typeof err === 'object' ? JSON.stringify(err) : String(err)) || 
-                             'Checkout was dismissed';
-              Alert.alert('Payment Failed', errMsg);
-            });
-        } catch (e: any) {
-          console.error('Sync checkout error:', e);
-          Alert.alert(
-            'Expo Go Native Library Conflict',
-            'Online payment utilizes a native mobile library wrapper (react-native-razorpay) which cannot run inside the default Expo Go app. To test, please use the Simulator Mode or compile the app using a Custom Dev Client.'
-          );
-        }
-      } else {
-        Alert.alert(
-          'Simulator Mode',
-          'RazorpayCheckout native module is not installed. Simulate a successful payment?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Simulate Success',
-              onPress: async () => {
-                const mockWebhookData = {
-                  event: 'payment.captured',
-                  payload: {
-                    payment: {
-                      entity: {
-                        order_id: orderData.orderId,
-                        id: `pay_mock_${Math.random().toString(36).substring(2, 11)}`,
-                        amount: orderData.amount * 100,
-                      },
-                    },
-                  },
-                };
-                
-                await fetch('https://society-sync-portal.vercel.app/api/chanda/webhook', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(mockWebhookData),
-                });
-
-                Alert.alert('Success', 'Mock payment verified! Receipt generated.');
-                router.push('/chanda-history' as any);
-              },
-            },
-          ]
-        );
-      }
+      await WebBrowser.openBrowserAsync(payUrl);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Payment process failed.');
     } finally {
