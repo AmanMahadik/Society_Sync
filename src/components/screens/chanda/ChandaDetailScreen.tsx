@@ -49,6 +49,7 @@ export default function ChandaDetailScreen() {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [alreadyPaid, setAlreadyPaid] = useState(false);
 
   const fetchDetails = async () => {
     try {
@@ -87,6 +88,25 @@ export default function ChandaDetailScreen() {
           setFlatId(flatData?.id || null);
         }
       }
+
+      if (user?.id) {
+        const { data: onlinePaid } = await supabase
+          .from('chanda_payments')
+          .select('id')
+          .eq('campaign_id', campaignId)
+          .eq('resident_id', user.id)
+          .eq('status', 'paid');
+
+        const { data: offlineApproved } = await supabase
+          .from('chanda_offline_contributions')
+          .select('id')
+          .eq('campaign_id', campaignId)
+          .eq('resident_id', user.id)
+          .eq('status', 'verified');
+
+        const hasPaid = (onlinePaid && onlinePaid.length > 0) || (offlineApproved && offlineApproved.length > 0);
+        setAlreadyPaid(hasPaid);
+      }
     } catch (error: any) {
       console.error(error);
       Alert.alert('Error', 'Failed to load campaign details');
@@ -112,6 +132,10 @@ export default function ChandaDetailScreen() {
   }, [status]);
 
   const handlePayOnline = async () => {
+    if (alreadyPaid && isFixed) {
+      Alert.alert('Already Contributed', 'You have already completed your contribution to this campaign.');
+      return;
+    }
     const payAmount = Number(amount);
     if (!campaign || isNaN(payAmount) || payAmount < campaign.min_amount) {
       Alert.alert('Invalid Amount', `Please enter an amount of at least ₹${campaign?.min_amount || 1}`);
@@ -217,45 +241,71 @@ export default function ChandaDetailScreen() {
               )}
             </Card.Content>
           </Card>
+          {alreadyPaid && isFixed ? (
+            <Card style={[styles.card, { 
+              backgroundColor: theme.dark ? '#0B1C1A' : '#E6F4EA',
+              borderRadius: 20, 
+              borderWidth: 1, 
+              borderColor: '#00D4AA',
+            }]}>
+              <Card.Content style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <Text variant="headlineMedium" style={{ fontSize: 36, color: '#00D4AA', marginBottom: 8 }}>🎉</Text>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface, textAlign: 'center' }}>Contribution Completed</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline, textAlign: 'center', marginTop: 6, paddingHorizontal: 16 }}>
+                  You have successfully contributed ₹{campaign.suggested_amount} to this campaign. Thank you for your support!
+                </Text>
+                <Button
+                  mode="contained"
+                  buttonColor="#00D4AA"
+                  textColor="#09090b"
+                  onPress={() => router.push('/chanda-history' as any)}
+                  style={{ marginTop: 16, borderRadius: 28 }}
+                  labelStyle={{ fontWeight: 'bold' }}
+                >
+                  View Receipt
+                </Button>
+              </Card.Content>
+            </Card>
+          ) : (
+            <Card style={[styles.card, { 
+              backgroundColor: theme.colors.elevation.level1,
+              borderRadius: 20, 
+              borderWidth: theme.dark ? 1 : 0, 
+              borderColor: 'rgba(255, 255, 255, 0.08)',
+            }]}>
+              <Card.Content style={styles.amountCardContent}>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 12, color: theme.colors.onSurface }}>Enter Contribution Amount</Text>
+                
+                <View style={[styles.amountInputRow, { borderBottomColor: '#00D4AA' }]}>
+                  <Text variant="headlineMedium" style={{ marginRight: 6, color: '#00D4AA', fontWeight: 'bold' }}>₹</Text>
+                  <TextInput
+                    value={amount}
+                    onChangeText={setAmount}
+                    placeholder={campaign.min_amount.toString()}
+                    keyboardType="numeric"
+                    editable={!isFixed}
+                    style={[styles.input, { color: '#00D4AA' }]}
+                  />
+                </View>
+                <HelperText type="info" visible style={{ paddingLeft: 0 }}>
+                  {isFixed ? `Fixed contribution: ₹${campaign.suggested_amount}` : `Minimum amount: ₹${campaign.min_amount}`}
+                </HelperText>
 
-          <Card style={[styles.card, { 
-            backgroundColor: theme.colors.elevation.level1,
-            borderRadius: 20, 
-            borderWidth: theme.dark ? 1 : 0, 
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-          }]}>
-            <Card.Content style={styles.amountCardContent}>
-              <Text variant="titleMedium" style={{ fontWeight: 'bold', marginBottom: 12, color: theme.colors.onSurface }}>Enter Contribution Amount</Text>
-              
-              <View style={[styles.amountInputRow, { borderBottomColor: '#00D4AA' }]}>
-                <Text variant="headlineMedium" style={{ marginRight: 6, color: '#00D4AA', fontWeight: 'bold' }}>₹</Text>
-                <TextInput
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholder={campaign.min_amount.toString()}
-                  keyboardType="numeric"
-                  editable={!isFixed}
-                  style={[styles.input, { color: '#00D4AA' }]}
-                />
-              </View>
-              <HelperText type="info" visible style={{ paddingLeft: 0 }}>
-                {isFixed ? `Fixed contribution: ₹${campaign.suggested_amount}` : `Minimum amount: ₹${campaign.min_amount}`}
-              </HelperText>
-
-              <Button
-                mode="contained"
-                onPress={handlePayOnline}
-                loading={paying}
-                disabled={paying}
-                style={[styles.payButton, { borderRadius: 28 }]}
-                buttonColor="#00D4AA"
-                textColor="#09090b"
-                labelStyle={{ fontWeight: 'bold' }}
-              >
-                Pay Online (Razorpay)
-              </Button>
-            </Card.Content>
-          </Card>
+                <Button
+                  mode="contained"
+                  onPress={handlePayOnline}
+                  loading={paying}
+                  disabled={paying}
+                  style={[styles.payButton, { borderRadius: 28 }]}
+                  buttonColor="#00D4AA"
+                  textColor="#09090b"
+                  labelStyle={{ fontWeight: 'bold' }}
+                >
+                  Pay Online (Razorpay)
+                </Button>
+              </Card.Content>
+            </Card>
+          )}
 
           {wing && (
             <Card style={[styles.card, { 
@@ -292,11 +342,16 @@ export default function ChandaDetailScreen() {
                 <Button
                   mode="outlined"
                   onPress={() => router.push(`/chanda-log-entry?campaignId=${campaign.id}` as any)}
-                  style={{ marginTop: 12, borderRadius: 28, borderColor: '#00D4AA' }}
-                  textColor="#00D4AA"
+                  disabled={alreadyPaid && isFixed}
+                  style={{ 
+                    marginTop: 12, 
+                    borderRadius: 28, 
+                    borderColor: alreadyPaid && isFixed ? theme.colors.surfaceDisabled : '#00D4AA',
+                  }}
+                  textColor={alreadyPaid && isFixed ? theme.colors.onSurfaceDisabled : '#00D4AA'}
                   labelStyle={{ fontWeight: 'bold' }}
                 >
-                  Log Coordinator Payment
+                  {alreadyPaid && isFixed ? 'Contribution Completed' : 'Log Coordinator Payment'}
                 </Button>
               </Card.Content>
             </Card>
