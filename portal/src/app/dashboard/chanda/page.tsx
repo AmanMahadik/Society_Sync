@@ -387,7 +387,7 @@ export default function ChandaDashboard() {
   };
 
   const handleDeleteCampaign = async (campaignId: string) => {
-    if (!window.confirm('Are you sure you want to permanently delete this draft campaign?')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this campaign?')) return;
     try {
       const res = await fetch(`/api/chanda/campaigns/${campaignId}`, { method: 'DELETE' });
       if (res.ok) {
@@ -926,7 +926,7 @@ export default function ChandaDashboard() {
                       </button>
                     </>
                   )}
-                  {summaryData.campaign.status === 'draft' && (
+                  {(summaryData.campaign.status === 'draft' || summaryData.campaign.status === 'cancelled') && (
                     <button
                       onClick={() => handleDeleteCampaign(selectedCampaignId)}
                       className="p-2 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 rounded text-red-500"

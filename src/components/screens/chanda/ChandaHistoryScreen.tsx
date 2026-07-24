@@ -34,6 +34,7 @@ export default function ChandaHistoryScreen() {
         .from('chanda_payments')
         .select('*, chanda_campaigns(title)')
         .eq('resident_id', user.id)
+        .in('status', ['paid', 'refunded'])
         .order('created_at', { ascending: false });
 
       if (onlineErr) throw onlineErr;
