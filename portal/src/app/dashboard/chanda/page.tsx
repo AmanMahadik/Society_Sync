@@ -43,6 +43,7 @@ interface Profile {
   email: string;
   wing?: string | null;
   phone?: string | null;
+  role?: string | null;
 }
 
 export default function ChandaDashboard() {
@@ -209,7 +210,7 @@ export default function ChandaDashboard() {
       // 3. Fetch Profiles for dropdown
       const { data: profilesList } = await supabase
         .from('profiles')
-        .select('id, full_name, email, wing, phone')
+        .select('id, full_name, email, wing, phone, role')
         .eq('society_id', targetSocietyId)
         .order('full_name');
       setProfiles(profilesList || []);
@@ -1336,12 +1337,31 @@ export default function ChandaDashboard() {
                   className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00d4aa] w-full"
                 >
                   <option value="" className="bg-zinc-900 text-white">Choose resident profile...</option>
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-zinc-900 text-white">
-                      {p.full_name} ({p.email})
-                    </option>
-                  ))}
+                  {profiles
+                    .filter((p) => {
+                      const isStaff = p.role === 'guard' || p.role === 'admin' || p.role === 'master_admin';
+                      if (isStaff) return false;
+                      const normUserWing = (p.wing || '').replace(/^wing\s+/i, '').trim().toLowerCase();
+                      const normSelectedWing = (selectedWing?.name || '').replace(/^wing\s+/i, '').trim().toLowerCase();
+                      return normUserWing === normSelectedWing;
+                    })
+                    .map((p) => (
+                      <option key={p.id} value={p.id} className="bg-zinc-900 text-white">
+                        {p.full_name} ({p.email})
+                      </option>
+                    ))}
                 </select>
+                {profiles.filter((p) => {
+                  const isStaff = p.role === 'guard' || p.role === 'admin' || p.role === 'master_admin';
+                  if (isStaff) return false;
+                  const normUserWing = (p.wing || '').replace(/^wing\s+/i, '').trim().toLowerCase();
+                  const normSelectedWing = (selectedWing?.name || '').replace(/^wing\s+/i, '').trim().toLowerCase();
+                  return normUserWing === normSelectedWing;
+                }).length === 0 && (
+                  <p className="text-[11px] text-amber-500 mt-1 font-medium">
+                    ⚠️ No registered residents found in {selectedWing?.name} yet.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
