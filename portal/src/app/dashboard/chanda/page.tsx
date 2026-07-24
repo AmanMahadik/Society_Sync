@@ -1339,8 +1339,8 @@ export default function ChandaDashboard() {
                   <option value="" className="bg-zinc-900 text-white">Choose resident profile...</option>
                   {profiles
                     .filter((p) => {
-                      const isStaff = p.role === 'guard' || p.role === 'admin' || p.role === 'master_admin';
-                      if (isStaff) return false;
+                      const isExcludedStaff = p.role === 'guard' || p.role === 'master_admin';
+                      if (isExcludedStaff) return false;
                       const normUserWing = (p.wing || '').replace(/^wing\s+/i, '').trim().toLowerCase();
                       const normSelectedWing = (selectedWing?.name || '').replace(/^wing\s+/i, '').trim().toLowerCase();
                       return normUserWing === normSelectedWing;
@@ -1352,8 +1352,8 @@ export default function ChandaDashboard() {
                     ))}
                 </select>
                 {profiles.filter((p) => {
-                  const isStaff = p.role === 'guard' || p.role === 'admin' || p.role === 'master_admin';
-                  if (isStaff) return false;
+                  const isExcludedStaff = p.role === 'guard' || p.role === 'master_admin';
+                  if (isExcludedStaff) return false;
                   const normUserWing = (p.wing || '').replace(/^wing\s+/i, '').trim().toLowerCase();
                   const normSelectedWing = (selectedWing?.name || '').replace(/^wing\s+/i, '').trim().toLowerCase();
                   return normUserWing === normSelectedWing;
