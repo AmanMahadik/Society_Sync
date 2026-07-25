@@ -104,7 +104,7 @@ export default function ChandaDetailScreen() {
           .eq('resident_id', user.id)
           .eq('status', 'verified');
 
-        const hasPaid = (onlinePaid && onlinePaid.length > 0) || (offlineApproved && offlineApproved.length > 0);
+        const hasPaid = !!((onlinePaid && onlinePaid.length > 0) || (offlineApproved && offlineApproved.length > 0));
         setAlreadyPaid(hasPaid);
       }
     } catch (error: any) {

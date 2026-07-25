@@ -24,6 +24,10 @@ export const GlobalSOSListener: React.FC = () => {
   const lastCheckedParkingIdRef = useRef(0);
   const lastCheckedAnnouncementIdRef = useRef(0);
 
+  const isSOSBaselineEstablishedRef = useRef(false);
+  const isParkingBaselineEstablishedRef = useRef(false);
+  const isAnnouncementBaselineEstablishedRef = useRef(false);
+
   const cleanupChannels = () => {
     Object.entries(activeChannelsRef.current).forEach(([key, chan]) => {
       if (chan) {
@@ -35,6 +39,9 @@ export const GlobalSOSListener: React.FC = () => {
     lastCheckedIdRef.current = 0;
     lastCheckedParkingIdRef.current = 0;
     lastCheckedAnnouncementIdRef.current = 0;
+    isSOSBaselineEstablishedRef.current = false;
+    isParkingBaselineEstablishedRef.current = false;
+    isAnnouncementBaselineEstablishedRef.current = false;
   };
 
   // 1. Supabase Realtime Listeners (Insert / Update)
@@ -140,12 +147,18 @@ export const GlobalSOSListener: React.FC = () => {
       .channel(`parking-alerts-${profile.society_id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'parking_requests', filter: `society_id=eq.${profile.society_id}` },
+        { event: '*', schema: 'public', table: 'parking_requests', filter: `society_id=eq.${profile.society_id}` },
         async (payload) => {
-          const newRecord = payload.new;
+          const newRecord = payload.new as any;
+          if (!newRecord) return;
 
-          // Guard gets floating toast for any new parking allocation/request
+          // Guard gets floating toast for today's parking allocations/requests
           if (profile.role === 'guard') {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            if (newRecord.date !== todayStr) {
+              return; // Skip if it's not a booking for today
+            }
+
             let applicantName = newRecord.visitor_name || 'Resident';
             
             const { data: userProfile } = await supabase
@@ -310,19 +323,33 @@ export const GlobalSOSListener: React.FC = () => {
       try {
         // A. SOS Alerts Check (Guard/Admin only)
         if (profile.role === 'guard' || profile.role === 'admin') {
-          const { data, error } = await supabase
-            .from('complaints')
-            .select('*')
-            .eq('type', 'security')
-            .eq('status', 'pending')
-            .eq('society_id', profile.society_id)
-            .gt('id', lastCheckedIdRef.current);
+          if (!isSOSBaselineEstablishedRef.current) {
+            const { data: allPending } = await supabase
+              .from('complaints')
+              .select('id')
+              .eq('type', 'security')
+              .eq('status', 'pending')
+              .eq('society_id', profile.society_id);
+            if (allPending && allPending.length > 0) {
+              const ids = allPending.map(d => Number(d.id)).filter(v => !isNaN(v));
+              lastCheckedIdRef.current = ids.length > 0 ? Math.max(...ids) : 1;
+            } else {
+              lastCheckedIdRef.current = 1;
+            }
+            isSOSBaselineEstablishedRef.current = true;
+          } else {
+            const { data, error } = await supabase
+              .from('complaints')
+              .select('*')
+              .eq('type', 'security')
+              .eq('status', 'pending')
+              .eq('society_id', profile.society_id)
+              .gt('id', lastCheckedIdRef.current);
 
-          if (!error && data && data.length > 0) {
-            const maxId = Math.max(...data.map(d => Number(d.id)));
-            
-            // Only notify if we already established a baseline to avoid alerts on startup
-            if (lastCheckedIdRef.current > 0) {
+            if (!error && data && data.length > 0) {
+              const ids = data.map(d => Number(d.id)).filter(v => !isNaN(v));
+              const maxId = ids.length > 0 ? Math.max(...ids) : lastCheckedIdRef.current;
+              
               data.forEach(newRecord => {
                 if (profile.role === 'guard') {
                   addNotification({
@@ -352,37 +379,44 @@ export const GlobalSOSListener: React.FC = () => {
                   });
                 }
               });
-            }
-            lastCheckedIdRef.current = maxId;
-          } else if (!error && lastCheckedIdRef.current === 0) {
-            // Establish baseline
-            const { data: allPending } = await supabase
-              .from('complaints')
-              .select('id')
-              .eq('type', 'security')
-              .eq('status', 'pending')
-              .eq('society_id', profile.society_id);
-            if (allPending && allPending.length > 0) {
-              lastCheckedIdRef.current = Math.max(...allPending.map(d => Number(d.id)));
-            } else {
-              lastCheckedIdRef.current = 1;
+              lastCheckedIdRef.current = maxId;
             }
           }
         }
 
         // B. Parking Requests Check (Guard only)
         if (profile.role === 'guard') {
-          const { data: parkingData, error: parkingError } = await supabase
-            .from('parking_requests')
-            .select('*')
-            .eq('society_id', profile.society_id)
-            .gt('id', lastCheckedParkingIdRef.current);
+          const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
 
-          if (!parkingError && parkingData && parkingData.length > 0) {
-            const maxId = Math.max(...parkingData.map(d => Number(d.id)));
-            
-            if (lastCheckedParkingIdRef.current > 0) {
+          if (!isParkingBaselineEstablishedRef.current) {
+            const { data: allPendingParking } = await supabase
+              .from('parking_requests')
+              .select('id')
+              .eq('society_id', profile.society_id);
+            if (allPendingParking && allPendingParking.length > 0) {
+              const ids = allPendingParking.map(d => Number(d.id)).filter(v => !isNaN(v));
+              lastCheckedParkingIdRef.current = ids.length > 0 ? Math.max(...ids) : 1;
+            } else {
+              lastCheckedParkingIdRef.current = 1;
+            }
+            isParkingBaselineEstablishedRef.current = true;
+          } else {
+            const { data: parkingData, error: parkingError } = await supabase
+              .from('parking_requests')
+              .select('*')
+              .eq('society_id', profile.society_id)
+              .gt('id', lastCheckedParkingIdRef.current);
+
+            if (!parkingError && parkingData && parkingData.length > 0) {
+              const ids = parkingData.map(d => Number(d.id)).filter(v => !isNaN(v));
+              const maxId = ids.length > 0 ? Math.max(...ids) : lastCheckedParkingIdRef.current;
+              
               parkingData.forEach(async (newRecord) => {
+                // ONLY notify for today's bookings
+                if (newRecord.date !== todayStr) {
+                  return;
+                }
+
                 const { data: userProfile } = await supabase
                   .from('profiles')
                   .select('full_name, wing, flat_number')
@@ -404,32 +438,35 @@ export const GlobalSOSListener: React.FC = () => {
                   }
                 });
               });
-            }
-            lastCheckedParkingIdRef.current = maxId;
-          } else if (!parkingError && lastCheckedParkingIdRef.current === 0) {
-            const { data: allPendingParking } = await supabase
-              .from('parking_requests')
-              .select('id')
-              .eq('society_id', profile.society_id);
-            if (allPendingParking && allPendingParking.length > 0) {
-              lastCheckedParkingIdRef.current = Math.max(...allPendingParking.map(d => Number(d.id)));
-            } else {
-              lastCheckedParkingIdRef.current = 1;
+              lastCheckedParkingIdRef.current = maxId;
             }
           }
         }
 
         // C. Announcements Check (All Roles)
-        const { data: announcementData, error: announcementError } = await supabase
-          .from('announcements')
-          .select('*')
-          .eq('society_id', profile.society_id)
-          .gt('id', lastCheckedAnnouncementIdRef.current);
+        if (!isAnnouncementBaselineEstablishedRef.current) {
+          const { data: allAnnouncements } = await supabase
+            .from('announcements')
+            .select('id')
+            .eq('society_id', profile.society_id);
+          if (allAnnouncements && allAnnouncements.length > 0) {
+            const ids = allAnnouncements.map(d => Number(d.id)).filter(v => !isNaN(v));
+            lastCheckedAnnouncementIdRef.current = ids.length > 0 ? Math.max(...ids) : 1;
+          } else {
+            lastCheckedAnnouncementIdRef.current = 1;
+          }
+          isAnnouncementBaselineEstablishedRef.current = true;
+        } else {
+          const { data: announcementData, error: announcementError } = await supabase
+            .from('announcements')
+            .select('*')
+            .eq('society_id', profile.society_id)
+            .gt('id', lastCheckedAnnouncementIdRef.current);
 
-        if (!announcementError && announcementData && announcementData.length > 0) {
-          const maxId = Math.max(...announcementData.map(d => Number(d.id)));
-          
-          if (lastCheckedAnnouncementIdRef.current > 0) {
+          if (!announcementError && announcementData && announcementData.length > 0) {
+            const ids = announcementData.map(d => Number(d.id)).filter(v => !isNaN(v));
+            const maxId = ids.length > 0 ? Math.max(...ids) : lastCheckedAnnouncementIdRef.current;
+            
             announcementData.forEach((newRecord) => {
               addNotification({
                 type: 'status_update',
@@ -444,17 +481,7 @@ export const GlobalSOSListener: React.FC = () => {
                 }
               });
             });
-          }
-          lastCheckedAnnouncementIdRef.current = maxId;
-        } else if (!announcementError && lastCheckedAnnouncementIdRef.current === 0) {
-          const { data: allAnnouncements } = await supabase
-            .from('announcements')
-            .select('id')
-            .eq('society_id', profile.society_id);
-          if (allAnnouncements && allAnnouncements.length > 0) {
-            lastCheckedAnnouncementIdRef.current = Math.max(...allAnnouncements.map(d => Number(d.id)));
-          } else {
-            lastCheckedAnnouncementIdRef.current = 1;
+            lastCheckedAnnouncementIdRef.current = maxId;
           }
         }
       } catch (e) {
