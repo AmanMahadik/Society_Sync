@@ -387,36 +387,28 @@ export default function SocietyAdminDashboard() {
         return;
       }
 
-      // Reset society links and set role/status back to default
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          society_id: null,
-          status: 'pending',
-          role: 'owner'
-        })
-        .eq('id', id)
-        .eq('society_id', currentSociety.id);
-
-      if (error) throw error;
-
-      // Log action to audit logs
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && currentSociety) {
-        await supabase.from('portal_audit_log').insert({
-          action_type: 'member_removal',
-          performed_by: user.id,
-          society_id: currentSociety.id,
-          old_value: name,
-          new_value: 'Removed from Society'
-        });
+      const res = await fetch('/api/remove-resident', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          residentId: id,
+          societyId: currentSociety.id,
+          name: name,
+          adminId: user?.id || null
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to remove resident');
       }
 
       alert('Resident successfully removed.');
       fetchDashboardData();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Error removing resident profile.');
+      alert(e.message || 'Error removing resident profile.');
     }
   };
 

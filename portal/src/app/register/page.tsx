@@ -313,6 +313,19 @@ export default function RegisterPage() {
     setErrorMsg(null);
 
     try {
+      // 0. Check if admin email is already registered
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', formData.adminEmail.trim().toLowerCase())
+        .maybeSingle();
+
+      if (existingProfile) {
+        setErrorMsg('This admin email address is already registered in the system. Please use a different email or log in.');
+        setLoading(false);
+        return;
+      }
+
       // 1. Check duplicate detection (Pincode + Name)
       const { data: existingSocieties, error: checkError } = await supabase
         .from('societies')

@@ -141,19 +141,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
     setLoading(true);
 
     try {
-      // 1. Prevent cross-society registration
+      // 1. Prevent duplicate email registrations
       const { data: existingProfile } = await supabase
         .from('profiles')
-        .select('society_id, society_code')
+        .select('id')
         .eq('email', email.trim().toLowerCase())
         .maybeSingle();
 
-      if (existingProfile?.society_id) {
-        if (existingProfile.society_id !== societyDetails.id) {
-          setError('This email is already registered with a different society. Please contact your Society Admin or use a different email.');
-          setLoading(false);
-          return;
-        }
+      if (existingProfile) {
+        setError('This email is already registered. Please log in instead.');
+        setLoading(false);
+        return;
       }
 
       const finalWing = isGuard ? 'Gate' : wing.trim().toUpperCase();
