@@ -31,6 +31,7 @@ export default function SettingsScreen() {
   const [notifParking, setNotifParking] = useState(true);
   const [notifCommunity, setNotifCommunity] = useState(true);
   const [notifFestivals, setNotifFestivals] = useState(true);
+  const [globalSOSActive, setGlobalSOSActive] = useState(true);
 
   // Language Menu State
   const [langMenuVisible, setLangMenuVisible] = useState(false);
@@ -63,6 +64,27 @@ export default function SettingsScreen() {
         const lang = await AsyncStorage.getItem('sync_app_language');
         if (lang) {
           setLanguage(lang as 'english' | 'marathi');
+        }
+
+        // Fetch society settings for global SOS status check
+        const { data: socSettings } = await supabase
+          .from('society_settings')
+          .select('*')
+          .limit(1)
+          .maybeSingle();
+
+        let isGloballyActive = true;
+        if (socSettings && socSettings.admin_contact) {
+          try {
+            const parsed = JSON.parse(socSettings.admin_contact);
+            if (parsed && typeof parsed.sos_active === 'boolean') {
+              isGloballyActive = parsed.sos_active;
+            }
+          } catch (e) {}
+        }
+        setGlobalSOSActive(isGloballyActive);
+        if (!isGloballyActive) {
+          setNotifSOS(false);
         }
       } catch (e) {
         console.error('Failed to load settings preferences', e);
@@ -113,6 +135,57 @@ export default function SettingsScreen() {
     try {
       setter(value);
       await AsyncStorage.setItem(key, value ? 'true' : 'false');
+
+      // If the admin of the society toggles SOS, save it to society_settings in Supabase
+      if (key === 'sync_notif_sos' && profile && profile.role === 'admin') {
+        const { data: currentSettings } = await supabase
+          .from('society_settings')
+          .select('*')
+          .limit(1)
+          .maybeSingle();
+
+        const settingsObj = currentSettings || {
+          society_id: profile.society_id,
+          society_name: profile.society_name || 'SocietySync Co-Op Housing',
+          maintenance_rate_per_sqft: 3.5,
+          late_fee_percentage: 2.0,
+          parking_slot_count: 10,
+          admin_contact: ''
+        };
+
+        const contactVal = settingsObj.admin_contact || '';
+        let parsedContact: any = {};
+        try {
+          parsedContact = JSON.parse(contactVal);
+        } catch (e) {
+          parsedContact = { contact: contactVal };
+        }
+        parsedContact.sos_active = value;
+        settingsObj.admin_contact = JSON.stringify(parsedContact);
+
+        if (currentSettings) {
+          const { error } = await supabase
+            .from('society_settings')
+            .update({ admin_contact: settingsObj.admin_contact })
+            .eq('id', currentSettings.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('society_settings')
+            .insert(settingsObj);
+          if (error) throw error;
+        }
+
+        // Notify user about global change
+        addNotification({
+          type: 'confirmation',
+          message: value ? '🔔 SOS Alerts Enabled' : '🔕 SOS Alerts Disabled',
+          subtext: value ? 'SOS features are now enabled society-wide.' : 'SOS features are now disabled society-wide.',
+          autoDismiss: true,
+          dismissAfterMs: 5000,
+          color: value ? '#10B981' : '#EF4444',
+        });
+      }
     } catch (e) {
       console.error(`Failed to save ${key}`, e);
     }
@@ -245,10 +318,15 @@ export default function SettingsScreen() {
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
                 <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>SOS Emergency Alerts</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Immediate alerts for safety and security</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                  {!globalSOSActive 
+                    ? '⚠️ Disabled globally by Society Admin' 
+                    : 'Immediate alerts for safety and security'}
+                </Text>
               </View>
               <Switch
                 value={notifSOS}
+                disabled={!globalSOSActive && profile?.role !== 'admin'}
                 onValueChange={val => saveNotifPref('sync_notif_sos', val, setNotifSOS)}
                 color="#00D4AA"
               />

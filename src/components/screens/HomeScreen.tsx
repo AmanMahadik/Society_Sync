@@ -8,6 +8,7 @@ import { useNotifications } from '../../lib/notification-context';
 import { useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase, uriToArrayBuffer } from '../../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface HomeScreenProps {
   jumpTo?: (key: string) => void;
@@ -20,22 +21,48 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
-  // Refresh profile on screen focus to check society status dynamically
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (refreshProfile) {
-        refreshProfile();
-      }
-    });
-    return unsubscribe;
-  }, [navigation]);
-
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<'water_low' | 'motor_off' | 'electricity' | 'security' | 'other'>('water_low');
   const [sosDescription, setSosDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activeAlarm, setActiveAlarm] = useState<Complaint | null>(null);
+
+  // Global & Local SOS configuration toggles
+  const [globalSOSActive, setGlobalSOSActive] = useState(true);
+  const [localSOSActive, setLocalSOSActive] = useState(true);
+
+  const fetchSOSStatus = async () => {
+    try {
+      const localVal = await AsyncStorage.getItem('sync_notif_sos');
+      setLocalSOSActive(localVal !== 'false');
+
+      const socSettings = await dataManager.getSocietySettings();
+      if (socSettings && socSettings.admin_contact) {
+        try {
+          const parsed = JSON.parse(socSettings.admin_contact);
+          if (parsed && typeof parsed.sos_active === 'boolean') {
+            setGlobalSOSActive(parsed.sos_active);
+            return;
+          }
+        } catch (e) {}
+      }
+      setGlobalSOSActive(true);
+    } catch (e) {
+      console.warn('Error fetching SOS status:', e);
+    }
+  };
+
+  // Refresh profile & SOS settings on screen focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (refreshProfile) {
+        refreshProfile();
+      }
+      fetchSOSStatus();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Notice board / announcements state
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -704,6 +731,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
       }
     }
     if (profile?.society_status === 'suspended') return;
+    await fetchSOSStatus();
     await fetchComplaints();
     await fetchSummaryData();
     await fetchAnnouncementsData();
@@ -1522,7 +1550,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
         )}
 
         {/* 4. GIANT RED SOS BUTTON (RESIDENTS & ADMINS ONLY) */}
-        {profile?.role !== 'guard' && (
+        {profile?.role !== 'guard' && globalSOSActive && localSOSActive && (
           <Card style={[styles.sosCard, { 
             backgroundColor: theme.colors.elevation.level1, 
             borderColor: 'rgba(255, 59, 48, 0.25)', 
@@ -1570,7 +1598,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
         )}
 
         {/* 5. ACTIVE COMPLAINTS SECTION */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        {globalSOSActive && localSOSActive && (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <Text variant="titleMedium" style={[styles.sectionTitle, { marginBottom: 0 }]}>
             Active Utility & SOS Log ({complaints.length})
           </Text>
@@ -1672,6 +1702,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               </Card.Content>
             </Card>
           ))
+        )}
+          </>
         )}
 
         {/* 4.5. GENERAL NOTICE BOARD */}

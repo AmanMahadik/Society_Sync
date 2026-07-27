@@ -30,6 +30,22 @@ export interface Profile {
   society_status?: string | null;
 }
 
+export function parseAdminContact(adminContact?: string): { contact: string; sos_active: boolean } {
+  if (!adminContact) return { contact: '', sos_active: true };
+  try {
+    const parsed = JSON.parse(adminContact);
+    if (parsed && typeof parsed === 'object') {
+      return {
+        contact: parsed.contact || '',
+        sos_active: typeof parsed.sos_active === 'boolean' ? parsed.sos_active : true
+      };
+    }
+  } catch (e) {
+    // Not JSON
+  }
+  return { contact: adminContact, sos_active: true };
+}
+
 // 1.5 Announcements / Notices
 export interface Announcement {
   id: number;

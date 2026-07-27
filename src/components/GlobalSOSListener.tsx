@@ -1,10 +1,38 @@
 import React, { useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../lib/auth-context';
 import { useNotifications } from '../lib/notification-context';
 import { supabase } from '../lib/supabase';
 import { dataManager } from '../lib/data-manager';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
+
+const checkSOSAlertsEnabled = async (): Promise<boolean> => {
+  try {
+    const localVal = await AsyncStorage.getItem('sync_notif_sos');
+    if (localVal === 'false') {
+      return false;
+    }
+
+    const { data: socSettings } = await supabase
+      .from('society_settings')
+      .select('admin_contact')
+      .limit(1)
+      .maybeSingle();
+
+    if (socSettings && socSettings.admin_contact) {
+      try {
+        const parsed = JSON.parse(socSettings.admin_contact);
+        if (parsed && typeof parsed.sos_active === 'boolean') {
+          return parsed.sos_active;
+        }
+      } catch (e) {}
+    }
+  } catch (e) {
+    console.warn('Error checking SOS alerts enablement:', e);
+  }
+  return true;
+};
 
 export const GlobalSOSListener: React.FC = () => {
   const { user, profile } = useAuth();
@@ -67,6 +95,8 @@ export const GlobalSOSListener: React.FC = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'complaints', filter: `society_id=eq.${profile.society_id}` },
         async (payload) => {
+          const enabled = await checkSOSAlertsEnabled();
+          if (!enabled) return;
           const newRecord = payload.new;
           await refreshSOSCount();
 
@@ -111,6 +141,8 @@ export const GlobalSOSListener: React.FC = () => {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'complaints', filter: `society_id=eq.${profile.society_id}` },
         async (payload) => {
+          const enabled = await checkSOSAlertsEnabled();
+          if (!enabled) return;
           const oldRecord = payload.old;
           const newRecord = payload.new;
           await refreshSOSCount();
@@ -323,63 +355,66 @@ export const GlobalSOSListener: React.FC = () => {
       try {
         // A. SOS Alerts Check (Guard/Admin only)
         if (profile.role === 'guard' || profile.role === 'admin') {
-          if (!isSOSBaselineEstablishedRef.current) {
-            const { data: allPending } = await supabase
-              .from('complaints')
-              .select('id')
-              .eq('type', 'security')
-              .eq('status', 'pending')
-              .eq('society_id', profile.society_id);
-            if (allPending && allPending.length > 0) {
-              const ids = allPending.map(d => Number(d.id)).filter(v => !isNaN(v));
-              lastCheckedIdRef.current = ids.length > 0 ? Math.max(...ids) : 1;
+          const sosEnabled = await checkSOSAlertsEnabled();
+          if (sosEnabled) {
+            if (!isSOSBaselineEstablishedRef.current) {
+              const { data: allPending } = await supabase
+                .from('complaints')
+                .select('id')
+                .eq('type', 'security')
+                .eq('status', 'pending')
+                .eq('society_id', profile.society_id);
+              if (allPending && allPending.length > 0) {
+                const ids = allPending.map(d => Number(d.id)).filter(v => !isNaN(v));
+                lastCheckedIdRef.current = ids.length > 0 ? Math.max(...ids) : 1;
+              } else {
+                lastCheckedIdRef.current = 1;
+              }
+              isSOSBaselineEstablishedRef.current = true;
             } else {
-              lastCheckedIdRef.current = 1;
-            }
-            isSOSBaselineEstablishedRef.current = true;
-          } else {
-            const { data, error } = await supabase
-              .from('complaints')
-              .select('*')
-              .eq('type', 'security')
-              .eq('status', 'pending')
-              .eq('society_id', profile.society_id)
-              .gt('id', lastCheckedIdRef.current);
+              const { data, error } = await supabase
+                .from('complaints')
+                .select('*')
+                .eq('type', 'security')
+                .eq('status', 'pending')
+                .eq('society_id', profile.society_id)
+                .gt('id', lastCheckedIdRef.current);
 
-            if (!error && data && data.length > 0) {
-              const ids = data.map(d => Number(d.id)).filter(v => !isNaN(v));
-              const maxId = ids.length > 0 ? Math.max(...ids) : lastCheckedIdRef.current;
-              
-              data.forEach(newRecord => {
-                if (profile.role === 'guard') {
-                  addNotification({
-                    type: 'sos_full',
-                    message: '🚨 SOS ALERT!',
-                    subtext: `Wing ${newRecord.wing} - Flat ${newRecord.flat_number} needs help!`,
-                    complaintId: newRecord.id,
-                    wing: newRecord.wing,
-                    flat_number: newRecord.flat_number,
-                    onAction: async () => {
-                      await dataManager.acknowledgeComplaint(String(newRecord.id), user.id);
-                      await refreshSOSCount();
-                    },
-                    actionLabel: 'ACKNOWLEDGE'
-                  });
-                } else if (profile.role === 'admin') {
-                  addNotification({
-                    type: 'sos_info',
-                    message: '🔔 SOS Generated',
-                    subtext: `Flat ${newRecord.wing}-${newRecord.flat_number} · ${newRecord.description || 'Emergency alert'}`,
-                    complaintId: newRecord.id,
-                    autoDismiss: true,
-                    dismissAfterMs: 8000,
-                    actionLabel: 'View Details',
-                    wing: newRecord.wing,
-                    flat_number: newRecord.flat_number
-                  });
-                }
-              });
-              lastCheckedIdRef.current = maxId;
+              if (!error && data && data.length > 0) {
+                const ids = data.map(d => Number(d.id)).filter(v => !isNaN(v));
+                const maxId = ids.length > 0 ? Math.max(...ids) : lastCheckedIdRef.current;
+                
+                data.forEach(newRecord => {
+                  if (profile.role === 'guard') {
+                    addNotification({
+                      type: 'sos_full',
+                      message: '🚨 SOS ALERT!',
+                      subtext: `Wing ${newRecord.wing} - Flat ${newRecord.flat_number} needs help!`,
+                      complaintId: newRecord.id,
+                      wing: newRecord.wing,
+                      flat_number: newRecord.flat_number,
+                      onAction: async () => {
+                        await dataManager.acknowledgeComplaint(String(newRecord.id), user.id);
+                        await refreshSOSCount();
+                      },
+                      actionLabel: 'ACKNOWLEDGE'
+                    });
+                  } else if (profile.role === 'admin') {
+                    addNotification({
+                      type: 'sos_info',
+                      message: '🔔 SOS Generated',
+                      subtext: `Flat ${newRecord.wing}-${newRecord.flat_number} · ${newRecord.description || 'Emergency alert'}`,
+                      complaintId: newRecord.id,
+                      autoDismiss: true,
+                      dismissAfterMs: 8000,
+                      actionLabel: 'View Details',
+                      wing: newRecord.wing,
+                      flat_number: newRecord.flat_number
+                    });
+                  }
+                });
+                lastCheckedIdRef.current = maxId;
+              }
             }
           }
         }

@@ -6,7 +6,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { supabase } from '../../lib/supabase';
 import { Text, Card, Button, Avatar, useTheme, List, Divider, Switch, Snackbar, IconButton, Chip, TextInput, Portal, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
-import { dataManager, Profile, UserRole, SocietySettings, Complaint } from '../../lib/data-manager';
+import { dataManager, Profile, UserRole, SocietySettings, Complaint, parseAdminContact } from '../../lib/data-manager';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -147,7 +147,8 @@ export const ProfileScreen: React.FC = () => {
         setMRate(String(socSettings.maintenance_rate_per_sqft));
         setLFee(String(socSettings.late_fee_percentage));
         setPCount(String(socSettings.parking_slot_count));
-        setAContact(socSettings.admin_contact || '');
+        const parsed = parseAdminContact(socSettings.admin_contact);
+        setAContact(parsed.contact);
       }
 
       // Fetch user's society details
@@ -218,13 +219,19 @@ export const ProfileScreen: React.FC = () => {
   const handleSaveSettings = async () => {
     setLoading(true);
     try {
+      const parsed = parseAdminContact(settings?.admin_contact);
+      const newContactJson = JSON.stringify({
+        contact: aContact,
+        sos_active: parsed.sos_active
+      });
+
       await dataManager.updateSocietySettings({
         society_name: settings?.society_name || 'SocietySync Co-Op Housing',
         address: settings?.address || 'Ganesh Nagar, Pune, Maharashtra',
         maintenance_rate_per_sqft: Number(mRate),
         late_fee_percentage: Number(lFee),
         parking_slot_count: Number(pCount),
-        admin_contact: aContact
+        admin_contact: newContactJson
       });
       setEditingSettings(false);
       showToast('Society settings updated successfully!');
@@ -352,12 +359,13 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const handleContactAdmin = async () => {
-    if (settings?.admin_contact) {
-      const telUrl = `tel:${settings.admin_contact}`;
+    const parsed = parseAdminContact(settings?.admin_contact);
+    if (parsed.contact) {
+      const telUrl = `tel:${parsed.contact}`;
       try {
         await Linking.openURL(telUrl);
       } catch (e) {
-        showToast('Dialing failed. Contact Admin: ' + settings.admin_contact);
+        showToast('Dialing failed. Contact Admin: ' + parsed.contact);
       }
     } else {
       showToast('Admin contact number not configured. Contacting support...');
