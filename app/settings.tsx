@@ -405,7 +405,7 @@ export default function SettingsScreen() {
               <View style={{ flex: 1 }}>
                 <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>App Language</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-                  Selected: {language === 'english' ? 'English (Active)' : 'मराठी (Future Ready)'}
+                  Selected: {language === 'english' ? 'English' : 'मराठी'}
                 </Text>
               </View>
               
@@ -423,9 +423,9 @@ export default function SettingsScreen() {
                   </Button>
                 }
               >
-                <Menu.Item onPress={() => handleLanguageChange('english')} title="English" leadingIcon="check" />
+                <Menu.Item onPress={() => handleLanguageChange('english')} title="English" leadingIcon={language === 'english' ? 'check' : undefined} />
                 <Divider />
-                <Menu.Item onPress={() => handleLanguageChange('marathi')} title="मराठी (Marathi)" disabled />
+                <Menu.Item onPress={() => handleLanguageChange('marathi')} title="मराठी (Marathi)" leadingIcon={language === 'marathi' ? 'check' : undefined} />
               </Menu>
             </View>
           </Card.Content>

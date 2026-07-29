@@ -625,6 +625,51 @@ class DataManager {
     if (error) throw error;
   }
 
+  async getActiveEvents(): Promise<any[]> {
+    if (!this.societyId) return [];
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('society_id', this.societyId)
+      .eq('is_active', true)
+      .order('start_date', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getTimetableItems(eventId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('timetable_items')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('date', { ascending: true })
+      .order('time', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async askChatbot(message: string, language: 'english' | 'marathi'): Promise<string> {
+    if (!this.societyId) throw new Error('No society ID associated.');
+    const portalUrl = process.env.EXPO_PUBLIC_PORTAL_URL || 'https://society-sync-portal.vercel.app';
+    const response = await fetch(`${portalUrl}/api/chatbot`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        societyId: this.societyId,
+        language
+      }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Chatbot request failed: ${errText}`);
+    }
+    const data = await response.json();
+    return data.reply || '';
+  }
+
   // ==========================================
   // 4. MAINTENANCE DUES
   // ==========================================

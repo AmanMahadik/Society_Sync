@@ -547,6 +547,7 @@ export default function SocietyAdminDashboard() {
             <Link href="/dashboard/chanda" className="text-muted-foreground hover:text-foreground transition-colors">Billing</Link>
             <Link href="/dashboard/parking" className="text-muted-foreground hover:text-foreground transition-colors">Parking</Link>
             <Link href="/dashboard/forum" className="text-muted-foreground hover:text-foreground transition-colors">Forum</Link>
+            <Link href="/dashboard/events" className="text-muted-foreground hover:text-foreground transition-colors">Events</Link>
           </nav>
 
       {/* MOBILE NAVIGATION SIDE DRAWER */}
@@ -574,7 +575,7 @@ export default function SocietyAdminDashboard() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
-
+ 
               {/* Links stack */}
               <nav className="flex flex-col gap-4 text-xs font-semibold uppercase tracking-wider">
                 <Link 
@@ -604,6 +605,13 @@ export default function SocietyAdminDashboard() {
                   className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
                 >
                   Forum
+                </Link>
+                <Link 
+                  href="/dashboard/events" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
+                >
+                  Events
                 </Link>
               </nav>
             </div>

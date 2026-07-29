@@ -37,7 +37,7 @@ const getTabIconName = (routeName: string, role?: string) => {
     if (role === 'guard') return 'shield-account';
     return 'home-city';
   }
-  if (routeName === 'chat') return 'forum';
+  if (routeName === 'chat') return 'calendar-sync';
   if (routeName === 'finances') return 'wallet';
   if (routeName === 'parking') return 'car-connected';
   if (routeName === 'profile') return 'account-circle';
@@ -320,7 +320,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          tabBarLabel: 'Chat',
+          tabBarLabel: 'Events & Chat',
           href: isGuard || isMaster ? null : '/(tabs)/chat',
         }}
       />

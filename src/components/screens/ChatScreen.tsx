@@ -58,10 +58,168 @@ export const ChatScreen: React.FC = () => {
   const [isOffline, setIsOffline] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
+  const botScrollViewRef = useRef<ScrollView>(null);
+
+  // Events & Chatbot States
+  const [communicationMode, setCommunicationMode] = useState<'events_chatbot' | 'council_threads'>('events_chatbot');
+  const [activeEvents, setActiveEvents] = useState<any[]>([]);
+  const [activeEvent, setActiveEvent] = useState<any | null>(null);
+  const [eventDates, setEventDates] = useState<Date[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [appLanguage, setAppLanguage] = useState<'english' | 'marathi'>('english');
+  const [chatbotMessages, setChatbotMessages] = useState<any[]>([
+    {
+      id: 'welcome',
+      sender: 'bot',
+      content: 'Hello! I am your SocietySync Event Assistant. You can ask me questions about scheduled events or click on any calendar date above to view its timetable.',
+      created_at: new Date()
+    }
+  ]);
+  const [botInputText, setBotInputText] = useState('');
+  const [botTyping, setBotTyping] = useState(false);
 
   const showToast = (msg: string) => {
     setSnackbarMessage(msg);
     setSnackbarVisible(true);
+  };
+
+  const fetchActiveEvents = async () => {
+    try {
+      const list = await dataManager.getActiveEvents();
+      setActiveEvents(list);
+      if (list.length > 0) {
+        const ev = list[0];
+        setActiveEvent(ev);
+        
+        if (ev.start_date && ev.end_date) {
+          const dates: Date[] = [];
+          let current = new Date(ev.start_date);
+          const end = new Date(ev.end_date);
+          let safety = 0;
+          while (current <= end && safety < 100) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+            safety++;
+          }
+          setDatesAndSelectToday(dates);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load active events:', e);
+    }
+  };
+
+  const setDatesAndSelectToday = (dates: Date[]) => {
+    setEventDates(dates);
+    const today = new Date();
+    const match = dates.find(d => d.toDateString() === today.toDateString());
+    if (match) {
+      setSelectedDate(match);
+    } else if (dates.length > 0) {
+      setSelectedDate(dates[0]);
+    }
+  };
+
+  const handleDateSelect = async (date: Date) => {
+    if (!activeEvent) return;
+    setSelectedDate(date);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Add user message to chatbot logs
+    const userMsg = {
+      id: Math.random().toString(),
+      sender: 'user',
+      content: appLanguage === 'english'
+        ? `What is the schedule for ${date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}?`
+        : `${date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} चे वेळापत्रक काय आहे?`,
+      created_at: new Date()
+    };
+    setChatbotMessages(prev => [...prev, userMsg]);
+    setBotTyping(true);
+
+    try {
+      const items = await dataManager.getTimetableItems(activeEvent.id);
+      const dayItems = items.filter(item => item.date === dateStr);
+      
+      let reply = '';
+      if (dayItems.length === 0) {
+        reply = appLanguage === 'english'
+          ? `There are no activities scheduled for ${date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}.`
+          : `${date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} रोजी कोणतेही कार्यक्रम नियोजित नाहीत.`;
+      } else {
+        const title = appLanguage === 'english'
+          ? `Here is the schedule for ${date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}:`
+          : `${date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} चे वेळापत्रक खालीलप्रमाणे आहे:`;
+        
+        const scheduleList = dayItems.map(item => {
+          const titleText = appLanguage === 'english' ? item.title_en : item.title_mr;
+          const notesText = appLanguage === 'english' ? item.notes_en : item.notes_mr;
+          const timeIcon = `⏰ ${item.time}`;
+          const categoryLabel = `[${item.category.toUpperCase()}]`;
+          const note = notesText ? ` (${notesText})` : '';
+          return `${timeIcon} - ${categoryLabel} ${titleText}${note}`;
+        }).join('\n');
+        
+        reply = `${title}\n\n${scheduleList}`;
+      }
+
+      const botMsg = {
+        id: Math.random().toString(),
+        sender: 'bot',
+        content: reply,
+        created_at: new Date()
+      };
+      setChatbotMessages(prev => [...prev, botMsg]);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBotTyping(false);
+    }
+  };
+
+  const handleSendBotMessage = async () => {
+    if (!botInputText.trim()) return;
+    const query = botInputText.trim();
+    setBotInputText('');
+
+    const userMsg = {
+      id: Math.random().toString(),
+      sender: 'user',
+      content: query,
+      created_at: new Date()
+    };
+    setChatbotMessages(prev => [...prev, userMsg]);
+    setBotTyping(true);
+
+    try {
+      const reply = await dataManager.askChatbot(query, appLanguage);
+      const botMsg = {
+        id: Math.random().toString(),
+        sender: 'bot',
+        content: reply,
+        created_at: new Date()
+      };
+      setChatbotMessages(prev => [...prev, botMsg]);
+    } catch (err: any) {
+      console.error(err);
+      const errorMsg = {
+        id: Math.random().toString(),
+        sender: 'bot',
+        content: appLanguage === 'english'
+          ? "Sorry, I ran into an error processing your query. Please make sure the backend server is online."
+          : "क्षमस्व, तुमच्या प्रश्नावर प्रक्रिया करताना त्रुटी आली. कृपया बॅकएंड सर्व्हर सुरू असल्याची खात्री करा.",
+        created_at: new Date()
+      };
+      setChatbotMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setBotTyping(false);
+    }
+  };
+
+  const toggleLanguage = async () => {
+    const nextLang = appLanguage === 'english' ? 'marathi' : 'english';
+    setAppLanguage(nextLang);
+    await AsyncStorage.setItem('sync_app_language', nextLang);
   };
 
   const fetchThreads = async () => {
@@ -133,6 +291,41 @@ export const ChatScreen: React.FC = () => {
   // Poll thread data every 3 seconds
   useEffect(() => {
     fetchThreads();
+    fetchActiveEvents();
+  }, []);
+
+  // Update welcome message dynamically when language changes
+  useEffect(() => {
+    const welcome = appLanguage === 'english'
+      ? 'Hello! I am your SocietySync Event Assistant. You can ask me questions about scheduled events or click on any calendar date above to view its timetable.'
+      : 'नमस्कार! मी आपला सोसायटीसिंक कार्यक्रम सहाय्यक आहे. आपण मला नियोजित कार्यक्रमांबद्दल प्रश्न विचारू शकता किंवा त्याचे वेळापत्रक पाहण्यासाठी वरील कॅलेंडरच्या तारखेवर क्लिक करू शकता.';
+    setChatbotMessages(prev => {
+      const filtered = prev.filter(m => m.id !== 'welcome');
+      return [
+        {
+          id: 'welcome',
+          sender: 'bot',
+          content: welcome,
+          created_at: new Date()
+        },
+        ...filtered
+      ];
+    });
+  }, [appLanguage]);
+
+  // Load language settings on screen mount
+  useEffect(() => {
+    const loadLang = async () => {
+      try {
+        const storedLang = await AsyncStorage.getItem('sync_app_language');
+        if (storedLang === 'english' || storedLang === 'marathi') {
+          setAppLanguage(storedLang);
+        }
+      } catch (e) {
+        console.warn('Failed to load language preference', e);
+      }
+    };
+    loadLang();
   }, []);
 
   useEffect(() => {
@@ -274,7 +467,10 @@ export const ChatScreen: React.FC = () => {
   // ==================== VIEW A: THREAD SELECTOR ====================
   if (!activeThread) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
+      >
         {/* Soft brand glow backdrop */}
         <View 
           style={{
@@ -299,86 +495,260 @@ export const ChatScreen: React.FC = () => {
           />
           <View style={{ flex: 1 }}>
             <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
-              SocietySync Council
+              SocietySync
             </Text>
             <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 10.5 }}>
-              Structured, thread-based channels replacing WhatsApp chaos
+              Events calendar, AI assistant, and council debate forums
             </Text>
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Active Discussion Threads</Text>
-            {profile?.role !== 'renter' && (
-              <Button 
-                mode="contained" 
-                icon="plus" 
-                onPress={() => setThreadModalVisible(true)}
-                style={[styles.actionButton, { borderRadius: 28 }]}
-                buttonColor="#00D4AA"
-                textColor="#09090b"
-                labelStyle={{ fontWeight: 'bold' }}
-              >
-                Create Thread
-              </Button>
+        <SegmentedButtons
+          value={communicationMode}
+          onValueChange={(val) => setCommunicationMode(val as any)}
+          buttons={[
+            {
+              value: 'events_chatbot',
+              label: appLanguage === 'english' ? 'Events & Chatbot' : 'कार्यक्रम आणि चॅटबॉट',
+              icon: 'calendar-sync',
+              checkedColor: theme.dark ? '#00D4AA' : '#0F6E56',
+            },
+            {
+              value: 'council_threads',
+              label: appLanguage === 'english' ? 'Society Council' : 'सोसायटी परिषद',
+              icon: 'forum',
+              checkedColor: theme.dark ? '#00D4AA' : '#0F6E56',
+            },
+          ]}
+          style={{ marginHorizontal: 16, marginVertical: 8 }}
+        />
+
+        {communicationMode === 'events_chatbot' ? (
+          // ==================== EVENTS & AI CHATBOT SUBVIEW ====================
+          <View style={{ flex: 1 }}>
+            {/* Calendar dates strip */}
+            {activeEvent ? (
+              <View style={[styles.calendarStrip, { backgroundColor: theme.colors.elevation.level1 }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8 }}>
+                  <Text variant="labelMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
+                    📅 {appLanguage === 'english' ? activeEvent.name_en || activeEvent.name : activeEvent.name_mr || activeEvent.name}
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 10 }}>
+                    {activeEvent.start_date} to {activeEvent.end_date}
+                  </Text>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.calendarStripScroll}>
+                  {eventDates.map((date) => {
+                    const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                    const dateNum = date.getDate();
+                    const dayName = date.toLocaleDateString(undefined, { weekday: 'short' });
+                    
+                    return (
+                      <TouchableOpacity
+                        key={date.toISOString()}
+                        style={[
+                          styles.dateCard,
+                          { backgroundColor: theme.colors.surface },
+                          isSelected && { borderColor: '#00D4AA', borderWidth: 2 }
+                        ]}
+                        onPress={() => handleDateSelect(date)}
+                      >
+                        <Text style={[styles.dateCardDay, isSelected && { color: '#00D4AA', fontWeight: 'bold' }]}>
+                          {dayName}
+                        </Text>
+                        <Text style={[styles.dateCardNum, isSelected && { color: '#00D4AA', fontWeight: 'bold' }]}>
+                          {dateNum}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : (
+              <Card style={{ margin: 16, backgroundColor: theme.colors.elevation.level1 }}>
+                <Card.Content style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MaterialCommunityIcons name="calendar-blank" size={20} color={theme.colors.outline} />
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                    {appLanguage === 'english' 
+                      ? 'No active events currently scheduled in your society.' 
+                      : 'सध्या तुमच्या सोसायटीत कोणतेही कार्यक्रम नियोजित नाहीत.'}
+                  </Text>
+                </Card.Content>
+              </Card>
             )}
+
+            {/* Chatbot conversation feed */}
+            <ScrollView 
+              ref={botScrollViewRef}
+              contentContainerStyle={styles.botMessagesScroll}
+              onContentSizeChange={() => botScrollViewRef.current?.scrollToEnd({ animated: true })}
+              style={{ flex: 1 }}
+            >
+              {chatbotMessages.map((msg) => {
+                const isMe = msg.sender === 'user';
+                return (
+                  <View 
+                    key={msg.id} 
+                    style={[
+                      styles.botMessageRow,
+                      isMe ? styles.botMessageRowMe : { justifyContent: 'flex-start' }
+                    ]}
+                  >
+                    {!isMe && (
+                      <Avatar.Icon 
+                        size={30} 
+                        icon="robot" 
+                        style={{ backgroundColor: 'rgba(0, 212, 170, 0.15)' }} 
+                        color="#00D4AA" 
+                      />
+                    )}
+                    <View style={{ maxWidth: '80%' }}>
+                      <Card 
+                        style={[
+                          styles.botMessageBubble,
+                          isMe 
+                            ? [styles.botBubbleMe, { backgroundColor: '#00D4AA' }] 
+                            : [styles.botBubbleOther, { backgroundColor: theme.colors.surfaceVariant }]
+                        ]}
+                      >
+                        <Card.Content style={styles.botBubbleContent}>
+                          <Text 
+                            style={{ 
+                              color: isMe ? '#09090b' : theme.colors.onSurface,
+                              fontSize: 13,
+                              fontWeight: isMe ? '600' : 'normal',
+                            }}
+                          >
+                            {msg.content}
+                          </Text>
+                        </Card.Content>
+                      </Card>
+                      <Text style={[styles.botMessageTime, isMe ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' }]}>
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {botTyping && (
+                <View style={styles.typingIndicatorRow}>
+                  <Avatar.Icon size={30} icon="robot" style={{ backgroundColor: 'rgba(0, 212, 170, 0.1)' }} color="#00D4AA" />
+                  <View style={[styles.typingBubble, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    <Text variant="bodySmall" style={{ color: theme.colors.outline, fontStyle: 'italic' }}>
+                      {appLanguage === 'english' ? 'Assistant is thinking...' : 'सहाय्यक विचार करत आहे...'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Chatbot input bar with translation toggle */}
+            <View style={[styles.botInputFooter, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom > 0 ? insets.bottom + 4 : 8 }]}>
+              <View style={styles.botInputRow}>
+                <TouchableOpacity onPress={toggleLanguage} style={styles.langToggleButton}>
+                  <Text style={styles.langToggleText}>
+                    {appLanguage === 'english' ? 'EN' : 'मराठी'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TextInput
+                  placeholder={appLanguage === 'english' ? 'Ask about schedule...' : 'वेळापत्रकाबद्दल विचारा...'}
+                  value={botInputText}
+                  onChangeText={setBotInputText}
+                  mode="outlined"
+                  dense
+                  style={{ flex: 1, height: 38, backgroundColor: 'transparent' }}
+                  disabled={botTyping}
+                  onSubmitEditing={handleSendBotMessage}
+                />
+                <IconButton
+                  icon="send"
+                  mode="contained"
+                  iconColor={theme.colors.onPrimary}
+                  containerColor={theme.colors.primary}
+                  size={20}
+                  onPress={handleSendBotMessage}
+                  disabled={botTyping || !botInputText.trim()}
+                />
+              </View>
+            </View>
           </View>
-          
-          {threads.length === 0 ? (
-            <Card style={[styles.emptyCard, { borderRadius: 20, backgroundColor: theme.colors.elevation.level1 }]}>
-              <Card.Content style={{ alignItems: 'center', paddingVertical: 24 }}>
-                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>No active discussion channels.</Text>
+        ) : (
+          // ==================== ORIGINAL SOCIETY COUNCIL VIEW ====================
+          <ScrollView contentContainerStyle={styles.scrollContainer}>
+            <View style={styles.sectionHeaderRow}>
+              <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Active Discussion Threads</Text>
+              {profile?.role !== 'renter' && (
+                <Button 
+                  mode="contained" 
+                  icon="plus" 
+                  onPress={() => setThreadModalVisible(true)}
+                  style={[styles.actionButton, { borderRadius: 28 }]}
+                  buttonColor="#00D4AA"
+                  textColor="#09090b"
+                  labelStyle={{ fontWeight: 'bold' }}
+                >
+                  Create Thread
+                </Button>
+              )}
+            </View>
+            
+            {threads.length === 0 ? (
+              <Card style={[styles.emptyCard, { borderRadius: 20, backgroundColor: theme.colors.elevation.level1 }]}>
+                <Card.Content style={{ alignItems: 'center', paddingVertical: 24 }}>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>No active discussion channels.</Text>
+                </Card.Content>
+              </Card>
+            ) : (
+              threads.map((thread) => (
+                <Card 
+                  key={thread.id} 
+                  style={[styles.threadCard, { 
+                    borderColor: 'rgba(0, 212, 170, 0.25)', 
+                    borderWidth: theme.dark ? 1 : 0.5,
+                    borderRadius: 20,
+                    backgroundColor: theme.colors.elevation.level1
+                  }]}
+                  onPress={() => {
+                    setActiveThread(thread);
+                    setThreadTab('chat');
+                  }}
+                >
+                  <Card.Title
+                    title={thread.title}
+                    subtitle={`Category: ${getCategoryLabel(thread.category)}`}
+                    titleStyle={{ fontWeight: 'bold', color: theme.colors.onSurface }}
+                    subtitleStyle={{ color: theme.colors.outline }}
+                    left={(props) => (
+                      <Avatar.Icon 
+                        {...props} 
+                        icon={getCategoryIcon(thread.category)} 
+                        style={{ backgroundColor: 'rgba(0, 212, 170, 0.15)' }} 
+                        color="#00D4AA"
+                      />
+                    )}
+                    right={(props) => <IconButton {...props} icon="chevron-right" iconColor="#00D4AA" />}
+                  />
+                </Card>
+              ))
+            )}
+
+            <Card style={[styles.ruleCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <Card.Content>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold' }}>📜 Council Gating Rules:</Text>
+                <View style={styles.ruleItem}>
+                  <Text variant="bodySmall" style={{ fontWeight: 'bold' }}>• Owners & Admins:</Text>
+                  <Text variant="bodySmall">Full write access to debate, create threads, and vote in polls.</Text>
+                </View>
+                <View style={styles.ruleItem}>
+                  <Text variant="bodySmall" style={{ fontWeight: 'bold' }}>• Renters & Security Guards:</Text>
+                  <Text variant="bodySmall">Read-Only access to official resolutions to maintain focus.</Text>
+                </View>
               </Card.Content>
             </Card>
-          ) : (
-            threads.map((thread) => (
-              <Card 
-                key={thread.id} 
-                style={[styles.threadCard, { 
-                  borderColor: 'rgba(0, 212, 170, 0.25)', 
-                  borderWidth: theme.dark ? 1 : 0.5,
-                  borderRadius: 20,
-                  backgroundColor: theme.colors.elevation.level1
-                }]}
-                onPress={() => {
-                  setActiveThread(thread);
-                  setThreadTab('chat');
-                }}
-              >
-                <Card.Title
-                  title={thread.title}
-                  subtitle={`Category: ${getCategoryLabel(thread.category)}`}
-                  titleStyle={{ fontWeight: 'bold', color: theme.colors.onSurface }}
-                  subtitleStyle={{ color: theme.colors.outline }}
-                  left={(props) => (
-                    <Avatar.Icon 
-                      {...props} 
-                      icon={getCategoryIcon(thread.category)} 
-                      style={{ backgroundColor: 'rgba(0, 212, 170, 0.15)' }} 
-                      color="#00D4AA"
-                    />
-                  )}
-                  right={(props) => <IconButton {...props} icon="chevron-right" iconColor="#00D4AA" />}
-                />
-              </Card>
-            ))
-          )}
-
-          <Card style={[styles.ruleCard, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Card.Content>
-              <Text variant="titleSmall" style={{ fontWeight: 'bold' }}>📜 Council Gating Rules:</Text>
-              <View style={styles.ruleItem}>
-                <Text variant="bodySmall" style={{ fontWeight: 'bold' }}>• Owners & Admins:</Text>
-                <Text variant="bodySmall">Full write access to debate, create threads, and vote in polls.</Text>
-              </View>
-              <View style={styles.ruleItem}>
-                <Text variant="bodySmall" style={{ fontWeight: 'bold' }}>• Renters & Security Guards:</Text>
-                <Text variant="bodySmall">Read-Only access to official resolutions to maintain focus.</Text>
-              </View>
-            </Card.Content>
-          </Card>
-        </ScrollView>
+          </ScrollView>
+        )}
 
         {/* CREATE THREAD MODAL */}
         <Portal>
@@ -433,7 +803,7 @@ export const ChatScreen: React.FC = () => {
         <Snackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)} style={{ marginBottom: 60 }}>
           {snackbarMessage}
         </Snackbar>
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -1123,5 +1493,105 @@ const styles = StyleSheet.create({
   emptyCard: {
     borderRadius: 12,
     elevation: 1,
+  },
+  calendarStrip: {
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  calendarStripScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  dateCard: {
+    width: 54,
+    height: 62,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    elevation: 1,
+  },
+  dateCardDay: {
+    fontSize: 9,
+    textTransform: 'uppercase',
+    color: '#8A8A8A',
+    fontWeight: 'bold',
+  },
+  dateCardNum: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 2,
+  },
+  botMessagesScroll: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  botMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginVertical: 6,
+  },
+  botMessageRowMe: {
+    justifyContent: 'flex-end',
+  },
+  botMessageBubble: {
+    borderRadius: 16,
+    elevation: 0.5,
+  },
+  botBubbleMe: {
+    borderBottomRightRadius: 2,
+  },
+  botBubbleOther: {
+    borderBottomLeftRadius: 2,
+  },
+  botBubbleContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  botMessageTime: {
+    fontSize: 8.5,
+    color: '#8A8A8A',
+    marginTop: 3,
+  },
+  typingIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 6,
+  },
+  typingBubble: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderBottomLeftRadius: 2,
+  },
+  botInputFooter: {
+    padding: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  botInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  langToggleButton: {
+    paddingHorizontal: 10,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#00D4AA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 212, 170, 0.05)',
+  },
+  langToggleText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#00D4AA',
   },
 });
