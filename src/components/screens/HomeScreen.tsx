@@ -1373,46 +1373,59 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                 const timeLabel = diffDays <= 1 ? 'Today' : `${diffDays}d ago`;
 
                 return (
-                  <Card 
-                    key={notice.id} 
-                    style={{ 
-                      width: 280, 
-                      borderRadius: 24, 
-                      backgroundColor: theme.colors.elevation.level1, 
-                      borderWidth: theme.dark ? 1 : 0, 
-                      borderColor: 'rgba(255, 255, 255, 0.08)',
-                    }}
+                  <TouchableOpacity
+                    key={notice.id}
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedNoticeForModal(notice)}
                   >
-                    <Card.Content style={{ padding: 16 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <View style={{ 
-                          backgroundColor: theme.dark ? 'rgba(0, 212, 170, 0.15)' : '#E6F4F1', 
-                          borderRadius: 12, 
-                          paddingHorizontal: 8, 
-                          paddingVertical: 4 
-                        }}>
-                          <Text style={{ color: '#00D4AA', fontSize: 9, fontWeight: '900', textTransform: 'uppercase' }}>
-                            Notice
-                          </Text>
+                    <Card 
+                      style={{ 
+                        width: 280, 
+                        borderRadius: 24, 
+                        backgroundColor: theme.colors.elevation.level1, 
+                        borderWidth: theme.dark ? 1 : 0, 
+                        borderColor: 'rgba(255, 255, 255, 0.08)',
+                      }}
+                    >
+                      <Card.Content style={{ padding: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <View style={{ 
+                            backgroundColor: theme.dark ? 'rgba(0, 212, 170, 0.15)' : '#E6F4F1', 
+                            borderRadius: 12, 
+                            paddingHorizontal: 8, 
+                            paddingVertical: 4 
+                          }}>
+                            <Text style={{ color: '#00D4AA', fontSize: 9, fontWeight: '900', textTransform: 'uppercase' }}>
+                              Notice
+                            </Text>
+                          </View>
+                          {notice.is_pinned && (
+                            <IconButton icon="pin" size={14} iconColor="#FF3B30" style={{ margin: 0, padding: 0 }} />
+                          )}
                         </View>
-                        {notice.is_pinned && (
-                          <IconButton icon="pin" size={14} iconColor="#FF3B30" style={{ margin: 0, padding: 0 }} />
-                        )}
-                      </View>
-                      
-                      <Text variant="titleMedium" numberOfLines={1} style={{ fontWeight: 'bold', color: theme.colors.onSurface, fontSize: 15 }}>
-                        {notice.title}
-                      </Text>
-                      
-                      <Text variant="bodySmall" numberOfLines={2} style={{ color: theme.colors.outline, marginTop: 4, height: 32, fontSize: 12 }}>
-                        {notice.body}
-                      </Text>
+                        
+                        <Text variant="titleMedium" numberOfLines={1} style={{ fontWeight: 'bold', color: theme.colors.onSurface, fontSize: 15 }}>
+                          {notice.title}
+                        </Text>
+                        
+                        <Text variant="bodySmall" numberOfLines={2} style={{ color: theme.colors.outline, marginTop: 4, height: 32, fontSize: 12 }}>
+                          {notice.body}
+                        </Text>
 
-                      <Text variant="labelSmall" style={{ color: theme.colors.outline, marginTop: 8, fontSize: 10 }}>
-                        {timeLabel}
-                      </Text>
-                    </Card.Content>
-                  </Card>
+                        {notice.attachment_url ? (
+                          <Image 
+                            source={{ uri: notice.attachment_url }} 
+                            style={{ width: '100%', height: 110, borderRadius: 12, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.1)' }} 
+                            resizeMode="cover"
+                          />
+                        ) : null}
+
+                        <Text variant="labelSmall" style={{ color: theme.colors.outline, marginTop: 8, fontSize: 10 }}>
+                          {timeLabel}
+                        </Text>
+                      </Card.Content>
+                    </Card>
+                  </TouchableOpacity>
                 );
               })}
             </ScrollView>

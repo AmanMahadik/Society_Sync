@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { societyId, titleEn, titleMr, bodyEn, bodyMr, timetableItemId, category } = body;
+    const { societyId, titleEn, titleMr, bodyEn, bodyMr, timetableItemId, category, imageUrl } = body;
 
     if (!societyId || !bodyEn || !bodyMr) {
       return NextResponse.json(
@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
           bodyMr, 
           timetableItemId, 
           category,
+          imageUrl: imageUrl || null,
           type: 'event_trigger'
         },
       }));

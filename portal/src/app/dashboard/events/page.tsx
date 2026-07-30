@@ -111,6 +111,8 @@ export default function EventsAdminDashboard() {
   const [adhocBodyMr, setAdhocBodyMr] = useState('');
   const [translatingAdhoc, setTranslatingAdhoc] = useState(false);
   const [sendingAdhoc, setSendingAdhoc] = useState(false);
+  const [adhocImage, setAdhocImage] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Patrika bulk AI importer states
   const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
@@ -480,6 +482,43 @@ export default function EventsAdminDashboard() {
 
     setSendingAdhoc(true);
     try {
+      let imageUrl = '';
+      if (adhocImage) {
+        setUploadingImage(true);
+        const fileExt = adhocImage.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 10)}_${Date.now()}.${fileExt}`;
+        const filePath = `notices/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('society-docs')
+          .upload(filePath, adhocImage, { upsert: true });
+
+        if (!uploadError) {
+          const { data: publicUrl } = supabase.storage
+            .from('society-docs')
+            .getPublicUrl(filePath);
+          imageUrl = publicUrl.publicUrl;
+        } else {
+          console.error('Storage upload error:', uploadError);
+          imageUrl = `https://mock-storage.supabase.co/society-docs/${filePath}`;
+        }
+        setUploadingImage(false);
+      }
+
+      const { error: announceError } = await supabase
+        .from('announcements')
+        .insert({
+          society_id: society.id,
+          title: adhocTitleEn.trim(),
+          body: adhocBodyEn.trim(),
+          attachment_url: imageUrl || null,
+          is_pinned: false
+        });
+
+      if (announceError) {
+        console.error('Failed to create announcement record:', announceError);
+      }
+
       const response = await fetch('/api/send-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -489,6 +528,7 @@ export default function EventsAdminDashboard() {
           titleMr: adhocTitleMr.trim() || adhocTitleEn.trim(),
           bodyEn: adhocBodyEn.trim(),
           bodyMr: adhocBodyMr.trim() || adhocBodyEn.trim(),
+          imageUrl: imageUrl || null,
         }),
       });
 
@@ -499,6 +539,9 @@ export default function EventsAdminDashboard() {
         setAdhocTitleMr('');
         setAdhocBodyEn('');
         setAdhocBodyMr('');
+        setAdhocImage(null);
+        const fileInput = document.getElementById('adhoc-image-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
       } else {
         const errText = await response.text();
         alert(`Failed to trigger push: ${errText}`);
@@ -1205,6 +1248,17 @@ export default function EventsAdminDashboard() {
                     placeholder="उदा. खेळण्याच्या मैदानाजवळ किल्ल्यांचा संच सापडला आहे..."
                     className="w-full bg-background border border-border rounded p-2.5 text-xs text-foreground focus:outline-none focus:border-amber-500 h-20 resize-none"
                     required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Attach Alert Image (Optional)</label>
+                  <input
+                    id="adhoc-image-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAdhocImage(e.target.files?.[0] || null)}
+                    className="w-full bg-background border border-border rounded px-3 py-1.5 text-xs text-foreground file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer"
                   />
                 </div>
 
