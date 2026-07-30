@@ -1321,7 +1321,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                   buttonColor="#e2a53d"
                   textColor="#4a0f1c"
                   labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
-                  style={{ flex: 1, borderRadius: 10, height: 34, justifyContent: 'center' }}
+                  style={{ flex: 1, borderRadius: 10 }}
+                  contentStyle={{ height: 38, justifyContent: 'center' }}
                   icon="calendar-sync"
                   compact
                 >
@@ -1331,7 +1332,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                   mode="outlined"
                   onPress={() => exportEventPatrikaPdf(event)}
                   textColor="#fbf3e6"
-                  style={{ flex: 1, borderRadius: 10, height: 34, borderColor: '#e2a53d', borderWidth: 1.5, justifyContent: 'center' }}
+                  style={{ flex: 1, borderRadius: 10, borderColor: '#e2a53d', borderWidth: 1.5 }}
+                  contentStyle={{ height: 38, justifyContent: 'center' }}
                   labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
                   icon="printer"
                   compact
