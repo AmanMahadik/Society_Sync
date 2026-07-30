@@ -517,6 +517,238 @@ export default function EventsAdminDashboard() {
     setBulkImportModalOpen(true);
   };
 
+  const handleExportPdf = async (event: Event) => {
+    try {
+      const { data: items, error } = await supabase
+        .from('timetable_items')
+        .select('*')
+        .eq('event_id', event.id)
+        .order('date', { ascending: true })
+        .order('time', { ascending: true });
+
+      if (error) throw error;
+      if (!items || items.length === 0) {
+        alert('No timetable items registered for this event yet.');
+        return;
+      }
+
+      const daysMap: Record<string, any[]> = {};
+      items.forEach(item => {
+        if (!daysMap[item.date]) {
+          daysMap[item.date] = [];
+        }
+        daysMap[item.date].push(item);
+      });
+
+      const formatMarathiDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const day = date.getDate();
+        const devDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+        const devDayStr = String(day).split('').map(d => devDigits[Number(d)]).join('');
+        const months = ['सप्टें', 'ऑक्टो', 'नोव्हें', 'डिसें', 'जाने', 'फेब्रु', 'मार्च', 'एप्रिल', 'मे', 'जून', 'जुलै', 'ऑगस्ट'];
+        const monthName = months[date.getMonth()];
+        return `${devDayStr} ${monthName || 'सप्टें'}`;
+      };
+
+      const getMarathiDayName = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const days = ['रविवार', 'सोमवार', 'मंगळवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+        return days[date.getDay()];
+      };
+
+      let daysHtml = '';
+      Object.keys(daysMap).forEach((dateKey) => {
+        const dayItems = daysMap[dateKey];
+        const dateDisplay = formatMarathiDate(dateKey);
+        const dayName = getMarathiDayName(dateKey);
+
+        let eventsLiHtml = '';
+        dayItems.forEach(item => {
+          eventsLiHtml += `
+            <li style="margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#c1442d;"></span>
+              <span>${item.time} — <b>${item.title_mr || item.title_en}</b> ${item.notes_mr ? `<span class="tag">${item.notes_mr}</span>` : ''}</span>
+            </li>
+          `;
+        });
+
+        const isSpecial = dateKey === event.start_date || dayItems.some(i => i.category === 'pooja' && i.title_mr.includes('सत्यनारायण'));
+        const isVisarjan = dayItems.some(i => i.category === 'visarjan');
+        const cardClass = isVisarjan ? 'day-card finale' : (isSpecial ? 'day-card special' : 'day-card');
+
+        daysHtml += `
+          <div class="${cardClass}">
+            <div class="day-head">
+              <span class="date-chip">${dateDisplay}</span>
+              <span class="day-name">${dayName}</span>
+            </div>
+            <ul class="events" style="list-style:none; padding:0; margin:0;">
+              ${eventsLiHtml}
+            </ul>
+          </div>
+        `;
+      });
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+
+      const pageHtml = `
+        <!DOCTYPE html>
+        <html lang="mr">
+        <head>
+        <meta charset="UTF-8">
+        <title>${event.name_mr || event.name_en || event.name} — Patrika</title>
+        <link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Tiro+Devanagari+Marathi&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+          :root{
+            --maroon:#6b1626;
+            --maroon-deep:#4a0f1c;
+            --vermilion:#c1442d;
+            --marigold:#e2a53d;
+            --marigold-soft:#f3cf8a;
+            --ivory:#fbf3e6;
+            --ivory-2:#f6e9d4;
+            --leaf:#3d5a40;
+            --ink:#2c1810;
+            --ink-soft:#5c463c;
+            --shadow: 0 10px 30px rgba(74,15,28,0.15);
+          }
+          *{box-sizing:border-box;}
+          body{
+            background: var(--ivory);
+            font-family:'Tiro Devanagari Marathi', serif;
+            color:var(--ink);
+            padding: 40px;
+            margin:0;
+          }
+          header{
+            text-align:center;
+            background: linear-gradient(180deg, var(--maroon-deep) 0%, var(--maroon) 78%, var(--vermilion) 100%);
+            color:var(--ivory);
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+          }
+          header h1{
+            font-family:'Yatra One', cursive;
+            font-size:36px;
+            margin: 0 0 6px;
+          }
+          header .sub{
+            font-family:'Yatra One', cursive;
+            font-size:18px;
+            color:var(--marigold-soft);
+            margin: 0;
+          }
+          .venue-note{
+            font-family:'Poppins', sans-serif;
+            font-size:12px;
+            opacity:0.9;
+            margin-top:10px;
+          }
+          main{
+            max-width:720px;
+            margin:0 auto;
+          }
+          .timeline{
+            position:relative;
+            padding-left:16px;
+            border-left: 2px dashed var(--marigold);
+          }
+          .day-card{
+            position:relative;
+            margin-bottom:20px;
+            background:#fff;
+            border-radius:12px;
+            padding:15px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(74,15,28,0.08);
+          }
+          .day-head{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            border-bottom:1px dashed rgba(193,68,45,0.35);
+            padding-bottom:8px;
+            margin-bottom:10px;
+          }
+          .date-chip{
+            font-family:'Poppins', sans-serif;
+            font-size:11px;
+            font-weight:bold;
+            color:#fff;
+            background:var(--vermilion);
+            padding:2px 8px;
+            border-radius:12px;
+          }
+          .day-name{
+            font-family:'Yatra One', cursive;
+            font-size:18px;
+            color:var(--maroon);
+          }
+          .tag{
+            font-family:'Poppins', sans-serif;
+            font-size:10px;
+            color:var(--leaf);
+            background:rgba(61,90,64,0.10);
+            padding:1px 5px;
+            border-radius:4px;
+          }
+          .day-card.special{
+            background: linear-gradient(180deg,#fff 0%, var(--ivory-2) 100%);
+            border:1px solid rgba(226,165,61,0.3);
+          }
+          .day-card.special .day-name{ color:var(--vermilion); }
+          .day-card.finale{
+            background: linear-gradient(160deg, var(--maroon) 0%, var(--maroon-deep) 100%);
+            color:var(--ivory);
+          }
+          .day-card.finale .day-name{ color:var(--marigold-soft); }
+          .day-card.finale ul li{ color:#f0dcc8; }
+          .day-card.finale ul li b{ color:#fff; }
+          footer{
+            text-align:center;
+            margin-top:30px;
+            border-top: 1px solid var(--marigold);
+            padding-top: 15px;
+          }
+          footer .committee{
+            font-family:'Yatra One', cursive;
+            font-size:16px;
+            color:var(--maroon);
+          }
+        </style>
+        </head>
+        <body>
+          <header>
+            <h1>${event.name_mr || event.name_en || event.name}</h1>
+            <p class="sub">दैनंदिन कार्यक्रम वेळापत्रक</p>
+            <p class="venue-note">${event.description_mr || event.description_en || 'सर्व रहिवाशांना नम्र विनंती की वेळापत्रकानुसार कार्यक्रमांना उपस्थित रहावे.'}</p>
+          </header>
+          <main>
+            <div class="timeline">
+              ${daysHtml}
+            </div>
+          </main>
+          <footer>
+            <p class="committee">उत्सव समिती, सोसायटी</p>
+          </footer>
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.write(pageHtml);
+      printWindow.document.close();
+    } catch (e: any) {
+      alert('Failed to generate printable PDF: ' + e.message);
+    }
+  };
+
   const handleTranslatePatrika = async () => {
     if (!bulkText.trim()) return;
     setTranslatingPatrika(true);
