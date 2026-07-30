@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated, Share, Alert } from 'react-native';
 import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput, Dialog } from 'react-native-paper';
 import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../lib/auth-context';
 import { dataManager, Complaint, Announcement, VisitorPreApproval, Visitor } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,10 +125,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   }
   *{box-sizing:border-box;}
   body{
-    background: var(--ivory);
+    background: radial-gradient(circle at 15% 8%, rgba(226,165,61,0.08), transparent 40%), var(--ivory);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color:var(--ink);
-    padding: 20px;
+    padding: 50px 30px;
+    margin:0;
+    position: relative;
+    min-height: 100vh;
+  }
+  body::before, body::after {
+    content: '';
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+  }
+  body::before {
+    top: 15px; left: 15px; right: 15px; bottom: 15px;
+    border: 2px solid var(--maroon);
+    border-radius: 8px;
+  }
+  body::after {
+    top: 20px; left: 20px; right: 20px; bottom: 20px;
+    border: 1px dashed var(--marigold);
+    border-radius: 6px;
   }
   header{
     text-align:center;
@@ -230,7 +250,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
 </html>
       `;
 
-      await Print.printAsync({ html: htmlContent });
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Download Patrika PDF', UTI: 'com.adobe.pdf' });
+      } else {
+        await Print.printAsync({ html: htmlContent });
+      }
     } catch (e: any) {
       Alert.alert('Error', 'Failed to generate Patrika PDF: ' + e.message);
     }

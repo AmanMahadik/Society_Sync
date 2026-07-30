@@ -615,11 +615,29 @@ export default function EventsAdminDashboard() {
           }
           *{box-sizing:border-box;}
           body{
-            background: var(--ivory);
+            background: radial-gradient(circle at 15% 8%, rgba(226,165,61,0.08), transparent 40%), var(--ivory);
             font-family:'Tiro Devanagari Marathi', serif;
             color:var(--ink);
-            padding: 40px;
+            padding: 50px 40px;
             margin:0;
+            position: relative;
+            min-height: 100vh;
+          }
+          body::before, body::after {
+            content: '';
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+          }
+          body::before {
+            top: 15px; left: 15px; right: 15px; bottom: 15px;
+            border: 2px solid var(--maroon);
+            border-radius: 8px;
+          }
+          body::after {
+            top: 20px; left: 20px; right: 20px; bottom: 20px;
+            border: 1px dashed var(--marigold);
+            border-radius: 6px;
           }
           header{
             text-align:center;
