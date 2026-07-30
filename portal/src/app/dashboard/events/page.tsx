@@ -112,6 +112,13 @@ export default function EventsAdminDashboard() {
   const [translatingAdhoc, setTranslatingAdhoc] = useState(false);
   const [sendingAdhoc, setSendingAdhoc] = useState(false);
 
+  // Patrika bulk AI importer states
+  const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [translatingPatrika, setTranslatingPatrika] = useState(false);
+  const [parsedPatrika, setParsedPatrika] = useState<any>(null);
+  const [importingPatrika, setImportingPatrika] = useState(false);
+
   // Load Theme
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -503,6 +510,103 @@ export default function EventsAdminDashboard() {
     }
   };
 
+  const handleOpenBulkImport = (event: Event) => {
+    setSelectedEvent(event);
+    setBulkText('');
+    setParsedPatrika(null);
+    setBulkImportModalOpen(true);
+  };
+
+  const handleTranslatePatrika = async () => {
+    if (!bulkText.trim()) return;
+    setTranslatingPatrika(true);
+    setParsedPatrika(null);
+    try {
+      const response = await fetch('/api/translate-patrika', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: bulkText }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setParsedPatrika(data);
+      } else {
+        alert('Translation failed. Please check the logs.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error calling AI translator.');
+    } finally {
+      setTranslatingPatrika(false);
+    }
+  };
+
+  const mapIconToCategory = (icon: string) => {
+    switch (icon) {
+      case 'puja':
+      case 'installation':
+      case 'satyanarayan':
+        return 'pooja';
+      case 'aarti':
+        return 'aarti';
+      case 'visarjan':
+        return 'visarjan';
+      case 'competition_kids':
+      case 'competition_women':
+      case 'competition_dance':
+        return 'competition';
+      case 'food_stall':
+        return 'food_stall';
+      default:
+        return 'other';
+    }
+  };
+
+  const handleConfirmBulkImport = async () => {
+    if (!parsedPatrika || !selectedEvent) return;
+    setImportingPatrika(true);
+    try {
+      const insertRows: any[] = [];
+      parsedPatrika.days.forEach((day: any) => {
+        if (!day.date_iso || !day.events || day.events.length === 0) return;
+        
+        day.events.forEach((ev: any) => {
+          insertRows.push({
+            event_id: selectedEvent.id,
+            date: day.date_iso,
+            time: ev.time_display || '8:00 AM',
+            category: mapIconToCategory(ev.icon),
+            title_en: ev.text || 'Activity',
+            title_mr: ev.text || 'कार्यक्रम',
+            notes_en: ev.tag || null,
+            notes_mr: ev.tag || null,
+            is_triggered: false
+          });
+        });
+      });
+
+      if (insertRows.length === 0) {
+        alert('No valid items found in the generated schedule to import.');
+        setImportingPatrika(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('timetable_items')
+        .insert(insertRows);
+
+      if (error) throw error;
+      
+      alert(`Successfully imported ${insertRows.length} activities into the schedule timeline!`);
+      setBulkImportModalOpen(false);
+      await fetchTimetableItems(selectedEvent.id);
+    } catch (err: any) {
+      alert(`Error during bulk import: ${err.message}`);
+    } finally {
+      setImportingPatrika(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
@@ -642,13 +746,22 @@ export default function EventsAdminDashboard() {
                         <div className="border-t border-border bg-background/35 p-5 space-y-4">
                           <div className="flex justify-between items-center">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Daily Timetable / Schedule Log</h4>
-                            <button 
-                              onClick={() => handleNewTimetableItem(event)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-[#0F6E56]/25 hover:bg-[#0F6E56]/40 text-[#1D9E75] font-extrabold text-[10px] uppercase tracking-wider rounded border border-[#1D9E75]/30 transition-all cursor-pointer"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              Add Activity
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleOpenBulkImport(event)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/30 text-blue-400 font-extrabold text-[10px] uppercase tracking-wider rounded border border-blue-500/30 transition-all cursor-pointer"
+                              >
+                                <Languages className="h-3.5 w-3.5" />
+                                Import Patrika (AI)
+                              </button>
+                              <button 
+                                onClick={() => handleNewTimetableItem(event)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-[#0F6E56]/25 hover:bg-[#0F6E56]/40 text-[#1D9E75] font-extrabold text-[10px] uppercase tracking-wider rounded border border-[#1D9E75]/30 transition-all cursor-pointer"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add Activity
+                              </button>
+                            </div>
                           </div>
 
                           {items.length === 0 ? (
@@ -1143,6 +1256,163 @@ export default function EventsAdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* BULK IMPORT PATRIKA AI MODAL */}
+      {bulkImportModalOpen && selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-4xl bg-zinc-950 border border-border rounded-xl shadow-2xl p-6 my-8 text-foreground flex flex-col gap-4">
+            <div className="flex justify-between items-center pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Languages className="h-5 w-5 text-blue-400" />
+                <h3 className="text-base font-bold text-foreground">AI Timetable Patrika Importer & Translator</h3>
+              </div>
+              <button 
+                onClick={() => setBulkImportModalOpen(false)}
+                className="p-1 rounded hover:bg-zinc-800 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[350px]">
+              {/* Left Column: Raw Timetable Input */}
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                  Paste Raw Schedule Flyer / Notice Text
+                </label>
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  placeholder="Paste raw English/Marathi timetable here. For example:
+Sept 7, Sat: 2pm arrival of deity, 3pm pranpratishtha, 8pm aarti.
+Sept 8, Sun: 8:30am daily worship, 8pm aarti - B & C wings, kids musical chair at 5pm."
+                  className="flex-1 w-full bg-zinc-900 border border-border rounded-lg p-3 text-xs text-foreground focus:outline-none focus:border-blue-500 font-mono resize-none h-[220px]"
+                />
+                <button
+                  onClick={handleTranslatePatrika}
+                  disabled={translatingPatrika || !bulkText.trim()}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900/50 disabled:text-zinc-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 cursor-pointer shadow transition-colors"
+                >
+                  {translatingPatrika ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      AI Translating & Formatting...
+                    </>
+                  ) : (
+                    <>
+                      <Languages className="h-4 w-4" />
+                      ✨ Translate & Structure Patrika
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Right Column: AI Translation Preview */}
+              <div className="flex flex-col gap-3 bg-zinc-900/50 border border-border/80 rounded-lg p-4 max-h-[360px] overflow-y-auto">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                  Structured Preview (Marathi Notice Format)
+                </label>
+                
+                {!parsedPatrika && !translatingPatrika && (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-muted-foreground gap-2">
+                    <Info className="h-8 w-8 text-zinc-600" />
+                    <p className="text-xs">Paste schedule text on the left and click translate to view preview.</p>
+                  </div>
+                )}
+
+                {translatingPatrika && (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-muted-foreground gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+                    <p className="text-xs">AI is parsing events, structuring categories, and converting numbers to Devanagari...</p>
+                  </div>
+                )}
+
+                {parsedPatrika && (
+                  <div className="space-y-4 text-xs">
+                    <div className="p-3 bg-zinc-900 border border-border rounded-lg space-y-1">
+                      <div className="font-bold text-blue-400 text-sm">{parsedPatrika.event_title} {parsedPatrika.event_year}</div>
+                      {parsedPatrika.committee_name && (
+                        <div className="text-[10px] text-muted-foreground">आयोजक: {parsedPatrika.committee_name}</div>
+                      )}
+                      {parsedPatrika.venue_note && (
+                        <div className="text-[10px] text-amber-500/80 italic mt-1">📝 {parsedPatrika.venue_note}</div>
+                      )}
+                    </div>
+
+                    {parsedPatrika.admin_warnings && parsedPatrika.admin_warnings.length > 0 && (
+                      <div className="p-3 bg-red-950/30 border border-red-500/20 text-red-400 rounded-lg space-y-1">
+                        <div className="font-bold flex items-center gap-1 text-[10px] uppercase tracking-wider">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          Parser Warnings
+                        </div>
+                        <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                          {parsedPatrika.admin_warnings.map((w: string, i: number) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <div className="font-bold text-zinc-300">Days & Timeline:</div>
+                      {parsedPatrika.days.map((day: any, idx: number) => (
+                        <div key={idx} className="p-2.5 bg-zinc-900 border border-border/60 rounded space-y-2">
+                          <div className="flex items-center justify-between border-b border-border/50 pb-1">
+                            <span className="font-bold text-amber-400">{day.date_display} ({day.day_name})</span>
+                            {day.day_title_suffix && (
+                              <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] rounded font-bold">
+                                {day.day_title_suffix}
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            {day.events.map((ev: any, evIdx: number) => (
+                              <div key={evIdx} className="flex justify-between items-start gap-2 text-[11px]">
+                                <div>
+                                  <span className="font-semibold text-zinc-400 mr-2">{ev.time_display}</span>
+                                  <span className="text-foreground">{ev.text}</span>
+                                  {ev.tag && <span className="text-[9px] text-muted-foreground block mt-0.5">🏷️ {ev.tag}</span>}
+                                </div>
+                                <span className="text-[9px] px-1.5 py-0.2 bg-zinc-800 text-zinc-400 rounded uppercase font-semibold">
+                                  {ev.icon}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {day.family_note && (
+                            <div className="text-[9px] text-emerald-400 mt-1 italic">
+                              🙏 {day.family_note}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-border flex justify-end gap-3">
+              <button 
+                type="button"
+                onClick={() => setBulkImportModalOpen(false)}
+                className="px-4 py-2 border border-border hover:bg-zinc-800 font-bold rounded uppercase text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                onClick={handleConfirmBulkImport}
+                disabled={!parsedPatrika || importingPatrika}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-bold rounded uppercase text-xs flex items-center gap-1.5 cursor-pointer shadow transition-colors"
+              >
+                {importingPatrika && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Confirm and Import Schedule
+              </button>
+            </div>
           </div>
         </div>
       )}

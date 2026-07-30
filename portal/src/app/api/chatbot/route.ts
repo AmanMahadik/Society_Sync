@@ -72,22 +72,67 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 2.5 Fetch society admins, guards, announcements, and info
+    const { data: admins } = await supabaseServer
+      .from('profiles')
+      .select('full_name, email, phone')
+      .eq('society_id', societyId)
+      .in('role', ['admin', 'master_admin']);
+
+    const { data: guards } = await supabaseServer
+      .from('profiles')
+      .select('full_name, phone')
+      .eq('society_id', societyId)
+      .eq('role', 'guard');
+
+    const { data: announcements } = await supabaseServer
+      .from('announcements')
+      .select('title, body, created_at')
+      .eq('society_id', societyId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const { data: societyInfo } = await supabaseServer
+      .from('societies')
+      .select('name, address, city, state, pincode, society_code')
+      .eq('id', societyId)
+      .maybeSingle();
+
     // Get current local date from user's current request timestamp or default to server time
     const todayStr = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
     // 3. Construct system prompt with strict no-hallucination rules and schedule context
-    const systemPrompt = `You are the SocietySync AI Assistant. Your goal is to answer resident questions about society events, schedules, or calendars based strictly on the provided timetable database.
+    const systemPrompt = `You are the SocietySync AI Assistant. Your goal is to answer resident questions about society events, schedules, calendar timelines, administrator and security guard/watchman contacts, recent notices, or general society details based strictly on the provided society context and timetable database.
 
 CRITICAL RULES:
-1. DO NOT HALLUCINATE. Do not make up any dates, times, or events.
-2. Use ONLY the provided timetable database to extract details.
-3. If the user asks about an event, category, date, or time not present in the database, reply politely stating that it is not scheduled or you don't have information about it. Do not guess.
+1. DO NOT HALLUCINATE. Do not make up any dates, times, names, phone numbers, or details.
+2. Use ONLY the provided database and context information.
+3. If the user asks about something not present in the database or context (e.g., a specific resident, private data, or unlisted contact), reply politely that you do not have that information. Do not guess or invent contact info.
 4. Respond in the requested language: ${language === 'marathi' ? 'Marathi' : 'English'}.
 5. Keep your response concise, polite, and directly addressing the user's question.
 6. The current date is ${todayStr} (${dayOfWeek}). Use this reference when the user says "today", "tomorrow", "yesterday", or "this week".
+7. When providing contact phone numbers, display them clearly next to the name of the person (e.g. "Admin: [Name] - [Phone]").
 
-ACTIVE EVENTS IN SOCIETY:
+SOCIETY GENERAL INFORMATION:
+- Name: ${societyInfo?.name || 'N/A'}
+- Address: ${societyInfo?.address || 'N/A'}, ${societyInfo?.city || ''}, ${societyInfo?.state || ''} ${societyInfo?.pincode || ''}
+- Registration Code: ${societyInfo?.society_code || 'N/A'}
+
+SOCIETY ADMINISTRATORS (CONTACT LIST):
+${JSON.stringify(admins || [])}
+
+SECURITY GUARDS / WATCHMEN (CONTACT LIST):
+${JSON.stringify(guards || [])}
+
+LATEST SOCIETY NOTICES & ANNOUNCEMENTS:
+${JSON.stringify(announcements?.map(a => ({
+  title: a.title,
+  body: a.body,
+  date: a.created_at ? new Date(a.created_at).toLocaleDateString() : 'N/A'
+})) || [])}
+
+ACTIVE EVENTS:
 ${JSON.stringify(events?.map(e => ({
   name_en: e.name_en || e.name,
   name_mr: e.name_mr || e.name,
@@ -107,8 +152,7 @@ ${JSON.stringify(timetableItems.map(item => ({
   title_mr: item.title_mr,
   notes_en: item.notes_en,
   notes_mr: item.notes_mr,
-  is_triggered: item.is_triggered,
-  triggered_at: item.triggered_at
+  is_triggered: item.is_triggered
 })))}
 `;
 
