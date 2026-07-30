@@ -605,6 +605,7 @@ export default function ChandaDashboard() {
             <Link href="/dashboard/chanda" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">Billing</Link>
             <Link href="/dashboard/parking" className="text-muted-foreground hover:text-foreground transition-colors">Parking</Link>
             <Link href="/dashboard/forum" className="text-muted-foreground hover:text-foreground transition-colors">Forum</Link>
+            <Link href="/dashboard/events" className="text-muted-foreground hover:text-foreground transition-colors">Events</Link>
           </nav>
 
       {/* MOBILE NAVIGATION SIDE DRAWER */}
@@ -662,6 +663,13 @@ export default function ChandaDashboard() {
                   className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
                 >
                   Forum
+                </Link>
+                <Link 
+                  href="/dashboard/events" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
+                >
+                  Events
                 </Link>
               </nav>
             </div>
