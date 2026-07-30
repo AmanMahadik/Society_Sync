@@ -3,6 +3,7 @@ import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Image, To
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, Card, TextInput, IconButton, Button, Avatar, useTheme, Chip, SegmentedButtons, Portal, Modal, ProgressBar, Snackbar, Divider, Dialog } from 'react-native-paper';
 import { useAuth } from '../../lib/auth-context';
+import { useLanguageContext } from '../../lib/language-context';
 import { dataManager, ChatMessage, ChatThread, Poll, PollOption } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
@@ -66,7 +67,7 @@ export const ChatScreen: React.FC = () => {
   const [activeEvent, setActiveEvent] = useState<any | null>(null);
   const [eventDates, setEventDates] = useState<Date[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [appLanguage, setAppLanguage] = useState<'english' | 'marathi'>('english');
+  const { language: appLanguage, setLanguage: setAppLanguage } = useLanguageContext();
   const [chatbotMessages, setChatbotMessages] = useState<any[]>([
     {
       id: 'welcome',
@@ -278,8 +279,7 @@ export const ChatScreen: React.FC = () => {
 
   const toggleLanguage = async () => {
     const nextLang = appLanguage === 'english' ? 'marathi' : 'english';
-    setAppLanguage(nextLang);
-    await AsyncStorage.setItem('sync_app_language', nextLang);
+    await setAppLanguage(nextLang);
   };
 
   const fetchThreads = async () => {
@@ -373,20 +373,7 @@ export const ChatScreen: React.FC = () => {
     });
   }, [appLanguage]);
 
-  // Load language settings on screen mount
-  useEffect(() => {
-    const loadLang = async () => {
-      try {
-        const storedLang = await AsyncStorage.getItem('sync_app_language');
-        if (storedLang === 'english' || storedLang === 'marathi') {
-          setAppLanguage(storedLang);
-        }
-      } catch (e) {
-        console.warn('Failed to load language preference', e);
-      }
-    };
-    loadLang();
-  }, []);
+
 
   useEffect(() => {
     if (activeThread) {

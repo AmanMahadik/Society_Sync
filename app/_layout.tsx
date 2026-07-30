@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useThemeContext } from '@/lib/theme-context';
+import { LanguageProvider } from '@/lib/language-context';
 import { PaperProvider } from 'react-native-paper';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { NotificationProvider } from '@/lib/notification-context';
@@ -212,11 +213,13 @@ function AppWithTheme() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider style={{ flex: 1 }}>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppWithTheme />
-        </AuthProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppWithTheme />
+          </AuthProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

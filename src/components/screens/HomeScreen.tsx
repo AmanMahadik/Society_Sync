@@ -4,6 +4,7 @@ import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, 
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../lib/auth-context';
+import { useLanguageContext } from '../../lib/language-context';
 import { dataManager, Complaint, Announcement, VisitorPreApproval, Visitor } from '../../lib/data-manager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../lib/notification-context';
@@ -18,6 +19,8 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const { profile, user, refreshProfile } = useAuth();
+  const { language, t } = useLanguageContext();
+  const [selectedNoticeForModal, setSelectedNoticeForModal] = useState<any | null>(null);
   const { addNotification } = useNotifications();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -1425,7 +1428,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                                 style={{ margin: 0, padding: 0, marginLeft: 8 }} 
                                 onPress={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteNotice(notice.id);
+                                  handleDeleteNotice(notice.id.toString());
                                 }}
                               />
                             )}
@@ -1618,7 +1621,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               <Card style={[styles.passcodeEmptyCard, { backgroundColor: theme.colors.elevation.level1, borderWidth: 0.5, borderColor: '#333' }]}>
                 <Card.Content style={{ alignItems: 'center', paddingVertical: 16 }}>
                   <Text variant="bodySmall" style={{ color: theme.colors.outline, textAlign: 'center' }}>
-                    No active pre-approved guest codes. Tap "Create Pass" to generate one.
+                    {t('noPasscodes')}
                   </Text>
                 </Card.Content>
               </Card>
@@ -1708,7 +1711,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                     Console Suspended
                   </Text>
                   <Text variant="bodySmall" style={{ color: theme.colors.outline, textAlign: 'center', marginTop: 4, paddingHorizontal: 16 }}>
-                    This console is disabled because the society's account has been suspended. Please contact the administrator.
+                    {language === 'english' 
+                      ? "This console is disabled because the society's account has been suspended. Please contact the administrator." 
+                      : "सोसायटीचे खाते निलंबित केल्यामुळे हे कन्सोल बंद केले आहे. कृपया प्रशासकाशी संपर्क साधा."}
                   </Text>
                 </Card.Content>
               </Card>
@@ -2541,6 +2546,56 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
             </Button>
           </Dialog.Actions>
         </Dialog>
+      </Portal>
+
+      {/* 6. NOTICE DETAILS & FULL-RESOLUTION IMAGE VIEW PORTAL */}
+      <Portal>
+        <Modal
+          visible={selectedNoticeForModal !== null}
+          onDismiss={() => setSelectedNoticeForModal(null)}
+          contentContainerStyle={{
+            backgroundColor: theme.colors.background,
+            margin: 20,
+            borderRadius: 24,
+            padding: 20,
+            maxHeight: '85%',
+          }}
+        >
+          {selectedNoticeForModal && (
+            <ScrollView contentContainerStyle={{ alignItems: 'center' }} showsVerticalScrollIndicator={false}>
+              <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ backgroundColor: theme.dark ? 'rgba(0, 212, 170, 0.15)' : '#E6F4F1', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                  <Text style={{ color: '#00D4AA', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }}>
+                    Notice Details
+                  </Text>
+                </View>
+                <IconButton icon="close" size={20} onPress={() => setSelectedNoticeForModal(null)} style={{ margin: 0 }} />
+              </View>
+
+              <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface, textAlign: 'left', width: '100%', marginBottom: 8 }}>
+                {selectedNoticeForModal.title}
+              </Text>
+
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'left', width: '100%', marginBottom: 16 }}>
+                {selectedNoticeForModal.body}
+              </Text>
+
+              {selectedNoticeForModal.attachment_url && (
+                <View style={{ width: '100%', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.outlineVariant, marginBottom: 16 }}>
+                  <Image
+                    source={{ uri: selectedNoticeForModal.attachment_url }}
+                    style={{ width: '100%', height: 300, backgroundColor: 'rgba(0,0,0,0.05)' }}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+
+              <Text variant="labelSmall" style={{ color: theme.colors.outline, alignSelf: 'flex-start' }}>
+                Posted on: {new Date(selectedNoticeForModal.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </Text>
+            </ScrollView>
+          )}
+        </Modal>
       </Portal>
     </View>
   );

@@ -9,6 +9,7 @@ import { useThemeContext, ThemeMode } from '@/lib/theme-context';
 import { useNotifications } from '@/lib/notification-context';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
+import { useLanguageContext } from '@/lib/language-context';
 
 let Notifications: any = null;
 try {
@@ -33,9 +34,9 @@ export default function SettingsScreen() {
   const [notifFestivals, setNotifFestivals] = useState(true);
   const [globalSOSActive, setGlobalSOSActive] = useState(true);
 
+  const { language, setLanguage, t } = useLanguageContext();
   // Language Menu State
   const [langMenuVisible, setLangMenuVisible] = useState(false);
-  const [language, setLanguage] = useState<'english' | 'marathi'>('english');
 
   // App & Connection Status States
   const [dbStatus, setDbStatus] = useState<'Connected' | 'Disconnected'>('Connected');
@@ -59,11 +60,6 @@ export default function SettingsScreen() {
           if (val !== null) {
             (setter as Function)(val === 'true');
           }
-        }
-
-        const lang = await AsyncStorage.getItem('sync_app_language');
-        if (lang) {
-          setLanguage(lang as 'english' | 'marathi');
         }
 
         // Fetch society settings for global SOS status check
@@ -193,8 +189,7 @@ export default function SettingsScreen() {
 
   const handleLanguageChange = async (lang: 'english' | 'marathi') => {
     try {
-      setLanguage(lang);
-      await AsyncStorage.setItem('sync_app_language', lang);
+      await setLanguage(lang);
       setLangMenuVisible(false);
     } catch (e) {
       console.error('Failed to save language preference', e);
@@ -269,7 +264,7 @@ export default function SettingsScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={['bottom']}>
         <Appbar.Header style={{ backgroundColor: theme.colors.elevation.level1 }} elevated>
           <Appbar.BackAction onPress={() => router.back()} color={theme.colors.onSurface} />
-          <Appbar.Content title="Settings" titleStyle={{ fontWeight: 'bold' }} />
+          <Appbar.Content title={t('settings')} titleStyle={{ fontWeight: 'bold' }} />
         </Appbar.Header>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -282,22 +277,22 @@ export default function SettingsScreen() {
           }]}>
             <Card.Content>
               <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
-                Theme Preference
+                {t('themePreference')}
               </Text>
               <RadioButton.Group onValueChange={value => setThemeMode(value as ThemeMode)} value={themeMode}>
                 <View style={styles.radioRow}>
                   <RadioButton.Android value="dark" color="#00D4AA" />
-                  <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>🌙 Dark Mode</Text>
+                  <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>{t('darkMode')}</Text>
                 </View>
                 <Divider style={styles.divider} />
                 <View style={styles.radioRow}>
                   <RadioButton.Android value="light" color="#00D4AA" />
-                  <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>☀️ Light Mode</Text>
+                  <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>{t('lightMode')}</Text>
                 </View>
               <Divider style={styles.divider} />
               <View style={styles.radioRow}>
                 <RadioButton.Android value="system" color="#00D4AA" />
-                <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>📱 System Default</Text>
+                <Text variant="bodyLarge" style={[styles.radioLabel, { color: theme.colors.onSurface }]}>{t('systemDefault')}</Text>
               </View>
             </RadioButton.Group>
           </Card.Content>
@@ -312,16 +307,16 @@ export default function SettingsScreen() {
         }]}>
           <Card.Content>
             <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
-              Notification Settings
+              {t('notificationSettings')}
             </Text>
             
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>SOS Emergency Alerts</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('sosAlerts')}</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
                   {!globalSOSActive 
-                    ? '⚠️ Disabled globally by Society Admin' 
-                    : 'Immediate alerts for safety and security'}
+                    ? t('sosAlertsSubDisabled') 
+                    : t('sosAlertsSub')}
                 </Text>
               </View>
               <Switch
@@ -336,8 +331,8 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Maintenance Updates</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Reminders for dues and payment confirmations</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('maintenanceUpdates')}</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>{t('maintenanceUpdatesSub')}</Text>
               </View>
               <Switch
                 value={notifMaintenance}
@@ -350,8 +345,8 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Parking Allocations</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Approval/rejection notifications for slot requests</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('parkingAllocations')}</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>{t('parkingAllocationsSub')}</Text>
               </View>
               <Switch
                 value={notifParking}
@@ -364,8 +359,8 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Community Messages</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Chat mentions and thread discussions</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('communityMessages')}</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>{t('communityMessagesSub')}</Text>
               </View>
               <Switch
                 value={notifCommunity}
@@ -378,8 +373,8 @@ export default function SettingsScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchTextContainer}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Festival & Event Updates</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Announcements for society cultural programs</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('festivalEventUpdates')}</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>{t('festivalEventUpdatesSub')}</Text>
               </View>
               <Switch
                 value={notifFestivals}
@@ -399,13 +394,13 @@ export default function SettingsScreen() {
         }]}>
           <Card.Content>
             <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
-              Language Support
+              {t('languageLabel')}
             </Text>
             <View style={styles.langRow}>
               <View style={{ flex: 1 }}>
-                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>App Language</Text>
+                <Text variant="bodyLarge" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('languageLabel')}</Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-                  Selected: {language === 'english' ? 'English' : 'मराठी'}
+                  {language === 'english' ? 'Selected: English' : 'निवडलेली भाषा: मराठी'}
                 </Text>
               </View>
               
@@ -440,11 +435,11 @@ export default function SettingsScreen() {
         }]}>
           <Card.Content>
             <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
-              Account Details
+              {t('accountDetails')}
             </Text>
             
             <List.Item
-              title="Registered Email"
+              title={t('registeredEmail')}
               titleStyle={{ color: theme.colors.onSurface }}
               description={user?.email || 'N/A'}
               descriptionStyle={{ color: theme.colors.outline }}
@@ -452,7 +447,7 @@ export default function SettingsScreen() {
             />
             <Divider />
             <List.Item
-              title="Role Profile"
+              title={t('role')}
               titleStyle={{ color: theme.colors.onSurface }}
               description={formatRole(profile?.role)}
               descriptionStyle={{ color: theme.colors.outline }}
@@ -462,7 +457,7 @@ export default function SettingsScreen() {
             <View style={styles.infoRowGrid}>
               <View style={{ flex: 1 }}>
                 <List.Item
-                  title="Wing"
+                  title={t('wingLabel')}
                   titleStyle={{ color: theme.colors.onSurface }}
                   description={profile?.wing || 'N/A'}
                   descriptionStyle={{ color: theme.colors.outline }}
@@ -471,7 +466,7 @@ export default function SettingsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <List.Item
-                  title="Flat Number"
+                  title={t('flatNumberLabel')}
                   titleStyle={{ color: theme.colors.onSurface }}
                   description={profile?.flat_number || 'N/A'}
                   descriptionStyle={{ color: theme.colors.outline }}
@@ -481,9 +476,9 @@ export default function SettingsScreen() {
             </View>
             <Divider />
             <List.Item
-              title="Verified Status"
+              title={language === 'english' ? 'Verified Status' : 'पडताळणी स्थिती'}
               titleStyle={{ color: theme.colors.onSurface }}
-              description={profile?.status === 'approved' ? 'Verified (Active)' : 'Pending Review'}
+              description={profile?.status === 'approved' ? (language === 'english' ? 'Verified (Active)' : 'सक्रिय (पडताळणी पूर्ण)') : (language === 'english' ? 'Pending Review' : 'पुनरावलोकन प्रलंबित')}
               descriptionStyle={{ color: profile?.status === 'approved' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}
               left={props => (
                 <List.Icon 
@@ -495,7 +490,7 @@ export default function SettingsScreen() {
             />
             <Divider />
             <List.Item
-              title="Account Created"
+              title={language === 'english' ? 'Account Created' : 'खाते तयार केले'}
               titleStyle={{ color: theme.colors.onSurface }}
               description={formatDate(profile?.created_at || user?.created_at)}
               descriptionStyle={{ color: theme.colors.outline }}
@@ -503,7 +498,7 @@ export default function SettingsScreen() {
             />
             <Divider />
             <List.Item
-              title="Last Signed In"
+              title={language === 'english' ? 'Last Signed In' : 'शेवटचे लॉगिन'}
               titleStyle={{ color: theme.colors.onSurface }}
               description={formatDate(user?.last_sign_in_at)}
               descriptionStyle={{ color: theme.colors.outline }}
@@ -521,9 +516,9 @@ export default function SettingsScreen() {
         }]}>
           <Card.Content style={{ padding: 4 }}>
             <List.Item
-              title="Security & Password"
+              title={language === 'english' ? 'Security & Password' : 'सुरक्षा आणि संकेतशब्द'}
               titleStyle={{ color: theme.colors.onSurface }}
-              description="Change your account password"
+              description={language === 'english' ? 'Change your account password' : 'खात्याचा पासवर्ड बदला'}
               descriptionStyle={{ color: theme.colors.outline }}
               left={props => <List.Icon {...props} icon="lock-outline" color="#00D4AA" />}
               right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
@@ -541,43 +536,43 @@ export default function SettingsScreen() {
         }]}>
           <Card.Content>
             <Text variant="titleMedium" style={[styles.cardTitle, { color: '#00D4AA' }]}>
-              App Information
+              {language === 'english' ? 'App Information' : 'अ‍ॅपची माहिती'}
             </Text>
             
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>App Version</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('appVersion')}</Text>
               <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>v1.0.0</Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Build Number</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{language === 'english' ? 'Build Number' : 'बिल्ड नंबर'}</Text>
               <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>1</Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Database Connection</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('dbConnection')}</Text>
               <Text variant="bodyMedium" style={{ color: dbStatus === 'Connected' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}>
-                {dbStatus}
+                {dbStatus === 'Connected' ? (language === 'english' ? 'Connected' : 'जोडलेले') : (language === 'english' ? 'Disconnected' : 'तुटलेले')}
               </Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Realtime Sync Engine</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{t('realtimeEngine')}</Text>
               <Text variant="bodyMedium" style={{ color: realtimeStatus === 'Active' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}>
-                {realtimeStatus}
+                {realtimeStatus === 'Active' ? (language === 'english' ? 'Active' : 'सक्रिय') : (language === 'english' ? 'Inactive' : 'निष्क्रिय')}
               </Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Notifications Service</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{language === 'english' ? 'Notifications Service' : 'सूचना सेवा'}</Text>
               <Text variant="bodyMedium" style={{ color: notifPermission === 'Active' ? '#10B981' : theme.colors.error, fontWeight: 'bold' }}>
-                {notifPermission}
+                {notifPermission === 'Active' ? (language === 'english' ? 'Active' : 'सक्रिय') : (language === 'english' ? 'Inactive' : 'निष्क्रिय')}
               </Text>
             </View>
             <Divider style={styles.divider} />
             <View style={styles.diagRow}>
-              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>Supabase Connection</Text>
-              <Text variant="bodyMedium" style={{ color: '#10B981', fontWeight: 'bold' }}>Active</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.colors.onSurface }}>{language === 'english' ? 'Supabase Connection' : 'सुपाबेस कनेक्शन'}</Text>
+              <Text variant="bodyMedium" style={{ color: '#10B981', fontWeight: 'bold' }}>{language === 'english' ? 'Active' : 'सक्रिय'}</Text>
             </View>
             <Divider style={[styles.divider, { marginVertical: 12 }]} />
             <Button
@@ -591,7 +586,7 @@ export default function SettingsScreen() {
               style={{ marginTop: 8, borderRadius: 28 }}
               labelStyle={{ fontWeight: 'bold' }}
             >
-              Run Diagnostics & Test Alert
+              {language === 'english' ? 'Run Diagnostics & Test Alert' : 'अ‍ॅप निदान चाचणी करा'}
             </Button>
           </Card.Content>
         </Card>

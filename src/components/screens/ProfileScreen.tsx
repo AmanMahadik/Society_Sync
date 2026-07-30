@@ -438,7 +438,7 @@ export const ProfileScreen: React.FC = () => {
               <Text variant="headlineSmall" style={[styles.profileName, { color: theme.colors.onSurface }]}>{profile?.full_name}</Text>
               {profile?.bio ? (
                 <Text variant="bodyMedium" style={{ color: theme.colors.outline, fontStyle: 'italic', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 16 }}>
-                  "{profile.bio}"
+                  {`"${profile.bio}"`}
                 </Text>
               ) : null}
               <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
