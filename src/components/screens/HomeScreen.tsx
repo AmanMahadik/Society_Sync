@@ -448,20 +448,33 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     }
   };
 
-  const handleDeleteNotice = async (id: string) => {
-    try {
-      await dataManager.deleteAnnouncement(id);
-      addNotification({
-        type: 'confirmation',
-        message: '🗑️ Notice Deleted',
-        subtext: 'The announcement has been deleted successfully.',
-        autoDismiss: true,
-        dismissAfterMs: 4000
-      });
-      fetchAnnouncementsData();
-    } catch (e) {
-      console.error('Error deleting notice', e);
-    }
+  const handleDeleteNotice = (id: string) => {
+    Alert.alert(
+      'Delete Notice',
+      'Are you sure you want to permanently delete this notice / lost item from the notice board?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dataManager.deleteAnnouncement(id);
+              addNotification({
+                type: 'confirmation',
+                message: '🗑️ Notice Deleted',
+                subtext: 'The announcement has been deleted successfully.',
+                autoDismiss: true,
+                dismissAfterMs: 4000
+              });
+              loadAllData();
+            } catch (e: any) {
+              Alert.alert('Error', 'Failed to delete notice: ' + e.message);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleTogglePin = async (id: string, isPinned: boolean) => {
@@ -1138,6 +1151,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     loadAllData();
   };
 
+
   const getAlertIcon = (type: string) => {
     switch (type) {
       case 'water_low': return 'water-off';
@@ -1399,9 +1413,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                               Notice
                             </Text>
                           </View>
-                          {notice.is_pinned && (
-                            <IconButton icon="pin" size={14} iconColor="#FF3B30" style={{ margin: 0, padding: 0 }} />
-                          )}
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {notice.is_pinned && (
+                              <IconButton icon="pin" size={14} iconColor="#FF3B30" style={{ margin: 0, padding: 0 }} />
+                            )}
+                            {profile?.role === 'admin' && (
+                              <IconButton 
+                                icon="trash-can-outline" 
+                                size={16} 
+                                iconColor={theme.colors.error} 
+                                style={{ margin: 0, padding: 0, marginLeft: 8 }} 
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNotice(notice.id);
+                                }}
+                              />
+                            )}
+                          </View>
                         </View>
                         
                         <Text variant="titleMedium" numberOfLines={1} style={{ fontWeight: 'bold', color: theme.colors.onSurface, fontSize: 15 }}>
