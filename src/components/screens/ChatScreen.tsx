@@ -78,9 +78,68 @@ export const ChatScreen: React.FC = () => {
   const [botInputText, setBotInputText] = useState('');
   const [botTyping, setBotTyping] = useState(false);
 
+  const [selectedDateItems, setSelectedDateItems] = useState<any[]>([]);
+  const [timelineExpanded, setTimelineExpanded] = useState(true);
+
   const showToast = (msg: string) => {
     setSnackbarMessage(msg);
     setSnackbarVisible(true);
+  };
+
+  const loadSelectedDateItems = async (date: Date) => {
+    if (!activeEvent) return;
+    const dateStr = date.toISOString().split('T')[0];
+    try {
+      const items = await dataManager.getTimetableItems(activeEvent.id);
+      const filtered = items.filter(item => item.date === dateStr);
+      setSelectedDateItems(filtered);
+    } catch (e) {
+      console.warn('Failed to load timetable items:', e);
+    }
+  };
+
+  const triggerMobileNotification = async (item: any) => {
+    if (!profile?.society_id) return;
+    const confirmTrigger = window.confirm(
+      appLanguage === 'english'
+        ? `Send live push alert for "${item.title_en}"?`
+        : `"${item.title_mr}" साठी थेट पुश अलर्ट पाठवायचा?`
+    );
+    if (!confirmTrigger) return;
+
+    try {
+      const portalUrl = process.env.EXPO_PUBLIC_PORTAL_URL || 'https://society-sync-portal.vercel.app';
+      const response = await fetch(`${portalUrl}/api/send-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          societyId: profile.society_id,
+          titleEn: `Event Activity Started`,
+          titleMr: `कार्यक्रम सुरू झाला आहे`,
+          bodyEn: `${item.title_en} has started! Join now.`,
+          bodyMr: `${item.title_mr} सुरू झाला आहे! त्वरित उपस्थित रहा.`,
+          timetableItemId: item.id,
+          category: item.category
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        showToast(
+          appLanguage === 'english'
+            ? `Broadcasted to ${result.sentCount} devices!`
+            : `${result.sentCount} उपकरणांवर यशस्वीरित्या प्रसारित केले!`
+        );
+        setSelectedDateItems(prev =>
+          prev.map(i => (i.id === item.id ? { ...i, is_triggered: true } : i))
+        );
+      } else {
+        const errText = await response.text();
+        showToast(`Failed: ${errText}`);
+      }
+    } catch (e: any) {
+      showToast(`Error: ${e.message}`);
+    }
   };
 
   const fetchActiveEvents = async () => {
@@ -113,16 +172,17 @@ export const ChatScreen: React.FC = () => {
     setEventDates(dates);
     const today = new Date();
     const match = dates.find(d => d.toDateString() === today.toDateString());
-    if (match) {
-      setSelectedDate(match);
-    } else if (dates.length > 0) {
-      setSelectedDate(dates[0]);
+    const initialDate = match || dates[0];
+    if (initialDate) {
+      setSelectedDate(initialDate);
+      loadSelectedDateItems(initialDate);
     }
   };
 
   const handleDateSelect = async (date: Date) => {
     if (!activeEvent) return;
     setSelectedDate(date);
+    await loadSelectedDateItems(date);
     const dateStr = date.toISOString().split('T')[0];
     
     // Add user message to chatbot logs
@@ -528,41 +588,124 @@ export const ChatScreen: React.FC = () => {
           <View style={{ flex: 1 }}>
             {/* Calendar dates strip */}
             {activeEvent ? (
-              <View style={[styles.calendarStrip, { backgroundColor: theme.colors.elevation.level1 }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8 }}>
-                  <Text variant="labelMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
-                    📅 {appLanguage === 'english' ? activeEvent.name_en || activeEvent.name : activeEvent.name_mr || activeEvent.name}
-                  </Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 10 }}>
-                    {activeEvent.start_date} to {activeEvent.end_date}
-                  </Text>
+              <View>
+                <View style={[styles.calendarStrip, { backgroundColor: theme.colors.elevation.level1 }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8 }}>
+                    <Text variant="labelMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
+                      📅 {appLanguage === 'english' ? activeEvent.name_en || activeEvent.name : activeEvent.name_mr || activeEvent.name}
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 10 }}>
+                      {activeEvent.start_date} to {activeEvent.end_date}
+                    </Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.calendarStripScroll}>
+                    {eventDates.map((date) => {
+                      const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                      const dateNum = date.getDate();
+                      const dayName = date.toLocaleDateString(undefined, { weekday: 'short' });
+                      
+                      return (
+                        <TouchableOpacity
+                          key={date.toISOString()}
+                          style={[
+                            styles.dateCard,
+                            { backgroundColor: theme.colors.surface },
+                            isSelected && { borderColor: '#00D4AA', borderWidth: 2 }
+                          ]}
+                          onPress={() => handleDateSelect(date)}
+                        >
+                          <Text style={[styles.dateCardDay, isSelected && { color: '#00D4AA', fontWeight: 'bold' }]}>
+                            {dayName}
+                          </Text>
+                          <Text style={[styles.dateCardNum, isSelected && { color: '#00D4AA', fontWeight: 'bold' }]}>
+                            {dateNum}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.calendarStripScroll}>
-                  {eventDates.map((date) => {
-                    const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
-                    const dateNum = date.getDate();
-                    const dayName = date.toLocaleDateString(undefined, { weekday: 'short' });
-                    
-                    return (
-                      <TouchableOpacity
-                        key={date.toISOString()}
-                        style={[
-                          styles.dateCard,
-                          { backgroundColor: theme.colors.surface },
-                          isSelected && { borderColor: '#00D4AA', borderWidth: 2 }
-                        ]}
-                        onPress={() => handleDateSelect(date)}
-                      >
-                        <Text style={[styles.dateCardDay, isSelected && { color: '#00D4AA', fontWeight: 'bold' }]}>
-                          {dayName}
+
+                {/* Day Schedule Timeline */}
+                {selectedDate && (
+                  <View style={[styles.timelineContainer, { backgroundColor: theme.colors.elevation.level2 }]}>
+                    <TouchableOpacity 
+                      onPress={() => setTimelineExpanded(!timelineExpanded)}
+                      style={styles.timelineHeader}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <MaterialCommunityIcons name="format-list-bulleted" size={16} color="#00D4AA" />
+                        <Text variant="labelMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                          {appLanguage === 'english' ? 'Day Timeline & Activities' : 'दिवसाचे वेळापत्रक आणि कार्यक्रम'}
                         </Text>
-                        <Text style={[styles.dateCardNum, isSelected && { color: '#00D4AA', fontWeight: 'bold' }]}>
-                          {dateNum}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+                      </View>
+                      <MaterialCommunityIcons 
+                        name={timelineExpanded ? 'chevron-up' : 'chevron-down'} 
+                        size={20} 
+                        color={theme.colors.outline} 
+                      />
+                    </TouchableOpacity>
+
+                    {timelineExpanded && (
+                      <View style={{ padding: 12, gap: 8 }}>
+                        {selectedDateItems.length === 0 ? (
+                          <Text variant="bodySmall" style={{ color: theme.colors.outline, fontStyle: 'italic', textAlign: 'center' }}>
+                            {appLanguage === 'english' ? 'No activities scheduled for this date.' : 'या तारखेसाठी कोणतेही कार्यक्रम नाहीत.'}
+                          </Text>
+                        ) : (
+                          selectedDateItems.map((item) => {
+                            const isAdmin = profile?.role === 'admin' || profile?.role === 'master_admin';
+                            return (
+                              <View key={item.id} style={styles.timelineItemRow}>
+                                <View style={{ flex: 1 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text variant="labelSmall" style={{ color: '#00D4AA', fontWeight: 'bold' }}>
+                                      ⏰ {item.time}
+                                    </Text>
+                                    <Text variant="bodySmall" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                                      {appLanguage === 'english' ? item.title_en : item.title_mr}
+                                    </Text>
+                                  </View>
+                                  {item.notes_en && (
+                                    <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 10, marginTop: 2 }}>
+                                      ℹ️ {appLanguage === 'english' ? item.notes_en : item.notes_mr}
+                                    </Text>
+                                  )}
+                                </View>
+
+                                {isAdmin && (
+                                  <View style={{ marginLeft: 8 }}>
+                                    {item.is_triggered ? (
+                                      <Chip 
+                                        compact 
+                                        style={{ backgroundColor: 'rgba(0, 212, 170, 0.1)' }}
+                                        textStyle={{ color: '#00D4AA', fontSize: 9, fontWeight: 'bold' }}
+                                      >
+                                        ✓ Sent
+                                      </Chip>
+                                    ) : (
+                                      <Button
+                                        mode="contained"
+                                        compact
+                                        onPress={() => triggerMobileNotification(item)}
+                                        buttonColor="#00D4AA"
+                                        textColor="#09090b"
+                                        labelStyle={{ fontSize: 9, fontWeight: 'bold' }}
+                                        style={{ height: 26, justifyContent: 'center' }}
+                                      >
+                                        Trigger
+                                      </Button>
+                                    )}
+                                  </View>
+                                )}
+                              </View>
+                            );
+                          })
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
             ) : (
               <Card style={{ margin: 16, backgroundColor: theme.colors.elevation.level1 }}>
@@ -644,7 +787,14 @@ export const ChatScreen: React.FC = () => {
             </ScrollView>
 
             {/* Chatbot input bar with translation toggle */}
-            <View style={[styles.botInputFooter, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom > 0 ? insets.bottom + 4 : 8 }]}>
+            <View style={[
+              styles.botInputFooter, 
+              { 
+                backgroundColor: theme.colors.surface, 
+                paddingBottom: 8,
+                marginBottom: insets.bottom > 0 ? insets.bottom + 82 : 94
+              }
+            ]}>
               <View style={styles.botInputRow}>
                 <TouchableOpacity onPress={toggleLanguage} style={styles.langToggleButton}>
                   <Text style={styles.langToggleText}>
@@ -1593,5 +1743,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     color: '#00D4AA',
+  },
+  timelineContainer: {
+    margin: 16,
+    marginBottom: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    overflow: 'hidden',
+  },
+  timelineHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  timelineItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.03)',
+    paddingHorizontal: 14,
   },
 });
