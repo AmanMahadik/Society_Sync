@@ -547,8 +547,8 @@ export default function SocietyAdminDashboard() {
           <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
             <Link href="/dashboard" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">{t('dashboard')}</Link>
             <Link href="/dashboard/chanda" className="text-muted-foreground hover:text-foreground transition-colors">{t('maintenance')}</Link>
-            <Link href="/dashboard/parking" className="text-[#888] hover:text-foreground transition-colors">{t('parkingConsole')}</Link>
-            <Link href="/dashboard/forum" className="text-[#888] hover:text-foreground transition-colors">{t('discussionForum')}</Link>
+            <Link href="/dashboard/parking" className="text-muted-foreground hover:text-foreground transition-colors">{t('parkingConsole')}</Link>
+            <Link href="/dashboard/forum" className="text-muted-foreground hover:text-foreground transition-colors">{t('discussionForum')}</Link>
             <Link href="/dashboard/events" className="text-muted-foreground hover:text-foreground transition-colors">{t('events')}</Link>
           </nav>
 
@@ -585,35 +585,35 @@ export default function SocietyAdminDashboard() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="py-2.5 px-4 rounded-lg transition-all bg-[#0F6E56]/10 text-[#1D9E75] border border-[#1D9E75]/20 font-bold"
                 >
-                  Overview
+                  {t('dashboard')}
                 </Link>
                 <Link 
                   href="/dashboard/chanda" 
                   onClick={() => setMobileMenuOpen(false)}
                   className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
                 >
-                  Billing
+                  {t('maintenance')}
                 </Link>
                 <Link 
                   href="/dashboard/parking" 
                   onClick={() => setMobileMenuOpen(false)}
                   className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
                 >
-                  Parking
+                  {t('parkingConsole')}
                 </Link>
                 <Link 
                   href="/dashboard/forum" 
                   onClick={() => setMobileMenuOpen(false)}
                   className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
                 >
-                  Forum
+                  {t('discussionForum')}
                 </Link>
                 <Link 
                   href="/dashboard/events" 
                   onClick={() => setMobileMenuOpen(false)}
                   className="py-2.5 px-4 rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-zinc-800/10 dark:hover:bg-zinc-100/5"
                 >
-                  Events
+                  {t('events')}
                 </Link>
               </nav>
             </div>
