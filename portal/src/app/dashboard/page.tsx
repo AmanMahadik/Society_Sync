@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
 import { Building2, Copy, Users, FileText, CheckCircle, Share2, LogOut, Trash2, Search, Filter, Map, Moon, Sun, Laptop } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { useLanguageContext } from '../../lib/language-context';
 
 const PDFPosterButton = dynamic(
   () => import('./PDFPosterButton'),
@@ -37,6 +38,7 @@ interface Society {
 
 export default function SocietyAdminDashboard() {
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguageContext();
   const [society, setSociety] = useState<Society | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -543,11 +545,11 @@ export default function SocietyAdminDashboard() {
         
         <div className="flex items-center gap-6">
           <nav className="hidden md:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider">
-            <Link href="/dashboard" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">Overview</Link>
-            <Link href="/dashboard/chanda" className="text-muted-foreground hover:text-foreground transition-colors">Billing</Link>
-            <Link href="/dashboard/parking" className="text-muted-foreground hover:text-foreground transition-colors">Parking</Link>
-            <Link href="/dashboard/forum" className="text-muted-foreground hover:text-foreground transition-colors">Forum</Link>
-            <Link href="/dashboard/events" className="text-muted-foreground hover:text-foreground transition-colors">Events</Link>
+            <Link href="/dashboard" className="text-[#1D9E75] transition-colors border-b-2 border-[#1D9E75] pb-1">{t('dashboard')}</Link>
+            <Link href="/dashboard/chanda" className="text-muted-foreground hover:text-foreground transition-colors">{t('maintenance')}</Link>
+            <Link href="/dashboard/parking" className="text-[#888] hover:text-foreground transition-colors">{t('parkingConsole')}</Link>
+            <Link href="/dashboard/forum" className="text-[#888] hover:text-foreground transition-colors">{t('discussionForum')}</Link>
+            <Link href="/dashboard/events" className="text-muted-foreground hover:text-foreground transition-colors">{t('events')}</Link>
           </nav>
 
       {/* MOBILE NAVIGATION SIDE DRAWER */}
@@ -624,8 +626,24 @@ export default function SocietyAdminDashboard() {
         </div>
       )}
           
-          {/* Circular Admin Avatar Button */}
-          <div className="relative">
+      {/* Language Toggle Switcher */}
+      <div className="flex items-center bg-zinc-800/10 dark:bg-zinc-100/5 rounded-lg p-1 border border-border">
+        <button 
+          onClick={() => setLanguage('english')}
+          className={`px-2 py-1 rounded text-[10px] font-extrabold uppercase transition-all cursor-pointer ${language === 'english' ? 'bg-[#1D9E75] text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          EN
+        </button>
+        <button 
+          onClick={() => setLanguage('marathi')}
+          className={`px-2 py-1 rounded text-[10px] font-extrabold uppercase transition-all cursor-pointer ${language === 'marathi' ? 'bg-[#1D9E75] text-white shadow-sm' : 'text-[#888] hover:text-foreground'}`}
+        >
+          मराठी
+        </button>
+      </div>
+
+      {/* Circular Admin Avatar Button */}
+      <div className="relative">
             <button 
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="h-8 w-8 rounded-full bg-[#1D9E75] flex items-center justify-center font-extrabold text-xs text-white shadow-lg shadow-[#1D9E75]/20 hover:bg-[#15803d] overflow-hidden transition-all cursor-pointer"

@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "A premium, secure digital society manager that helps residents and councils run residential life in real time.",
 };
 
+import { LanguageProvider } from "../lib/language-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +29,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
+      </body>
     </html>
   );
 }
