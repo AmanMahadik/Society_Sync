@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Shield, Wallet, Car, MessageSquare, CheckCircle, ArrowRight, Smartphone, Map } from 'lucide-react';
+import { Shield, Wallet, Car, MessageSquare, CheckCircle, ArrowRight, Smartphone, Map, Globe, Sparkles, Printer, Megaphone, Key, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguageContext } from '../lib/language-context';
 
@@ -238,48 +238,70 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Feature 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Feature 1: Multilingual Support */}
             <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
-              <div className="h-10 w-10 rounded bg-[#993C1D]/10 border border-[#993C1D]/20 flex items-center justify-center">
-                <Shield className="h-5 w-5 text-[#993C1D]" />
+              <div className="h-10 w-10 rounded bg-[#38BDF8]/10 border border-[#38BDF8]/20 flex items-center justify-center">
+                <Globe className="h-5 w-5 text-[#38BDF8]" />
+              </div>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('langTitle')}</h3>
+              <p className="text-[#8a8f91] text-xs leading-relaxed">
+                {t('langSub')}
+              </p>
+            </div>
+
+            {/* Feature 2: AI Patrika Importer */}
+            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
+              <div className="h-10 w-10 rounded bg-[#A855F7]/10 border border-[#A855F7]/20 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-[#A855F7]" />
+              </div>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('aiTitle')}</h3>
+              <p className="text-[#8a8f91] text-xs leading-relaxed">
+                {t('aiSub')}
+              </p>
+            </div>
+
+            {/* Feature 3: Patrika PDF Exporter */}
+            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
+              <div className="h-10 w-10 rounded bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center">
+                <Printer className="h-5 w-5 text-[#F59E0B]" />
+              </div>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('patrikaTitle')}</h3>
+              <p className="text-[#8a8f91] text-xs leading-relaxed">
+                {t('patrikaSub')}
+              </p>
+            </div>
+
+            {/* Feature 4: Notice Board Announcements */}
+            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
+              <div className="h-10 w-10 rounded bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center">
+                <Megaphone className="h-5 w-5 text-[#10B981]" />
+              </div>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('announcementTitle')}</h3>
+              <p className="text-[#8a8f91] text-xs leading-relaxed">
+                {t('announcementSub')}
+              </p>
+            </div>
+
+            {/* Feature 5: Visitor Passcode */}
+            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
+              <div className="h-10 w-10 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/20 flex items-center justify-center">
+                <Key className="h-5 w-5 text-[#06B6D4]" />
+              </div>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('visitorTitle')}</h3>
+              <p className="text-[#8a8f91] text-xs leading-relaxed">
+                {t('visitorSub')}
+              </p>
+            </div>
+
+            {/* Feature 6: Red Shield SOS */}
+            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
+              <div className="h-10 w-10 rounded bg-[#EF4444]/10 border border-[#EF4444]/20 flex items-center justify-center">
+                <ShieldAlert className="h-5 w-5 text-[#EF4444]" />
               </div>
               <h3 className="font-bold text-base text-[#f2f2f0]">{t('sosTitle')}</h3>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
                 {t('sosSub')}
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
-              <div className="h-10 w-10 rounded bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-[#1D9E75]" />
-              </div>
-              <h3 className="font-bold text-base text-[#f2f2f0]">{t('finTitle')}</h3>
-              <p className="text-[#8a8f91] text-xs leading-relaxed">
-                {t('finSub')}
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
-              <div className="h-10 w-10 rounded bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center">
-                <Car className="h-5 w-5 text-[#1D9E75]" />
-              </div>
-              <h3 className="font-bold text-base text-[#f2f2f0]">{t('parkTitle')}</h3>
-              <p className="text-[#8a8f91] text-xs leading-relaxed">
-                {t('parkSub')}
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="p-6 rounded border border-[#1c2224] bg-[#111517] hover:border-[#1D9E75]/30 transition-all flex flex-col gap-4">
-              <div className="h-10 w-10 rounded bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center">
-                <MessageSquare className="h-5 w-5 text-[#1D9E75]" />
-              </div>
-              <h3 className="font-bold text-base text-[#f2f2f0]">{t('forumTitle')}</h3>
-              <p className="text-[#8a8f91] text-xs leading-relaxed">
-                {t('forumSub')}
               </p>
             </div>
           </div>
