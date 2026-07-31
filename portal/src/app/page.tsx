@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Shield, Wallet, Car, MessageSquare, CheckCircle, ArrowRight, Smartphone, Map } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useLanguageContext } from '../lib/language-context';
 
 interface PuneSociety {
   name: string;
@@ -17,6 +18,7 @@ interface PuneSociety {
 }
 
 export default function LandingPage() {
+  const { language, setLanguage, t } = useLanguageContext();
   const [dbSocieties, setDbSocieties] = useState<PuneSociety[]>([]);
   const [mapInitialized, setMapInitialized] = useState(false);
 
@@ -163,17 +165,32 @@ export default function LandingPage() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold uppercase tracking-wider text-[#8a8f91]">
-            <a href="#features" className="hover:text-[#1D9E75] transition-colors">Features</a>
-            <a href="#community-map" className="hover:text-[#1D9E75] transition-colors">Live Map</a>
-            <a href="#how-it-works" className="hover:text-[#1D9E75] transition-colors">How it Works</a>
-            <Link href="/master/login" className="hover:text-[#1D9E75] transition-colors">Master Portal</Link>
+            <a href="#features" className="hover:text-[#1D9E75] transition-colors">{t('features')}</a>
+            <a href="#community-map" className="hover:text-[#1D9E75] transition-colors">{t('liveMap')}</a>
+            <a href="#how-it-works" className="hover:text-[#1D9E75] transition-colors">{t('howItWorks')}</a>
+            <Link href="/master/login" className="hover:text-[#1D9E75] transition-colors">{t('masterPortal')}</Link>
           </nav>
           <div className="flex items-center gap-3">
+            {/* Language Toggle Switcher */}
+            <div className="flex items-center bg-zinc-800/40 rounded-lg p-0.5 border border-[#1c2224] mr-1">
+              <button 
+                onClick={() => setLanguage('english')}
+                className={`px-2 py-0.5 rounded-[4px] text-[9px] font-extrabold uppercase transition-all cursor-pointer ${language === 'english' ? 'bg-[#1D9E75] text-[#0b0e10] shadow-sm' : 'text-[#8a8f91] hover:text-white'}`}
+              >
+                EN
+              </button>
+              <button 
+                onClick={() => setLanguage('marathi')}
+                className={`px-2 py-0.5 rounded-[4px] text-[9px] font-extrabold uppercase transition-all cursor-pointer ${language === 'marathi' ? 'bg-[#1D9E75] text-[#0b0e10] shadow-sm' : 'text-[#8a8f91] hover:text-white'}`}
+              >
+                मराठी
+              </button>
+            </div>
             <Link href="/login" className="text-xs font-bold px-3.5 py-2 rounded border border-[#1c2224] hover:bg-[#1c2224] transition-all text-[#f2f2f0]">
-              Login
+              {t('login')}
             </Link>
             <Link href="/register" className="text-xs font-bold bg-[#1D9E75] text-[#0b0e10] px-3.5 py-2 rounded hover:bg-[#0F6E56] transition-all flex items-center gap-1.5 shrink-0">
-              <span>Register Society</span>
+              <span>{t('registerSociety')}</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -183,20 +200,24 @@ export default function LandingPage() {
       {/* HERO SECTION */}
       <section className="relative flex-1 flex flex-col justify-center items-center px-6 py-24 max-w-5xl mx-auto text-center z-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#1D9E75]/30 bg-[#1D9E75]/10 text-[#1D9E75] text-[10px] font-bold uppercase tracking-wider mb-8">
-          <Smartphone className="h-3.5 w-3.5" /> Scoped Multi-Tenant Residential Suite
+          <Smartphone className="h-3.5 w-3.5" /> {language === 'english' ? 'Scoped Multi-Tenant Residential Suite' : 'मल्टी-भाडेकरू निवासी सोसायटी व्यवस्थापक'}
         </div>
         <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight max-w-4xl leading-tight sm:leading-none text-[#f2f2f0]">
-          Manage Your Residential Society <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1D9E75] to-teal-300">Digitally & Securely</span>
+          {language === 'english' ? (
+            <>Manage Your Residential Society <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1D9E75] to-teal-300">Digitally & Securely</span></>
+          ) : (
+            <>तुमची निवासी सोसायटी <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1D9E75] to-teal-300">डिजिटल आणि सुरक्षितपणे</span> व्यवस्थापित करा</>
+          )}
         </h1>
         <p className="mt-6 text-[#8a8f91] text-base sm:text-lg max-w-2xl leading-relaxed">
-          SocietySync is the unified dashboard that connects society administrators, security guards, and residents. Digitize billing campaigns, secure visitor parking, broadcast notice boards, and dispatch instant SOS alarms.
+          {t('heroSub')}
         </p>
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
           <Link href="/register" className="w-full sm:w-auto px-8 py-3.5 bg-[#1D9E75] text-[#0b0e10] font-bold rounded text-sm hover:bg-[#0F6E56] transition-all flex items-center justify-center gap-2">
-            Register Your Society <ArrowRight className="h-4 w-4" />
+            {t('heroButton')} <ArrowRight className="h-4 w-4" />
           </Link>
           <a href="#features" className="w-full sm:w-auto px-8 py-3.5 border border-[#1c2224] hover:bg-[#111517] font-semibold rounded text-sm transition-all flex items-center justify-center text-[#8a8f91] hover:text-[#f2f2f0]">
-            Explore Features
+            {t('heroExplore')}
           </a>
         </div>
 
@@ -208,12 +229,12 @@ export default function LandingPage() {
       <section id="features" className="py-20 border-t border-[#1c2224] bg-[#111517]/20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-[10px] text-[#1D9E75] font-bold uppercase tracking-wider bg-[#1D9E75]/10 border border-[#1D9E75]/20 px-2 py-0.5 rounded-full">Operational Modules</span>
+            <span className="text-[10px] text-[#1D9E75] font-bold uppercase tracking-wider bg-[#1D9E75]/10 border border-[#1D9E75]/20 px-2 py-0.5 rounded-full">{t('opModules')}</span>
             <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-[#f2f2f0] mt-3">
-              Packed with Production-Grade Features
+              {t('featuresTitle')}
             </h2>
             <p className="mt-4 text-[#8a8f91] text-xs sm:text-sm max-w-xl mx-auto">
-              Everything your residential housing complex needs, isolated and secured in one multi-tenant database environment.
+              {t('featuresSub')}
             </p>
           </div>
 
@@ -223,9 +244,9 @@ export default function LandingPage() {
               <div className="h-10 w-10 rounded bg-[#993C1D]/10 border border-[#993C1D]/20 flex items-center justify-center">
                 <Shield className="h-5 w-5 text-[#993C1D]" />
               </div>
-              <h3 className="font-bold text-base text-[#f2f2f0]">Emergency SOS</h3>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('sosTitle')}</h3>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
-                Instant crisis triggers alert security guards with full-screen alarms and dispatch SMS push notifications to admins.
+                {t('sosSub')}
               </p>
             </div>
 
@@ -234,9 +255,9 @@ export default function LandingPage() {
               <div className="h-10 w-10 rounded bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center">
                 <Wallet className="h-5 w-5 text-[#1D9E75]" />
               </div>
-              <h3 className="font-bold text-base text-[#f2f2f0]">Finance Ledger</h3>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('finTitle')}</h3>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
-                Approve chanda events, compile monthly maintenance bills (Razorpay), and download strict A4 financial reports.
+                {t('finSub')}
               </p>
             </div>
 
@@ -245,9 +266,9 @@ export default function LandingPage() {
               <div className="h-10 w-10 rounded bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center">
                 <Car className="h-5 w-5 text-[#1D9E75]" />
               </div>
-              <h3 className="font-bold text-base text-[#f2f2f0]">Smart Parking</h3>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('parkTitle')}</h3>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
-                Approve guest bookings in real-time, view checklist logs, and isolate slots by date and custom time blocks.
+                {t('parkSub')}
               </p>
             </div>
 
@@ -256,9 +277,9 @@ export default function LandingPage() {
               <div className="h-10 w-10 rounded bg-[#1D9E75]/10 border border-[#1D9E75]/20 flex items-center justify-center">
                 <MessageSquare className="h-5 w-5 text-[#1D9E75]" />
               </div>
-              <h3 className="font-bold text-base text-[#f2f2f0]">Forum Chat</h3>
+              <h3 className="font-bold text-base text-[#f2f2f0]">{t('forumTitle')}</h3>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
-                Discuss community issues, cast votes in polls, pin warnings, and view messaging avatars on a scoped thread list.
+                {t('forumSub')}
               </p>
             </div>
           </div>
@@ -270,13 +291,13 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#1D9E75]/30 bg-[#1D9E75]/10 text-[#1D9E75] text-[10px] font-bold uppercase tracking-wider mb-4">
-              Community Directory
+              {t('dirTitle')}
             </span>
             <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-[#f2f2f0]">
-              Active Societies in Pune Region
+              {t('mapTitle')}
             </h2>
             <p className="mt-4 text-[#8a8f91] text-xs sm:text-sm max-w-xl mx-auto">
-              See which residential communities have onboarded onto SocietySync to simplify operations and protect their gates.
+              {t('mapSub')}
             </p>
           </div>
 
@@ -288,14 +309,16 @@ export default function LandingPage() {
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1.5">
                   <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#1D9E75]"></span>
-                  Active Community
+                  {language === 'english' ? 'Active Community' : 'सक्रिय सोसायटी'}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#993C1D]"></span>
-                  Suspended / Offline
+                  {language === 'english' ? 'Suspended / Offline' : 'निलंबित / बंद'}
                 </span>
               </div>
-              <span>Showing {allSocietiesMap.length} verified societies</span>
+              <span>
+                {language === 'english' ? `Showing ${allSocietiesMap.length} verified societies` : `सत्यापित ${allSocietiesMap.length} सोसायट्या दाखवत आहे`}
+              </span>
             </div>
           </div>
         </div>
@@ -305,12 +328,12 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-20 border-t border-[#1c2224] px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-[10px] text-[#1D9E75] font-bold uppercase tracking-wider bg-[#1D9E75]/10 border border-[#1D9E75]/20 px-2 py-0.5 rounded-full">Onboarding Walkthrough</span>
+            <span className="text-[10px] text-[#1D9E75] font-bold uppercase tracking-wider bg-[#1D9E75]/10 border border-[#1D9E75]/20 px-2 py-0.5 rounded-full">{t('onboardingTitle')}</span>
             <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-[#f2f2f0] mt-3">
-              Easy Three-Step Onboarding
+              {t('onboardingSubTitle')}
             </h2>
             <p className="mt-4 text-[#8a8f91] text-xs sm:text-sm max-w-xl mx-auto">
-              How SocietySync simplifies the process of boarding thousands of complex residents.
+              {t('onboardingText')}
             </p>
           </div>
 
@@ -320,9 +343,13 @@ export default function LandingPage() {
               <div className="h-12 w-12 rounded-full bg-[#0b0e10] border border-[#1c2224] text-[#1D9E75] flex items-center justify-center font-bold text-lg mb-4">
                 1
               </div>
-              <h4 className="font-bold text-base text-[#f2f2f0] mb-2">Register Online</h4>
+              <h4 className="font-bold text-base text-[#f2f2f0] mb-2">
+                {language === 'english' ? 'Register Online' : 'ऑनलाइन नोंदणी'}
+              </h4>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
-                Fill the multi-step form, pin your society entrance on our coordinate locator, and upload your registration docs.
+                {language === 'english' 
+                  ? 'Fill the multi-step form, pin your society entrance on our coordinate locator, and upload your registration docs.' 
+                  : 'सोसायटी नोंदणी फॉर्म भरा, स्थान नकाशावर निश्चित करा आणि कागदपत्रे अपलोड करा.'}
               </p>
             </div>
 
@@ -331,9 +358,13 @@ export default function LandingPage() {
               <div className="h-12 w-12 rounded-full bg-[#0b0e10] border border-[#1c2224] text-[#1D9E75] flex items-center justify-center font-bold text-lg mb-4">
                 2
               </div>
-              <h4 className="font-bold text-base text-[#f2f2f0] mb-2">Get Unique Code</h4>
+              <h4 className="font-bold text-base text-[#f2f2f0] mb-2">
+                {language === 'english' ? 'Get Unique Code' : 'युनिक कोड मिळवा'}
+              </h4>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
-                Once approved by the Master Admin, download your custom QR poster containing your unique Society Code.
+                {language === 'english' 
+                  ? 'Once approved by the Master Admin, download your custom QR poster containing your unique Society Code.' 
+                  : 'मास्टर ॲडमिन कडून मंजुरी मिळाल्यावर तुमच्या सोसायटीचा युनिक QR कोड डाउनलोड करा.'}
               </p>
             </div>
 
@@ -342,9 +373,13 @@ export default function LandingPage() {
               <div className="h-12 w-12 rounded-full bg-[#0b0e10] border border-[#1c2224] text-[#1D9E75] flex items-center justify-center font-bold text-lg mb-4">
                 3
               </div>
-              <h4 className="font-bold text-base text-[#f2f2f0] mb-2">Invite & Launch</h4>
+              <h4 className="font-bold text-base text-[#f2f2f0] mb-2">
+                {language === 'english' ? 'Invite & Launch' : 'आमंत्रण आणि सुरुवात'}
+              </h4>
               <p className="text-[#8a8f91] text-xs leading-relaxed">
-                Residents enter the code during app sign-up to join. All chats, SOS alarms, and bookings are immediately isolated!
+                {language === 'english' 
+                  ? 'Residents enter the code during app sign-up to join. All chats, SOS alarms, and bookings are immediately isolated!' 
+                  : 'सोसायटी कोड वापरून रहिवासी ॲपवर त्वरित कनेक्ट होतील. सर्व चॅट्स, अलार्म आणि पार्किंग सेवा सुरू होतील!'}
               </p>
             </div>
           </div>
