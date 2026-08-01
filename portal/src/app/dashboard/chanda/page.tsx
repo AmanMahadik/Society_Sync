@@ -199,21 +199,61 @@ export default function ChandaDashboard() {
         setSocietyDetails(soc);
       }
 
-      // 2. Fetch Wings
-      const { data: wingsList } = await supabase
+      // 2. Fetch Wings and profiles for sync
+      let { data: wingsList } = await supabase
         .from('wings')
         .select('*')
         .eq('society_id', targetSocietyId)
         .order('name');
-      setWings(wingsList || []);
 
-      // 3. Fetch Profiles for dropdown
       const { data: profilesList } = await supabase
         .from('profiles')
         .select('id, full_name, email, wing, phone, role')
         .eq('society_id', targetSocietyId)
         .order('full_name');
-      setProfiles(profilesList || []);
+
+      const activeWings = wingsList || [];
+      const activeProfiles = profilesList || [];
+
+      // Check if any wing in profiles is missing from wings table
+      const uniqueProfileWings = Array.from(
+        new Set(activeProfiles.map((p) => String(p.wing || '').trim()).filter(Boolean))
+      );
+
+      const existingNames = activeWings.map(w => String(w.name || '').toLowerCase());
+      const missingWings = uniqueProfileWings.filter(wingName => {
+        const nameFormatted = wingName.startsWith('Wing') ? wingName : `Wing ${wingName}`;
+        return !existingNames.includes(nameFormatted.toLowerCase());
+      });
+
+      if (missingWings.length > 0) {
+        console.log('Auto-syncing missing wings on page load:', missingWings);
+        const insertRows = missingWings.map(wingName => {
+          const nameFormatted = wingName.startsWith('Wing') ? wingName : `Wing ${wingName}`;
+          return {
+            society_id: targetSocietyId,
+            name: nameFormatted
+          };
+        });
+
+        const { error: insertErr } = await supabase
+          .from('wings')
+          .insert(insertRows);
+
+        if (!insertErr) {
+          const { data: updatedWings } = await supabase
+            .from('wings')
+            .select('*')
+            .eq('society_id', targetSocietyId)
+            .order('name');
+          wingsList = updatedWings || [];
+        } else {
+          console.error('Error auto-inserting missing wings:', insertErr);
+        }
+      }
+
+      setWings(wingsList || []);
+      setProfiles(activeProfiles);
 
       // 4. Fetch campaigns
       await fetchCampaignsList(targetSocietyId);
@@ -228,15 +268,27 @@ export default function ChandaDashboard() {
   const handleAutoCreateWings = async () => {
     try {
       const uniqueWings = Array.from(
-        new Set(profiles.map((p) => p.wing).filter(Boolean))
+        new Set(profiles.map((p) => String(p.wing || '').trim()).filter(Boolean))
       );
       
       if (uniqueWings.length === 0) {
         uniqueWings.push('A', 'B'); // Fallback default wings
       }
 
-      const insertPromises = uniqueWings.map(async (wingName) => {
-        const nameFormatted = String(wingName).startsWith('Wing') ? wingName : `Wing ${wingName}`;
+      // Filter out wings that are already in the database
+      const existingNames = wings.map(w => String(w.name || '').toLowerCase());
+      const missingWings = uniqueWings.filter(wingName => {
+        const nameFormatted = wingName.startsWith('Wing') ? wingName : `Wing ${wingName}`;
+        return !existingNames.includes(nameFormatted.toLowerCase());
+      });
+
+      if (missingWings.length === 0) {
+        alert('All wings from roster are already configured.');
+        return;
+      }
+
+      const insertPromises = missingWings.map(async (wingName) => {
+        const nameFormatted = wingName.startsWith('Wing') ? wingName : `Wing ${wingName}`;
         const { data, error } = await supabase
           .from('wings')
           .insert({
@@ -249,7 +301,7 @@ export default function ChandaDashboard() {
       });
 
       await Promise.all(insertPromises);
-      alert('Wings created successfully!');
+      alert('Missing wings synced successfully!');
       
       // Refresh wings
       const { data: wingsList } = await supabase
@@ -948,9 +1000,19 @@ export default function ChandaDashboard() {
 
               {/* WING COLLECTORS MANAGEMENT LIST */}
               <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
-                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[#00d4aa]" /> Wing Collectors Setup
-                </h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-[#00d4aa]" /> Wing Collectors Setup
+                  </h3>
+                  {wings.length > 0 && (
+                    <button
+                      onClick={handleAutoCreateWings}
+                      className="px-2.5 py-1 bg-zinc-950 border border-zinc-800 hover:border-[#00d4aa]/30 text-[#00d4aa] hover:bg-zinc-900 rounded text-[10px] font-extrabold uppercase transition-all shadow-md cursor-pointer"
+                    >
+                      Sync Wings
+                    </button>
+                  )}
+                </div>
                 <p className="text-zinc-500 text-xs">Configure coordinators to collect chanda offline via their personal UPI IDs.</p>
 
                 <div className="divide-y divide-zinc-850">
