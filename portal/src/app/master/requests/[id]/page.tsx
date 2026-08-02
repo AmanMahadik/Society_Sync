@@ -407,6 +407,23 @@ export default function ReviewRequestPage() {
     );
   }
 
+  // Parse serialized JSON documents (certificate and Aadhaar)
+  let isAadhaarJson = false;
+  let certUrl = "";
+  let aadhaarUrl = "";
+  let aadhaarNo = "";
+  try {
+    if (request.document_url && request.document_url.startsWith('{')) {
+      const parsed = JSON.parse(request.document_url);
+      certUrl = parsed.certUrl;
+      aadhaarUrl = parsed.aadhaarUrl;
+      aadhaarNo = parsed.aadhaarNo;
+      isAadhaarJson = true;
+    }
+  } catch (e) {
+    console.error('Failed to parse document_url JSON', e);
+  }
+
   return (
     <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col selection:bg-[#00d4aa] selection:text-[#09090b]">
       {/* NAVBAR */}
@@ -513,16 +530,47 @@ export default function ReviewRequestPage() {
 
           {/* DOCUMENTS */}
           <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
-            <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-2">Housing Documents</h3>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-2">Housing & Identity Documents</h3>
             {request.document_url ? (
-              <a 
-                href={request.document_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg hover:border-zinc-700 flex items-center justify-between text-sm hover:bg-zinc-900/40 transition-all text-[#00d4aa] font-bold"
-              >
-                <span>View Registration Certificate PDF / Image</span>
-              </a>
+              isAadhaarJson ? (
+                <div className="space-y-3">
+                  <a 
+                    href={certUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg hover:border-zinc-700 flex items-center justify-between text-sm hover:bg-zinc-900/40 transition-all text-[#00d4aa] font-bold"
+                  >
+                    <span>View Registration Certificate Certificate</span>
+                  </a>
+                  
+                  <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-400">Aadhaar Card Verification</span>
+                      <a 
+                        href={aadhaarUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[#00d4aa] hover:underline font-bold"
+                      >
+                        View Aadhaar Image
+                      </a>
+                    </div>
+                    <div className="border-t border-zinc-800 pt-2 flex justify-between items-center text-xs">
+                      <span className="text-zinc-500 uppercase font-semibold">Aadhaar Number</span>
+                      <span className="text-zinc-200 font-mono font-bold">{aadhaarNo}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <a 
+                  href={request.document_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg hover:border-zinc-700 flex items-center justify-between text-sm hover:bg-zinc-900/40 transition-all text-[#00d4aa] font-bold"
+                >
+                  <span>View Registration Certificate PDF / Image</span>
+                </a>
+              )
             ) : (
               <p className="text-sm text-red-400">No documents uploaded.</p>
             )}

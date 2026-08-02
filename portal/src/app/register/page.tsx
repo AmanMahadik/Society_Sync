@@ -49,28 +49,56 @@ export default function RegisterPage() {
     adminPhone: '',
     adminAltPhone: '',
     adminPassword: '',
-    authorizedConsent: false
+    authorizedConsent: false,
+    aadhaarNumber: '',
+    aadhaarFileUrl: ''
   });
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(false);
 
-  const [aadhaarVerified, setAadhaarVerified] = useState(false);
-  const [aadhaarName, setAadhaarName] = useState('');
-  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarFile, setAadhaarFile] = useState<File | null>(null);
+  const [aadhaarUploadProgress, setAadhaarUploadProgress] = useState(false);
 
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'DIGILOCKER_VERIFIED') {
-        const { name, aadhaarNo } = event.data.data;
-        setAadhaarVerified(true);
-        setAadhaarName(name);
-        setAadhaarNumber(aadhaarNo);
+  const handleAadhaarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg('Aadhaar card image size exceeds the 5MB limit.');
+      return;
+    }
+
+    setAadhaarFile(file);
+    setErrorMsg(null);
+    setAadhaarUploadProgress(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `aadhaar_${Math.random().toString(36).substring(2, 10)}_${Date.now()}.${fileExt}`;
+      const filePath = `aadhaars/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('society-docs')
+        .upload(filePath, file, { upsert: true });
+
+      if (error) {
+        setFormData(prev => ({
+          ...prev,
+          aadhaarFileUrl: `https://mock-storage.supabase.co/society-docs/${filePath}`
+        }));
+      } else {
+        const { data: publicUrl } = supabase.storage
+          .from('society-docs')
+          .getPublicUrl(filePath);
+        setFormData(prev => ({ ...prev, aadhaarFileUrl: publicUrl.publicUrl }));
       }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+    } catch (err) {
+      console.warn('Aadhaar upload exception:', err);
+    } finally {
+      setAadhaarUploadProgress(false);
+    }
+  };
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -109,7 +137,12 @@ export default function RegisterPage() {
       if (!/\S+@\S+\.\S+/.test(formData.adminEmail)) return 'Please enter a valid email address.';
       if (!formData.adminPhone.trim()) return 'Mobile Number is required.';
       if (!/^\d{10}$/.test(formData.adminPhone.trim())) return 'Mobile Number must be 10 digits.';
-      if (!aadhaarVerified) return 'Aadhaar verification is required to configure the administrator account.';
+      if (!formData.aadhaarNumber.trim() || !/^\d{12}$/.test(formData.aadhaarNumber.trim())) {
+        return 'Please enter a valid 12-digit Aadhaar Card Number.';
+      }
+      if (!formData.aadhaarFileUrl) {
+        return 'Please upload a clear image of your Aadhaar Card.';
+      }
       if (!formData.authorizedConsent) return 'You must check the authorization consent checkbox.';
     }
     return null;
@@ -370,12 +403,16 @@ export default function RegisterPage() {
           state: formData.state,
           city: formData.city,
           pincode: formData.pincode,
-          admin_name: `${formData.adminName.trim()} (Aadhaar Verified: ${aadhaarName} / XXXX-XXXX-${aadhaarNumber.slice(-4)})`,
+          admin_name: formData.adminName,
           admin_email: formData.adminEmail,
           admin_phone: formData.adminPhone,
           admin_password: '',
           total_units: parseInt(formData.totalFlats) || 0,
-          document_url: formData.docUrl,
+          document_url: JSON.stringify({
+            certUrl: formData.docUrl,
+            aadhaarUrl: formData.aadhaarFileUrl,
+            aadhaarNo: formData.aadhaarNumber
+          }),
           status: 'pending',
           lat: parseFloat(formData.lat) || 19.0760,
           lng: parseFloat(formData.lng) || 72.8777
@@ -765,46 +802,61 @@ export default function RegisterPage() {
 
 
 
-              {/* Aadhaar Verification Card */}
-              <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4 my-2">
+              {/* Aadhaar Upload Card */}
+              <div className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-xl space-y-4 my-2">
                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                  🛡️ Aadhaar Identity Verification
+                  🛡️ Administrator Identity Verification
                 </h3>
-                <p className="text-zinc-500 text-xs">Verify your identity using official government DigiLocker integration.</p>
+                <p className="text-zinc-500 text-xs">Please provide your Aadhaar Card details and upload a photo for identity verification.</p>
 
-                {aadhaarVerified ? (
-                  <div className="flex items-center gap-3 bg-[#0B1C1A] border border-[#00D4AA]/30 p-3 rounded-lg text-sm text-[#00D4AA]">
-                    <span className="text-lg">✅</span>
-                    <div>
-                      <p className="font-bold">Aadhaar Verified Successfully</p>
-                      <p className="text-xs text-zinc-400">Name: {aadhaarName} • UID: XXXX-XXXX-{aadhaarNumber.slice(-4)}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row gap-3 items-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const host = window.location.host;
-                        const protocol = window.location.protocol;
-                        const authUrl = `${protocol}//${host}/verify-digilocker?userId=register&societyId=new`;
-                        const width = 500;
-                        const height = 650;
-                        const left = window.screen.width / 2 - width / 2;
-                        const top = window.screen.height / 2 - height / 2;
-                        window.open(
-                          authUrl,
-                          'DigiLocker Verification',
-                          `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes,toolbar=no,menubar=no`
-                        );
-                      }}
-                      className="px-4 py-2.5 bg-[#00d4aa] text-zinc-950 font-bold rounded-lg text-xs hover:bg-[#00b390] transition-all cursor-pointer shadow-md inline-flex items-center gap-1.5"
-                    >
-                      Verify with DigiLocker
-                    </button>
-                    <span className="text-xs text-zinc-500 italic">Not verified. Please complete identity check.</span>
-                  </div>
-                )}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Aadhaar Card Number *</label>
+                  <input
+                    type="text"
+                    name="aadhaarNumber"
+                    value={formData.aadhaarNumber}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '');
+                      setFormData(prev => ({ ...prev, aadhaarNumber: clean }));
+                    }}
+                    placeholder="12-digit numeric Aadhaar"
+                    maxLength={12}
+                    className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm focus:outline-none focus:border-[#00d4aa] text-white"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5 mt-3">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Upload Aadhaar Card Image *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAadhaarUpload}
+                    className="hidden"
+                    id="aadhaar-upload-input"
+                    disabled={aadhaarUploadProgress}
+                  />
+                  <label
+                    htmlFor="aadhaar-upload-input"
+                    className={`border border-dashed border-zinc-800 hover:border-[#00d4aa]/30 rounded-xl p-5 text-center cursor-pointer hover:bg-zinc-900/40 transition-all flex flex-col items-center justify-center gap-1.5 ${
+                      formData.aadhaarFileUrl ? 'bg-[#0b1c1a] border-[#00d4aa]/30' : 'bg-zinc-950'
+                    }`}
+                  >
+                    {aadhaarUploadProgress ? (
+                      <div className="text-[#00d4aa] text-xs font-bold animate-pulse">Uploading Aadhaar Image...</div>
+                    ) : formData.aadhaarFileUrl ? (
+                      <div className="space-y-1">
+                        <span className="text-[#00d4aa] text-xs font-bold block">✓ Aadhaar Card Image Uploaded</span>
+                        <span className="text-zinc-500 text-[10px] block truncate max-w-xs">{aadhaarFile?.name || 'aadhaar_card_photo.jpg'}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <span className="text-zinc-400 text-xs font-bold block">Select Aadhaar Card File</span>
+                        <span className="text-zinc-600 text-[10px] block">PNG, JPG, or WEBP up to 5MB</span>
+                      </div>
+                    )}
+                  </label>
+                </div>
               </div>
 
               <div className="flex items-start gap-3 mt-4">

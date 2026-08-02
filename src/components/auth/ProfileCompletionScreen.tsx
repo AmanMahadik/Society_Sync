@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, HelperText, useTheme, SegmentedButtons } from 'react-native-paper';
-import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../lib/auth-context';
 import { UserRole } from '../../lib/data-manager';
-import { supabase } from '../../lib/supabase';
+import { supabase, uriToArrayBuffer } from '../../lib/supabase';
 
 // Safely require expo-camera to prevent runtime crashes on older binary builds without the native module compiled.
 let CameraView: any = null;
@@ -40,34 +39,60 @@ export const ProfileCompletionScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [aadhaarVerified, setAadhaarVerified] = useState(false);
-  const [aadhaarName, setAadhaarName] = useState('');
   const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarFileUrl, setAadhaarFileUrl] = useState('');
   const [verifyingAadhaar, setVerifyingAadhaar] = useState(false);
 
-  const handleVerifyAadhaar = async () => {
+  const handleSelectAadhaarImage = async () => {
     try {
-      setVerifyingAadhaar(true);
-      const redirectUrl = Linking.createURL('/');
-      const authUrl = `https://society-sync-portal.vercel.app/verify-digilocker?userId=${user.id}&societyId=${societyDetails?.id || 'new'}&redirectUri=${encodeURIComponent(redirectUrl)}`;
-      
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-      
-      if (result.type === 'success' && result.url) {
-        const urlObj = Linking.parse(result.url);
-        const { status, name, aadhaarNo } = urlObj.queryParams || {};
-        
-        if (status === 'success' && name && aadhaarNo) {
-          setAadhaarVerified(true);
-          setAadhaarName(decodeURIComponent(name as string));
-          setAadhaarNumber(aadhaarNo as string);
-          Alert.alert('✅ Aadhaar Verified', `Identity matches government records:\nName: ${decodeURIComponent(name as string)}`);
-        } else {
-          Alert.alert('❌ Verification Failed', 'DigiLocker did not return successful KYC credentials.');
-        }
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Denied', 'Please grant library permissions to upload your Aadhaar Card.');
+        return;
       }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const pickedUri = result.assets[0].uri;
+        await uploadAadhaarImage(pickedUri);
+      }
+    } catch (e) {
+      console.error('Aadhaar image selection error', e);
+      Alert.alert('Error', 'Failed to select image.');
+    }
+  };
+
+  const uploadAadhaarImage = async (localUri: string) => {
+    setVerifyingAadhaar(true);
+    try {
+      const arrayBuffer = await uriToArrayBuffer(localUri);
+      const fileExt = localUri.split('.').pop() || 'jpg';
+      const fileName = `aadhaar_${user.id}_${Date.now()}.${fileExt}`;
+      const filePath = `aadhaars/${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, arrayBuffer, {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setAadhaarFileUrl(publicUrl.publicUrl);
+      Alert.alert('Success', 'Aadhaar Card photo uploaded successfully.');
     } catch (e: any) {
-      console.error(e);
-      Alert.alert('Verification Error', e.message || 'An error occurred during identity verification.');
+      console.error('Aadhaar upload error', e);
+      Alert.alert('Upload Failed', 'Could not upload Aadhaar image. Please check your internet connection.');
     } finally {
       setVerifyingAadhaar(false);
     }
@@ -158,8 +183,13 @@ export const ProfileCompletionScreen: React.FC = () => {
       return;
     }
 
-    if (!aadhaarVerified) {
-      setError('Aadhaar identity verification is required to complete your profile.');
+    if (!aadhaarNumber.trim() || !/^\d{12}$/.test(aadhaarNumber.trim())) {
+      setError('Please enter a valid 12-digit Aadhaar Card Number.');
+      return;
+    }
+
+    if (!aadhaarFileUrl) {
+      setError('Please upload your Aadhaar Card photo.');
       return;
     }
 
@@ -170,7 +200,11 @@ export const ProfileCompletionScreen: React.FC = () => {
       
       const finalWing = isGuard ? 'Gate' : wing.toUpperCase();
       const finalFlat = isGuard ? 'Guard' : flatNumber;
-      const verifiedFullName = `${fullName.trim()} (Aadhaar Verified: ${aadhaarName})`;
+      const verifiedFullName = `${fullName.trim()} (Aadhaar Verified: ${fullName.trim()})`;
+      const bioPayload = JSON.stringify({
+        aadhaarNo: aadhaarNumber,
+        aadhaarUrl: aadhaarFileUrl
+      });
 
       // Save details including validated society_id and society_code
       await dataManager.updateProfileDetails(
@@ -181,7 +215,7 @@ export const ProfileCompletionScreen: React.FC = () => {
         finalWing,
         societyDetails.name,
         null,
-        null,
+        bioPayload,
         null,
         societyDetails.id,
         societyCode.trim().toUpperCase()
@@ -438,40 +472,41 @@ export const ProfileCompletionScreen: React.FC = () => {
             <Card style={{ marginVertical: 12, backgroundColor: '#161618', borderWidth: 0.5, borderColor: '#333' }}>
               <Card.Content style={{ paddingVertical: 12 }}>
                 <Text variant="titleSmall" style={{ fontWeight: 'bold', color: '#FFF', marginBottom: 4 }}>
-                  🛡️ Aadhaar Identity Verification
+                  🛡️ Identity Verification (Aadhaar)
                 </Text>
                 <Text variant="bodySmall" style={{ color: '#888', marginBottom: 12 }}>
-                  Verify your identity using official government DigiLocker sandbox integration.
+                  Provide your 12-digit Aadhaar number and upload a photo of your card.
                 </Text>
 
-                {aadhaarVerified ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B1C1A', borderWidth: 1, borderColor: '#00D4AA33', padding: 12, borderRadius: 8 }}>
-                    <Text style={{ fontSize: 20, marginRight: 8 }}>✅</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: '#00D4AA', fontWeight: 'bold', fontSize: 13 }}>Aadhaar Verified Successfully</Text>
-                      <Text style={{ color: '#888', fontSize: 11 }}>Name: {aadhaarName} • UID: XXXX-XXXX-{aadhaarNumber.slice(-4)}</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Button
-                      mode="contained"
-                      onPress={handleVerifyAadhaar}
-                      loading={verifyingAadhaar}
-                      disabled={verifyingAadhaar}
-                      buttonColor="#00D4AA"
-                      textColor="#09090b"
-                      labelStyle={{ fontWeight: 'bold', fontSize: 11 }}
-                      style={{ borderRadius: 8 }}
-                      icon="shield-check"
-                    >
-                      Verify with DigiLocker
-                    </Button>
-                    <Text style={{ color: '#888', fontStyle: 'italic', fontSize: 10, flex: 1, marginLeft: 12, textAlign: 'right' }}>
-                      Not verified. Please complete check.
-                    </Text>
-                  </View>
-                )}
+                <TextInput
+                  label="Aadhaar Card Number"
+                  placeholder="e.g. 123456789012"
+                  value={aadhaarNumber}
+                  onChangeText={(text) => setAadhaarNumber(text.replace(/\D/g, ''))}
+                  maxLength={12}
+                  keyboardType="numeric"
+                  mode="outlined"
+                  activeOutlineColor="#00D4AA"
+                  textColor="#FFF"
+                  style={{ backgroundColor: '#09090b', marginBottom: 12 }}
+                />
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Button
+                    mode="outlined"
+                    onPress={handleSelectAadhaarImage}
+                    loading={verifyingAadhaar}
+                    disabled={verifyingAadhaar}
+                    textColor={aadhaarFileUrl ? '#00D4AA' : '#AAA'}
+                    style={{ borderRadius: 8, flex: 1, marginRight: 8, borderColor: aadhaarFileUrl ? '#00D4AA33' : '#444' }}
+                    icon={aadhaarFileUrl ? 'check-decagram' : 'file-image-plus-outline'}
+                  >
+                    {aadhaarFileUrl ? 'Image Selected' : 'Upload Card Photo'}
+                  </Button>
+                  <Text style={{ color: '#888', fontSize: 10, flex: 1, textAlign: 'right' }}>
+                    {aadhaarFileUrl ? '✓ Photo uploaded successfully' : 'PNG/JPG up to 5MB'}
+                  </Text>
+                </View>
               </Card.Content>
             </Card>
 
