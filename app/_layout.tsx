@@ -114,11 +114,27 @@ function AppWithTheme() {
     const isProfileCompletion = segments[0] === 'profile-completion';
     const isPendingApproval = segments[0] === 'pending-approval';
 
+    const hasAadhaarVerified = (prof: any) => {
+      if (!prof) return false;
+      const bioText = prof.bio || '';
+      try {
+        if (bioText.startsWith('{')) {
+          const parsed = JSON.parse(bioText);
+          return !!(parsed.aadhaarNo && parsed.aadhaarUrl);
+        }
+      } catch (e) {}
+      return false;
+    };
+
     if (!user) {
       if (!inAuthGroup) {
         router.replace('/(auth)/login' as any);
       }
     } else if (!profile) {
+      if (!isProfileCompletion) {
+        router.replace('/profile-completion' as any);
+      }
+    } else if (!hasAadhaarVerified(profile)) {
       if (!isProfileCompletion) {
         router.replace('/profile-completion' as any);
       }

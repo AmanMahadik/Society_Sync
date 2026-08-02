@@ -56,7 +56,7 @@ function validateAadhaar(aadhaar: string): boolean {
 }
 
 export const ProfileCompletionScreen: React.FC = () => {
-  const { user, refreshProfile, signOut } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
   const theme = useTheme();
 
   const [societyCode, setSocietyCode] = useState('');
@@ -69,6 +69,28 @@ export const ProfileCompletionScreen: React.FC = () => {
   const [flatNumber, setFlatNumber] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('renter');
+
+  // Pre-populate details if profile exists (for legacy user Aadhaar migration)
+  React.useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setPhone(profile.phone || '');
+      setWing(profile.wing || '');
+      setFlatNumber(profile.flat_number || '');
+      if (profile.role) setRole(profile.role as UserRole);
+      
+      if (profile.society_id) {
+        setSocietyCode(profile.society_code || '');
+        setSocietyDetails({
+          id: profile.society_id,
+          name: profile.society_name || 'SocietySync Co-Op',
+          city: '',
+          state: ''
+        });
+        setSocietyValidated(true);
+      }
+    }
+  }, [profile]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -20,6 +20,8 @@ export default function EditProfileScreen() {
   const [flatNumber, setFlatNumber] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [bio, setBio] = useState('');
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarFileUrl, setAadhaarFileUrl] = useState('');
   
   // Profile Picture States
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -40,7 +42,18 @@ export default function EditProfileScreen() {
       setWing(profile.wing || '');
       setFlatNumber(profile.flat_number || '');
       setVehicleNumber(profile.vehicle_number || '');
-      setBio(profile.bio || '');
+      
+      // Parse Aadhaar details from bio if stored as JSON
+      let bioText = profile.bio || '';
+      try {
+        if (bioText.startsWith('{')) {
+          const parsed = JSON.parse(bioText);
+          setAadhaarNumber(parsed.aadhaarNo || '');
+          setAadhaarFileUrl(parsed.aadhaarUrl || '');
+          bioText = ''; // Clear input field so it doesn't display raw JSON to resident
+        }
+      } catch (e) {}
+      setBio(bioText);
       setAvatarUri(profile.google_picture_url || null);
       isInitialized.current = true;
     }
@@ -156,7 +169,13 @@ export default function EditProfileScreen() {
         }
       }
 
-      // 2. Update profiles table via DataManager
+      // 2. Preserve Aadhaar data in bio payload
+      const bioPayload = aadhaarNumber ? JSON.stringify({
+        aadhaarNo: aadhaarNumber,
+        aadhaarUrl: aadhaarFileUrl
+      }) : (bio.trim() || null);
+
+      // Update profiles table via DataManager
       await dataManager.updateProfileDetails(
         user.id,
         fullName.trim(),
@@ -165,7 +184,7 @@ export default function EditProfileScreen() {
         wing.trim().toUpperCase() || null,
         profile.society_name || 'SocietySync Co-Op',
         vehicleNumber.trim() || null,
-        bio.trim() || null,
+        bioPayload,
         finalAvatarUrl
       );
 
@@ -322,6 +341,33 @@ export default function EditProfileScreen() {
               style={[styles.input, { height: 80 }]}
               maxLength={150}
             />
+
+            {/* Aadhaar Details (Read-Only Verified Card) */}
+            {aadhaarNumber ? (
+              <View style={{ marginTop: 8, marginBottom: 16, backgroundColor: '#0B1C1A', borderWidth: 0.5, borderColor: '#00D4AA33', padding: 12, borderRadius: 8 }}>
+                <Text style={{ color: '#00D4AA', fontWeight: 'bold', fontSize: 13, marginBottom: 4 }}>
+                  🛡️ Identity Verified (Aadhaar)
+                </Text>
+                <Text style={{ color: '#E4E4E7', fontSize: 12 }}>
+                  Aadhaar Number: XXXX-XXXX-{aadhaarNumber.slice(-4)}
+                </Text>
+                {aadhaarFileUrl ? (
+                  <Button 
+                    mode="text" 
+                    onPress={() => {
+                      const WebBrowser = require('expo-web-browser');
+                      WebBrowser.openBrowserAsync(aadhaarFileUrl);
+                    }} 
+                    textColor="#00D4AA" 
+                    style={{ alignSelf: 'flex-start', marginTop: 4, marginLeft: -8 }}
+                    labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+                    icon="eye"
+                  >
+                    View Uploaded Card Image
+                  </Button>
+                ) : null}
+              </View>
+            ) : null}
 
             {/* Save Button */}
             <Button
