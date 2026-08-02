@@ -55,6 +55,23 @@ export default function RegisterPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(false);
 
+  const [aadhaarVerified, setAadhaarVerified] = useState(false);
+  const [aadhaarName, setAadhaarName] = useState('');
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'DIGILOCKER_VERIFIED') {
+        const { name, aadhaarNo } = event.data.data;
+        setAadhaarVerified(true);
+        setAadhaarName(name);
+        setAadhaarNumber(aadhaarNo);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   const [mapLoaded, setMapLoaded] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const mapRef = useRef<any>(null);
@@ -92,6 +109,7 @@ export default function RegisterPage() {
       if (!/\S+@\S+\.\S+/.test(formData.adminEmail)) return 'Please enter a valid email address.';
       if (!formData.adminPhone.trim()) return 'Mobile Number is required.';
       if (!/^\d{10}$/.test(formData.adminPhone.trim())) return 'Mobile Number must be 10 digits.';
+      if (!aadhaarVerified) return 'Aadhaar verification is required to configure the administrator account.';
       if (!formData.authorizedConsent) return 'You must check the authorization consent checkbox.';
     }
     return null;
@@ -352,7 +370,7 @@ export default function RegisterPage() {
           state: formData.state,
           city: formData.city,
           pincode: formData.pincode,
-          admin_name: formData.adminName,
+          admin_name: `${formData.adminName.trim()} (Aadhaar Verified: ${aadhaarName} / XXXX-XXXX-${aadhaarNumber.slice(-4)})`,
           admin_email: formData.adminEmail,
           admin_phone: formData.adminPhone,
           admin_password: '',
@@ -746,6 +764,48 @@ export default function RegisterPage() {
 
 
 
+
+              {/* Aadhaar Verification Card */}
+              <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4 my-2">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                  🛡️ Aadhaar Identity Verification
+                </h3>
+                <p className="text-zinc-500 text-xs">Verify your identity using official government DigiLocker integration.</p>
+
+                {aadhaarVerified ? (
+                  <div className="flex items-center gap-3 bg-[#0B1C1A] border border-[#00D4AA]/30 p-3 rounded-lg text-sm text-[#00D4AA]">
+                    <span className="text-lg">✅</span>
+                    <div>
+                      <p className="font-bold">Aadhaar Verified Successfully</p>
+                      <p className="text-xs text-zinc-400">Name: {aadhaarName} • UID: XXXX-XXXX-{aadhaarNumber.slice(-4)}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-3 items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const host = window.location.host;
+                        const protocol = window.location.protocol;
+                        const authUrl = `${protocol}//${host}/verify-digilocker?userId=register&societyId=new`;
+                        const width = 500;
+                        const height = 650;
+                        const left = window.screen.width / 2 - width / 2;
+                        const top = window.screen.height / 2 - height / 2;
+                        window.open(
+                          authUrl,
+                          'DigiLocker Verification',
+                          `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes,toolbar=no,menubar=no`
+                        );
+                      }}
+                      className="px-4 py-2.5 bg-[#00d4aa] text-zinc-950 font-bold rounded-lg text-xs hover:bg-[#00b390] transition-all cursor-pointer shadow-md inline-flex items-center gap-1.5"
+                    >
+                      Verify with DigiLocker
+                    </button>
+                    <span className="text-xs text-zinc-500 italic">Not verified. Please complete identity check.</span>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-start gap-3 mt-4">
                 <input 

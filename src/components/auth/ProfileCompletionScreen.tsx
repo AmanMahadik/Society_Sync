@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, HelperText, useTheme, SegmentedButtons } from 'react-native-paper';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '../../lib/auth-context';
 import { UserRole } from '../../lib/data-manager';
 import { supabase } from '../../lib/supabase';
@@ -36,6 +38,40 @@ export const ProfileCompletionScreen: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [aadhaarVerified, setAadhaarVerified] = useState(false);
+  const [aadhaarName, setAadhaarName] = useState('');
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [verifyingAadhaar, setVerifyingAadhaar] = useState(false);
+
+  const handleVerifyAadhaar = async () => {
+    try {
+      setVerifyingAadhaar(true);
+      const redirectUrl = Linking.createURL('/');
+      const authUrl = `https://society-sync-portal.vercel.app/verify-digilocker?userId=${user.id}&societyId=${societyDetails?.id || 'new'}&redirectUri=${encodeURIComponent(redirectUrl)}`;
+      
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+      
+      if (result.type === 'success' && result.url) {
+        const urlObj = Linking.parse(result.url);
+        const { status, name, aadhaarNo } = urlObj.queryParams || {};
+        
+        if (status === 'success' && name && aadhaarNo) {
+          setAadhaarVerified(true);
+          setAadhaarName(decodeURIComponent(name as string));
+          setAadhaarNumber(aadhaarNo as string);
+          Alert.alert('✅ Aadhaar Verified', `Identity matches government records:\nName: ${decodeURIComponent(name as string)}`);
+        } else {
+          Alert.alert('❌ Verification Failed', 'DigiLocker did not return successful KYC credentials.');
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Verification Error', e.message || 'An error occurred during identity verification.');
+    } finally {
+      setVerifyingAadhaar(false);
+    }
+  };
 
   // QR Scanning States & Permissions
   const [scanningQR, setScanningQR] = useState(false);
@@ -122,6 +158,11 @@ export const ProfileCompletionScreen: React.FC = () => {
       return;
     }
 
+    if (!aadhaarVerified) {
+      setError('Aadhaar identity verification is required to complete your profile.');
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
@@ -129,11 +170,12 @@ export const ProfileCompletionScreen: React.FC = () => {
       
       const finalWing = isGuard ? 'Gate' : wing.toUpperCase();
       const finalFlat = isGuard ? 'Guard' : flatNumber;
+      const verifiedFullName = `${fullName.trim()} (Aadhaar Verified: ${aadhaarName})`;
 
       // Save details including validated society_id and society_code
       await dataManager.updateProfileDetails(
         user.id,
-        fullName,
+        verifiedFullName,
         phone,
         finalFlat,
         finalWing,
@@ -391,6 +433,47 @@ export const ProfileCompletionScreen: React.FC = () => {
                 />
               </View>
             )}
+
+            {/* Aadhaar Verification Section */}
+            <Card style={{ marginVertical: 12, backgroundColor: '#161618', borderWidth: 0.5, borderColor: '#333' }}>
+              <Card.Content style={{ paddingVertical: 12 }}>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold', color: '#FFF', marginBottom: 4 }}>
+                  🛡️ Aadhaar Identity Verification
+                </Text>
+                <Text variant="bodySmall" style={{ color: '#888', marginBottom: 12 }}>
+                  Verify your identity using official government DigiLocker sandbox integration.
+                </Text>
+
+                {aadhaarVerified ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B1C1A', borderWidth: 1, borderColor: '#00D4AA33', padding: 12, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 20, marginRight: 8 }}>✅</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#00D4AA', fontWeight: 'bold', fontSize: 13 }}>Aadhaar Verified Successfully</Text>
+                      <Text style={{ color: '#888', fontSize: 11 }}>Name: {aadhaarName} • UID: XXXX-XXXX-{aadhaarNumber.slice(-4)}</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Button
+                      mode="contained"
+                      onPress={handleVerifyAadhaar}
+                      loading={verifyingAadhaar}
+                      disabled={verifyingAadhaar}
+                      buttonColor="#00D4AA"
+                      textColor="#09090b"
+                      labelStyle={{ fontWeight: 'bold', fontSize: 11 }}
+                      style={{ borderRadius: 8 }}
+                      icon="shield-check"
+                    >
+                      Verify with DigiLocker
+                    </Button>
+                    <Text style={{ color: '#888', fontStyle: 'italic', fontSize: 10, flex: 1, marginLeft: 12, textAlign: 'right' }}>
+                      Not verified. Please complete check.
+                    </Text>
+                  </View>
+                )}
+              </Card.Content>
+            </Card>
 
             <Button
               mode="contained"
