@@ -421,22 +421,28 @@ export const ProfileScreen: React.FC = () => {
             backgroundColor: theme.colors.elevation.level1
           }]}>
             <Card.Content style={styles.profileContent}>
-              {profile?.google_picture_url ? (
-                <Avatar.Image 
-                  size={70} 
-                  source={{ uri: profile.google_picture_url }} 
-                  style={{ marginBottom: 8 }}
-                />
-              ) : (
-                <Avatar.Text 
-                  size={70} 
-                  label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
-                  style={{ backgroundColor: '#00D4AA', marginBottom: 8 }}
-                  color="#09090b"
-                />
-              )}
-              <Text variant="headlineSmall" style={[styles.profileName, { color: theme.colors.onSurface }]}>{profile?.full_name}</Text>
-              {profile?.bio ? (
+              {(() => {
+                const cleanedName = profile?.full_name?.replace(/\s*\(Aadhaar Verified:.*?\)/i, '').replace(/\s*\(Aadhaar Verified\)/i, '') || '';
+                const initials = cleanedName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS';
+                return profile?.google_picture_url ? (
+                  <Avatar.Image 
+                    size={70} 
+                    source={{ uri: profile.google_picture_url }} 
+                    style={{ marginBottom: 8 }}
+                  />
+                ) : (
+                  <Avatar.Text 
+                    size={70} 
+                    label={initials} 
+                    style={{ backgroundColor: '#00D4AA', marginBottom: 8 }}
+                    color="#09090b"
+                  />
+                );
+              })()}
+              <Text variant="headlineSmall" style={[styles.profileName, { color: theme.colors.onSurface }]}>
+                {profile?.full_name?.replace(/\s*\(Aadhaar Verified:.*?\)/i, '').replace(/\s*\(Aadhaar Verified\)/i, '')}
+              </Text>
+              {profile?.bio && !profile.bio.startsWith('{') ? (
                 <Text variant="bodyMedium" style={{ color: theme.colors.outline, fontStyle: 'italic', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 16 }}>
                   {`"${profile.bio}"`}
                 </Text>

@@ -257,7 +257,7 @@ export const ProfileCompletionScreen: React.FC = () => {
       
       const finalWing = isGuard ? 'Gate' : wing.toUpperCase();
       const finalFlat = isGuard ? 'Guard' : flatNumber;
-      const verifiedFullName = `${fullName.trim()} (Aadhaar Verified: ${fullName.trim()})`;
+      const verifiedFullName = fullName.trim();
       const bioPayload = JSON.stringify({
         aadhaarNo: aadhaarNumber,
         aadhaarUrl: aadhaarFileUrl
