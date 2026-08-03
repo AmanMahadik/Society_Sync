@@ -101,6 +101,17 @@ export default function SocietyAdminDashboard() {
     console.log('fetchDashboardData: Component mounted, starting to fetch dashboard data...');
     try {
       setLoading(true);
+      
+      // If handling OAuth callback redirect hash, wait briefly for Supabase to parse it
+      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+        console.log('fetchDashboardData: Detected OAuth hash, waiting for session...');
+        for (let i = 0; i < 30; i++) {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       console.log('fetchDashboardData: supabase.auth.getSession() returned session:', session ? `User ID: ${session.user.id}` : 'null');
       

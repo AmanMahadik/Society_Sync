@@ -123,6 +123,17 @@ export default function MasterDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // If handling OAuth callback redirect hash, wait briefly for Supabase to parse it
+      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+        console.log('fetchData: Detected OAuth hash, waiting for session...');
+        for (let i = 0; i < 30; i++) {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
       // Verify session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
