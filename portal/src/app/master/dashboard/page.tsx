@@ -124,10 +124,12 @@ export default function MasterDashboard() {
     try {
       setLoading(true);
       
-      // If handling OAuth callback redirect hash, wait briefly for Supabase to parse it
-      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
-        console.log('fetchData: Detected OAuth hash, waiting for session...');
-        for (let i = 0; i < 30; i++) {
+      // If handling OAuth callback redirect (PKCE code or Implicit token), wait briefly for Supabase to parse it
+      const hasCode = typeof window !== 'undefined' && window.location.search.includes('code=');
+      const hasHash = typeof window !== 'undefined' && window.location.hash.includes('access_token');
+      if (hasCode || hasHash) {
+        console.log('fetchData: Detected OAuth callback (code or hash), waiting for session...');
+        for (let i = 0; i < 40; i++) {
           const { data } = await supabase.auth.getSession();
           if (data.session) break;
           await new Promise(resolve => setTimeout(resolve, 100));
