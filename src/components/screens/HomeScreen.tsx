@@ -26,6 +26,167 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
+  // Master Admin states
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [allSocieties, setAllSocieties] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [masterLoading, setMasterLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [faCode, setFaCode] = useState('');
+  const [authorizing2FA, setAuthorizing2FA] = useState(false);
+  const [activeTab, setActiveTab] = useState<'requests' | 'societies' | 'users'>('requests');
+
+  const fetchMasterData = async () => {
+    if (profile?.role !== 'master_admin') return;
+    setMasterLoading(true);
+    try {
+      const { data: requests } = await supabase
+        .from('society_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+      setPendingRequests(requests || []);
+
+      const { data: socs } = await supabase
+        .from('societies')
+        .select('*')
+        .order('created_at', { ascending: false });
+      setAllSocieties(socs || []);
+
+      const { data: usrs } = await supabase
+        .from('profiles')
+        .select('*, societies(name)')
+        .order('created_at', { ascending: false });
+      setAllUsers(usrs || []);
+    } catch (e) {
+      console.warn('Failed to fetch master admin data:', e);
+    } finally {
+      setMasterLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (profile?.role === 'master_admin') {
+      fetchMasterData();
+    }
+  }, [profile]);
+
+  const handleApprove2FA = async () => {
+    if (!faCode.trim() || faCode.trim().length !== 6) {
+      Alert.alert('Invalid Code', 'Please enter a valid 6-digit access code.');
+      return;
+    }
+    
+    setAuthorizing2FA(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('You must be logged in to approve requests.');
+      }
+      
+      const portalUrl = process.env.EXPO_PUBLIC_PORTAL_URL || 'https://society-sync-portal.vercel.app';
+      const res = await fetch(`${portalUrl}/api/auth/approve-2fa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ code: faCode.trim() })
+      });
+      
+      const resJson = await res.json();
+      if (!res.ok) {
+        throw new Error(resJson.error || 'Failed to approve portal login.');
+      }
+      
+      Vibration.vibrate(100);
+      Alert.alert('Success', 'Portal login session successfully authorized!');
+      setFaCode('');
+    } catch (e: any) {
+      Alert.alert('Authorization Failed', e.message || 'Check the code and try again.');
+    } finally {
+      setAuthorizing2FA(false);
+    }
+  };
+
+  const handleReviewSociety = async (requestId: string, approve: boolean) => {
+    Alert.alert(
+      approve ? 'Approve Request' : 'Reject Request',
+      `Are you sure you want to ${approve ? 'approve' : 'reject'} this society request?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: approve ? 'Approve' : 'Reject',
+          style: approve ? 'default' : 'destructive',
+          onPress: async () => {
+            setMasterLoading(true);
+            try {
+              const { data: req } = await supabase
+                .from('society_requests')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+                
+              if (!req) throw new Error('Request not found.');
+              
+              if (approve) {
+                const { data: soc, error: socErr } = await supabase
+                  .from('societies')
+                  .insert({
+                    name: req.society_name,
+                    city: req.city,
+                    state: req.state,
+                    society_code: req.society_code,
+                    status: 'active'
+                  })
+                  .select()
+                  .single();
+                  
+                if (socErr) throw socErr;
+                
+                const { error: profErr } = await supabase
+                  .from('profiles')
+                  .update({
+                    society_id: soc.id,
+                    role: 'admin',
+                    status: 'approved'
+                  })
+                  .eq('id', req.admin_user_id);
+                  
+                if (profErr) throw profErr;
+                
+                const { error: adminErr } = await supabase
+                  .from('society_admins')
+                  .insert({
+                    society_id: soc.id,
+                    user_id: req.admin_user_id,
+                    admin_email: req.admin_email,
+                    society_code: req.society_code
+                  });
+                  
+                if (adminErr) throw adminErr;
+              }
+              
+              const { error: delErr } = await supabase
+                .from('society_requests')
+                .delete()
+                .eq('id', requestId);
+                
+              if (delErr) throw delErr;
+              
+              Vibration.vibrate(100);
+              Alert.alert('Processed', `Society request has been successfully ${approve ? 'approved' : 'rejected'}.`);
+              fetchMasterData();
+            } catch (e: any) {
+              Alert.alert('Operation Failed', e.message);
+            } finally {
+              setMasterLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const [activeEvents, setActiveEvents] = useState<any[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
 
@@ -1174,6 +1335,258 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     }
   };
 
+  const renderMasterAdminContent = () => {
+    const filteredSocieties = allSocieties.filter(soc => 
+      soc.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      soc.society_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      soc.city.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const filteredUsers = allUsers.filter(usr => 
+      (usr.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (usr.email || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (usr.societies?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return (
+      <View style={{ gap: 16 }}>
+        {/* 1. 2FA PORTAL AUTHORIZATION ACTION CARD */}
+        <Card style={{ borderRadius: 20, elevation: 4, backgroundColor: theme.colors.elevation.level1 }}>
+          <Card.Content style={{ padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <IconButton icon="shield-key" iconColor={theme.colors.error} style={{ margin: 0, padding: 0 }} size={24} />
+              <View>
+                <Text style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>Portal 2FA Authorization</Text>
+                <Text style={{ fontSize: 10, color: theme.colors.outline }}>Approve active web portal login requests</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              <TextInput
+                mode="outlined"
+                dense
+                placeholder="6-digit code"
+                maxLength={6}
+                keyboardType="number-pad"
+                value={faCode}
+                onChangeText={(t) => setFaCode(t.replace(/[^0-9]/g, ''))}
+                style={{ flex: 1, height: 40, backgroundColor: theme.colors.background, fontSize: 13 }}
+                outlineColor={theme.colors.outline}
+                activeOutlineColor={theme.colors.error}
+              />
+              <Button
+                mode="contained"
+                buttonColor={theme.colors.error}
+                textColor="#fff"
+                onPress={handleApprove2FA}
+                loading={authorizing2FA}
+                disabled={authorizing2FA || faCode.length !== 6}
+                style={{ borderRadius: 8, height: 40, justifyContent: 'center' }}
+                labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+              >
+                Authorize
+              </Button>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* 2. NAVIGATION TABS */}
+        <View style={{ flexDirection: 'row', backgroundColor: theme.colors.elevation.level1, borderRadius: 12, padding: 4, gap: 4 }}>
+          <TouchableOpacity 
+            onPress={() => { setActiveTab('requests'); setSearchQuery(''); }}
+            style={{ 
+              flex: 1, 
+              paddingVertical: 10, 
+              alignItems: 'center', 
+              borderRadius: 8, 
+              backgroundColor: activeTab === 'requests' ? theme.colors.error : 'transparent' 
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: activeTab === 'requests' ? '#fff' : theme.colors.outline }}>
+              Requests ({pendingRequests.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => { setActiveTab('societies'); setSearchQuery(''); }}
+            style={{ 
+              flex: 1, 
+              paddingVertical: 10, 
+              alignItems: 'center', 
+              borderRadius: 8, 
+              backgroundColor: activeTab === 'societies' ? theme.colors.error : 'transparent' 
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: activeTab === 'societies' ? '#fff' : theme.colors.outline }}>
+              Societies ({allSocieties.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => { setActiveTab('users'); setSearchQuery(''); }}
+            style={{ 
+              flex: 1, 
+              paddingVertical: 10, 
+              alignItems: 'center', 
+              borderRadius: 8, 
+              backgroundColor: activeTab === 'users' ? theme.colors.error : 'transparent' 
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: activeTab === 'users' ? '#fff' : theme.colors.outline }}>
+              Users ({allUsers.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* SEARCH BAR (For Societies and Users tabs) */}
+        {activeTab !== 'requests' && (
+          <TextInput
+            mode="outlined"
+            dense
+            placeholder={`Search ${activeTab === 'societies' ? 'societies by name, code...' : 'users by name, email...'}`}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            left={<TextInput.Icon icon="magnify" size={16} />}
+            style={{ height: 38, backgroundColor: theme.colors.elevation.level1 }}
+            outlineColor="transparent"
+            activeOutlineColor={theme.colors.error}
+          />
+        )}
+
+        {/* TAB CONTENTS */}
+        {masterLoading ? (
+          <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
+            Retrieving master controller database...
+          </Text>
+        ) : (
+          <View style={{ gap: 10 }}>
+            {activeTab === 'requests' && (
+              pendingRequests.length === 0 ? (
+                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
+                  No pending society registration requests.
+                </Text>
+              ) : (
+                pendingRequests.map((req) => (
+                  <Card key={req.id} style={{ borderRadius: 16, borderLeftWidth: 3, borderLeftColor: theme.colors.error, backgroundColor: theme.colors.elevation.level1 }}>
+                    <Card.Content style={{ padding: 12 }}>
+                      <Text style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>{req.society_name}</Text>
+                      <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
+                        Code: {req.society_code} • {req.city}, {req.state}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
+                        Admin: {req.admin_email}
+                      </Text>
+                      <Text style={{ fontSize: 9, color: theme.colors.outline, marginTop: 4 }}>
+                        Date: {new Date(req.created_at).toLocaleDateString()}
+                      </Text>
+                      
+                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                        <Button 
+                          mode="outlined" 
+                          textColor={theme.colors.error} 
+                          style={{ borderRadius: 8, height: 32, justifyContent: 'center', borderColor: theme.colors.error }}
+                          labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
+                          onPress={() => handleReviewSociety(req.id, false)}
+                          compact
+                        >
+                          Reject
+                        </Button>
+                        <Button 
+                          mode="contained" 
+                          buttonColor={theme.colors.error}
+                          textColor="#fff"
+                          style={{ borderRadius: 8, height: 32, justifyContent: 'center' }}
+                          labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
+                          onPress={() => handleReviewSociety(req.id, true)}
+                          compact
+                        >
+                          Approve
+                        </Button>
+                      </View>
+                    </Card.Content>
+                  </Card>
+                ))
+              )
+            )}
+
+            {activeTab === 'societies' && (
+              filteredSocieties.length === 0 ? (
+                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
+                  No registered societies found matching search.
+                </Text>
+              ) : (
+                filteredSocieties.map((soc) => (
+                  <Card key={soc.id} style={{ borderRadius: 16, backgroundColor: theme.colors.elevation.level1 }}>
+                    <Card.Content style={{ padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 13, color: theme.colors.onSurface }}>{soc.name}</Text>
+                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
+                          Code: {soc.society_code} • {soc.city}, {soc.state}
+                        </Text>
+                      </View>
+                      <Chip style={{ height: 20, justifyContent: 'center', backgroundColor: 'rgba(56, 142, 60, 0.15)' }} textStyle={{ color: '#388E3C', fontSize: 8, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                        {soc.status}
+                      </Chip>
+                    </Card.Content>
+                  </Card>
+                ))
+              )
+            )}
+
+            {activeTab === 'users' && (
+              filteredUsers.length === 0 ? (
+                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
+                  No users found matching search.
+                </Text>
+              ) : (
+                filteredUsers.map((usr) => {
+                  let isVerified = false;
+                  if (usr.bio) {
+                    try {
+                      const parsed = JSON.parse(usr.bio);
+                      isVerified = !!(parsed && parsed.aadhaarNo);
+                    } catch {}
+                  }
+
+                  return (
+                    <Card key={usr.id} style={{ borderRadius: 16, backgroundColor: theme.colors.elevation.level1 }}>
+                      <Card.Content style={{ padding: 12 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={{ fontWeight: 'bold', fontSize: 13, color: theme.colors.onSurface }}>{usr.full_name || 'N/A'}</Text>
+                          <Chip 
+                            style={{ 
+                              height: 20, 
+                              justifyContent: 'center', 
+                              backgroundColor: isVerified ? 'rgba(56, 142, 60, 0.15)' : 'rgba(211, 47, 47, 0.15)' 
+                            }} 
+                            textStyle={{ 
+                              color: isVerified ? '#388E3C' : '#D32F2F', 
+                              fontSize: 8, 
+                              fontWeight: 'bold' 
+                            }}
+                          >
+                            {isVerified ? '✓ Verified' : '✗ Unverified'}
+                          </Chip>
+                        </View>
+                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
+                          Email: {usr.email}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
+                          Role: {usr.role} • Unit: {usr.wing && usr.flat_number ? `${usr.wing}-${usr.flat_number}` : 'N/A'}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
+                          Society: {usr.societies?.name || 'Unlinked / No Society'}
+                        </Text>
+                      </Card.Content>
+                    </Card>
+                  );
+                })
+              )
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       {/* 1. LOUD ALARM OVERLAY FOR GUARD/ADMIN */}
@@ -1233,12 +1646,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               </Text>
               <View style={styles.roleBadgeContainer}>
                 <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-                  Wing {profile?.wing || '?'}-{profile?.flat_number || '?'} • 
+                  {profile?.role === 'master_admin' ? 'Global Superuser • ' : `Wing ${profile?.wing || '?'}-${profile?.flat_number || '?'} • `}
                 </Text>
                 {(() => {
                   const getContrastColor = (r?: string) => {
                     const isDark = theme.dark;
                     switch (r) {
+                      case 'master_admin': return isDark ? '#EF4444' : '#DC2626';
                       case 'admin': return isDark ? '#FFD700' : '#B45309';
                       case 'owner': return isDark ? '#00D4AA' : '#047857';
                       case 'renter': return isDark ? '#3B82F6' : '#1D4ED8';
@@ -1248,6 +1662,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
                   };
                   const badgeText = (() => {
                     switch (profile?.role) {
+                      case 'master_admin': return 'Master Admin';
                       case 'admin': return 'Admin';
                       case 'owner': return 'Owner';
                       case 'renter': return 'Tenant';
@@ -1296,7 +1711,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
           </TouchableOpacity>
         </View>
 
-        {/* ACTIVE FESTIVAL EVENTS PROGRAM CARDS */}
+        {profile?.role === 'master_admin' ? (
+          renderMasterAdminContent()
+        ) : (
+          <>
+            {/* ACTIVE FESTIVAL EVENTS PROGRAM CARDS */}
         {activeEvents.map((event) => (
           <Card 
             key={event.id}
@@ -2128,6 +2547,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               </Card.Content>
             </Card>
           ))
+        )}
+          </>
         )}
       </ScrollView>
 

@@ -16,6 +16,11 @@ export default function MasterLoginPage() {
   const [lockoutActive, setLockoutActive] = useState(false);
   const [lockoutExpiry, setLockoutExpiry] = useState<string | null>(null);
 
+  // 2FA state hooks
+  const [show2FAScreen, setShow2FAScreen] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [pendingToken, setPendingToken] = useState('');
+
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -56,6 +61,63 @@ export default function MasterLoginPage() {
     }
   };
 
+  const completeMasterLogin = async (session: any) => {
+    await supabase.auth.setSession(session);
+
+    // Check role = 'master_admin' using secure RPC helper or email check
+    const { data: role, error: roleError } = await supabase.rpc('get_current_user_role');
+    const isMasterEmail = session.user?.email?.trim().toLowerCase() === 'societysync5@gmail.com';
+
+    if ((roleError || role !== 'master_admin') && !isMasterEmail) {
+      // Sign out if they are not master admin to clear the session!
+      await supabase.auth.signOut();
+      throw new Error('Access Denied. Only seeded master admin accounts can log in here.');
+    }
+
+    // Reset lockout on successful login
+    if (session.user?.email?.trim().toLowerCase() === 'societysync5@gmail.com') {
+      localStorage.removeItem('master_login_attempts');
+      localStorage.removeItem('master_lockout_time');
+    }
+
+    router.push('/master/dashboard');
+  };
+
+  const start2FAPolling = (token: string) => {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 150) { // Timeout after 5 minutes
+        clearInterval(interval);
+        setShow2FAScreen(false);
+        setErrorMsg('Two-Factor Authentication request timed out. Please try again.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/complete-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pendingToken: token })
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+          clearInterval(interval);
+          setShow2FAScreen(false);
+          setLoading(true);
+          await completeMasterLogin(data.session);
+        } else if (data.status === 'expired') {
+          clearInterval(interval);
+          setShow2FAScreen(false);
+          setErrorMsg('Two-Factor Authentication request expired. Please try again.');
+        }
+      } catch (err) {
+        console.error('Error polling 2FA status:', err);
+      }
+    }, 2000);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
@@ -76,30 +138,29 @@ export default function MasterLoginPage() {
     setErrorMsg(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      console.log('1. Calling /api/auth/login-2fa...');
+      const res = await fetch('/api/auth/login-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
-
-      if (error) throw error;
-      if (!data.user) throw new Error('Authentication session error.');
-
-      // Check role = 'master_admin' using secure RPC helper
-      const { data: role, error: roleError } = await supabase.rpc('get_current_user_role');
-
-      if (roleError || role !== 'master_admin') {
-        // Sign out if they are not master admin to clear the session!
-        await supabase.auth.signOut();
-        throw new Error('Access Denied. Only seeded master admin accounts can log in here.');
+      
+      const loginRes = await res.json();
+      if (!res.ok) {
+        throw new Error(loginRes.error || 'Authentication failed');
       }
 
-      // Reset lockout on successful login
-      if (email.trim().toLowerCase() === 'societysync5@gmail.com') {
-        localStorage.removeItem('master_login_attempts');
-        localStorage.removeItem('master_lockout_time');
+      if (loginRes.status === '2fa_required') {
+        setShow2FAScreen(true);
+        setTwoFactorCode(loginRes.code);
+        setPendingToken(loginRes.pendingToken);
+        setLoading(false);
+        start2FAPolling(loginRes.pendingToken);
+        return;
       }
 
-      router.push('/master/dashboard');
+      // 2FA is disabled - proceed with standard login logic
+      await completeMasterLogin(loginRes.session);
 
     } catch (err: any) {
       console.error(err);
@@ -118,15 +179,14 @@ export default function MasterLoginPage() {
           setErrorMsg(`Invalid master admin credentials. (Attempt ${currentAttempts} of 3 before device lockout)`);
         }
       } else {
-        setErrorMsg(err.message || 'Invalid master admin credentials.');
+        setErrorMsg(err.message || 'Invalid email or passcode.');
       }
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col items-center justify-center p-6 selection:bg-[#00d4aa] selection:text-[#09090b]">
+    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col items-center justify-center p-6 selection:bg-red-500 selection:text-black">
       <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl relative overflow-hidden">
         
         {/* LOGO & TITLE */}
@@ -149,57 +209,100 @@ export default function MasterLoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-zinc-400 uppercase">Master Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="master@email.com"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-red-500 text-white"
-                required
-              />
+        {show2FAScreen ? (
+          <div className="space-y-6 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20 mb-4 animate-pulse">
+              <Lock className="h-6 w-6 text-red-500" />
             </div>
-          </div>
+            
+            <h2 className="text-lg font-bold text-white tracking-tight">Two-Factor Authentication</h2>
+            
+            <p className="text-xs text-zinc-400 leading-relaxed px-2">
+              To verify your identity, please open your <strong>SocietySync Mobile App</strong> and authorize this login session.
+            </p>
+            
+            <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-5 my-4">
+              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2">Portal Access Code</span>
+              <span className="text-3xl font-extrabold tracking-widest text-red-500 font-mono">
+                {twoFactorCode.slice(0, 3)} {twoFactorCode.slice(3)}
+              </span>
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-zinc-400 uppercase">Admin Passcode</label>
-              <Link href="/master/forgot-password" style={{ fontSize: '11px' }} className="text-zinc-500 hover:text-red-400 transition-colors">
-                Forgot Passcode?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-red-500 text-white"
-                required
-              />
+            <div className="flex flex-col gap-3.5 pt-4">
+              <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <span>Waiting for mobile authorization...</span>
+              </div>
+              
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none"
+                onClick={() => {
+                  setShow2FAScreen(false);
+                  setLoading(false);
+                  setErrorMsg("Login cancelled.");
+                }}
+                className="text-xs text-zinc-500 hover:text-white transition-colors hover:underline mt-2 cursor-pointer"
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                ← Cancel & Return to Login
               </button>
             </div>
           </div>
+        ) : (
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-zinc-400 uppercase">Master Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="master@email.com"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-red-500 text-white"
+                  required
+                />
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading || lockoutActive}
-            className="w-full py-3.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {lockoutActive ? 'ACCESS BLOCKED' : (loading ? 'Authenticating...' : 'ACCESS CONTROLLER')} <ArrowRight className="h-5 w-5" />
-          </button>
-        </form>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-zinc-400 uppercase">Admin Passcode</label>
+                <Link href="/master/forgot-password" style={{ fontSize: '11px' }} className="text-zinc-500 hover:text-red-400 transition-colors">
+                  Forgot Passcode?
+                </Link>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-red-500 text-white"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || lockoutActive}
+              className="w-full py-3.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {lockoutActive ? 'ACCESS BLOCKED' : (loading ? 'Authenticating...' : 'ACCESS CONTROLLER')} <ArrowRight className="h-5 w-5" />
+            </button>
+          </form>
+        )}
 
         <div className="flex items-center my-5">
           <div className="flex-1 border-t border-zinc-800/80"></div>
@@ -235,11 +338,6 @@ export default function MasterLoginPage() {
         </button>
 
         <div className="mt-8 border-t border-zinc-800 pt-6 flex flex-col gap-3 text-center text-xs">
-          {/* Master Admin Registration is disabled
-          <Link href="/master/register" className="text-red-500/80 hover:text-red-400 font-semibold transition-colors">
-            Register Master Account
-          </Link>
-          */}
           <Link href="/" className="text-zinc-500 hover:text-zinc-300">
             Return to Public Homepage
           </Link>

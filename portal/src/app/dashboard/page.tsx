@@ -69,6 +69,46 @@ export default function SocietyAdminDashboard() {
   // Theme settings state
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark');
 
+  // 2FA state & handlers
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [updating2FA, setUpdating2FA] = useState(false);
+
+  const toggle2FA = async () => {
+    if (!adminProfile) return;
+    setUpdating2FA(true);
+    try {
+      let bioObj: any = {};
+      if (adminProfile.bio) {
+        try {
+          bioObj = JSON.parse(adminProfile.bio);
+        } catch {
+          bioObj = {};
+        }
+      }
+      const newStatus = !twoFactorEnabled;
+      bioObj.two_factor_enabled = newStatus;
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ bio: JSON.stringify(bioObj) })
+        .eq('id', adminProfile.id);
+        
+      if (error) throw error;
+      
+      setTwoFactorEnabled(newStatus);
+      setAdminProfile({
+        ...adminProfile,
+        bio: JSON.stringify(bioObj)
+      });
+      alert(`Two-Factor Authentication has been successfully ${newStatus ? 'ENABLED' : 'DISABLED'}.`);
+    } catch (e: any) {
+      console.error(e);
+      alert(`Failed to update 2FA setting: ${e.message}`);
+    } finally {
+      setUpdating2FA(false);
+    }
+  };
+
   // Theme Matcher Helper
   const applyTheme = (mode: 'light' | 'dark' | 'system') => {
     if (typeof window === 'undefined') return;
@@ -215,6 +255,14 @@ export default function SocietyAdminDashboard() {
 
       if (currentProf) {
         setAdminProfile(currentProf);
+        let is2fa = false;
+        if (currentProf.bio) {
+          try {
+            const parsed = JSON.parse(currentProf.bio);
+            is2fa = !!parsed.two_factor_enabled;
+          } catch {}
+        }
+        setTwoFactorEnabled(is2fa);
       }
 
       // 3. Fetch community members
@@ -731,6 +779,25 @@ export default function SocietyAdminDashboard() {
                       <span className="text-muted-foreground">City / State:</span>
                       <span className="text-foreground font-bold">{society?.city}, {society?.state}</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Two-Factor Authentication Toggle */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Security Settings</span>
+                  <div className="flex justify-between items-center bg-background/50 border border-border p-3 rounded-lg">
+                    <span className="font-semibold text-xs">Two-Factor Authentication</span>
+                    <button
+                      disabled={updating2FA}
+                      onClick={toggle2FA}
+                      className={`px-3 py-1 rounded text-[10px] font-extrabold uppercase transition-all cursor-pointer border ${
+                        twoFactorEnabled 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                          : 'bg-zinc-800/10 text-muted-foreground border-border'
+                      } disabled:opacity-50`}
+                    >
+                      {updating2FA ? 'Updating...' : (twoFactorEnabled ? 'Enabled' : 'Disabled')}
+                    </button>
                   </div>
                 </div>
 
