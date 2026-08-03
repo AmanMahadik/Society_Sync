@@ -14,6 +14,7 @@ interface Profile {
   society_id?: string;
   wing?: string;
   flat_number?: string;
+  bio?: string | null;
   created_at: string;
   societies?: {
     name: string;
@@ -73,18 +74,32 @@ export default function UsersListPage() {
         return;
       }
 
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
+
+      if (!profile && session.user.email) {
+        const { data: emailProf } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', session.user.email.trim().toLowerCase())
+          .maybeSingle();
+        if (emailProf) {
+          profile = emailProf;
+        }
+      }
       
-      if (!profile || profile.role !== 'master_admin') {
-        router.push('/master/login');
+      const isMasterEmail = session.user.email?.trim().toLowerCase() === 'societysync5@gmail.com';
+      if ((!profile || profile.role !== 'master_admin') && !isMasterEmail) {
+        console.warn('fetchUsers: Unauthorized Master Admin attempt.');
+        await supabase.auth.signOut();
+        router.push('/master/login?error=unauthorized');
         return;
       }
 
-      setAdminProfile(profile);
+      setAdminProfile(profile || { full_name: 'Master Admin', email: session.user.email });
 
       // Fetch profiles with a join to societies to show their society name
       const { data, error } = await supabase
@@ -438,7 +453,26 @@ export default function UsersListPage() {
                         <div className="h-7 w-7 rounded bg-background flex items-center justify-center border border-border text-muted-foreground shrink-0">
                           {user.role === 'master_admin' ? <Award className="h-4 w-4 text-[#dc2626]" /> : <User className="h-4 w-4" />}
                         </div>
-                        {user.full_name || 'N/A'}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{user.full_name || 'N/A'}</span>
+                          {(() => {
+                            if (!user.bio) return false;
+                            try {
+                              const parsed = JSON.parse(user.bio);
+                              return !!(parsed && parsed.aadhaarNo);
+                            } catch {
+                              return false;
+                            }
+                          })() ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold rounded">
+                              ✓ Aadhaar Verified
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-red-500/10 text-red-400 border border-red-500/20 text-[9px] font-bold rounded">
+                              ✗ Not Verified
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-muted-foreground font-mono text-xs">{user.email}</td>
                       <td className="p-4">

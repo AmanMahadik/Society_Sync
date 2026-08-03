@@ -18,6 +18,11 @@ export default function MasterLoginPage() {
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('error') === 'unauthorized') {
+        setErrorMsg('Unauthorized Account: Access restricted to authorized Master Administrators only.');
+      }
+
       const expiry = localStorage.getItem('master_lockout_time');
       if (expiry) {
         const expiryTime = parseInt(expiry);

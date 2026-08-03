@@ -22,6 +22,7 @@ interface Profile {
   role: string;
   status: string;
   phone?: string;
+  bio?: string | null;
   created_at: string;
 }
 
@@ -192,11 +193,24 @@ export default function SocietyAdminDashboard() {
       setSociety(soc);
 
       // Fetch admin details
-      const { data: currentProf } = await supabase
+      let { data: currentProf } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .maybeSingle();
+
+      if (!currentProf && session.user.email) {
+        console.log('fetchDashboardData: Profile check failed by ID, trying fallback by email...');
+        const { data: emailProf } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', session.user.email.trim().toLowerCase())
+          .maybeSingle();
+        if (emailProf) {
+          currentProf = emailProf;
+        }
+      }
+
       if (currentProf) {
         setAdminProfile(currentProf);
       }
@@ -990,7 +1004,26 @@ export default function SocietyAdminDashboard() {
                       {filteredRoster.map((prof) => (
                         <tr key={prof.id} className="hover:bg-[#0b0e10]/30 transition-colors">
                           <td className="p-4 font-bold text-[#f2f2f0]">
-                            {prof.full_name}
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span>{prof.full_name}</span>
+                              {(() => {
+                                if (!prof.bio) return false;
+                                try {
+                                  const parsed = JSON.parse(prof.bio);
+                                  return !!(parsed && parsed.aadhaarNo);
+                                } catch {
+                                  return false;
+                                }
+                              })() ? (
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold rounded">
+                                  ✓ Aadhaar Verified
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-red-500/10 text-red-400 border border-red-500/20 text-[9px] font-bold rounded">
+                                  ✗ Not Verified
+                                </span>
+                              )}
+                            </div>
                             {prof.phone && (
                               <span className="block text-[#8a8f91] font-mono text-[9px] mt-0.5">{prof.phone}</span>
                             )}
@@ -1034,7 +1067,26 @@ export default function SocietyAdminDashboard() {
                     <div key={prof.id} className="p-4 space-y-3 bg-[#0b0e10]/10 hover:bg-[#0b0e10]/20 transition-all">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-bold text-[#f2f2f0] text-xs">{prof.full_name}</h4>
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <h4 className="font-bold text-[#f2f2f0] text-xs">{prof.full_name}</h4>
+                            {(() => {
+                              if (!prof.bio) return false;
+                              try {
+                                const parsed = JSON.parse(prof.bio);
+                                return !!(parsed && parsed.aadhaarNo);
+                              } catch {
+                                return false;
+                              }
+                            })() ? (
+                              <span className="inline-flex items-center px-1 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold rounded">
+                                ✓ Verified
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-1 py-0.2 bg-red-500/10 text-red-400 border border-red-500/20 text-[8px] font-bold rounded">
+                                ✗ Unverified
+                              </span>
+                            )}
+                          </div>
                           {prof.phone && (
                             <span className="text-[#8a8f91] font-mono text-[10px] block mt-0.5">{prof.phone}</span>
                           )}

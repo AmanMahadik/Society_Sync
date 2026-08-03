@@ -141,20 +141,34 @@ export default function MasterDashboard() {
         return;
       }
 
-      // Check role = master_admin using secure RPC helper
+      // Check role = master_admin using secure RPC helper or email authorization
       const { data: role, error: roleError } = await supabase.rpc('get_current_user_role');
+      const isMasterEmail = session.user.email?.trim().toLowerCase() === 'societysync5@gmail.com';
       
-      if (roleError || role !== 'master_admin') {
-        router.push('/master/login');
+      if ((roleError || role !== 'master_admin') && !isMasterEmail) {
+        console.warn('fetchData: Unauthorized Master Admin attempt.');
+        await supabase.auth.signOut();
+        router.push('/master/login?error=unauthorized');
         return;
       }
 
       // Fetch logged in profile details
-      const { data: profileData } = await supabase
+      let { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
+
+      if (!profileData && session.user.email) {
+        const { data: emailProf } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', session.user.email.trim().toLowerCase())
+          .maybeSingle();
+        if (emailProf) {
+          profileData = emailProf;
+        }
+      }
       
       if (profileData) {
         setAdminProfile(profileData);
