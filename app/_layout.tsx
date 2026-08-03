@@ -69,7 +69,7 @@ function AppWithTheme() {
   };
 
   useEffect(() => {
-    if (user && profile && profile.status === 'approved') {
+    if (user && profile && (profile.status === 'approved' || profile.role === 'master_admin')) {
       if (!isUnlocked) {
         authenticate();
       }
@@ -91,7 +91,7 @@ function AppWithTheme() {
         }
 
         const enabled = await AsyncStorage.getItem('biometrics_enabled');
-        if (enabled === 'true' && user && profile && profile.status === 'approved' && !isUnlocked) {
+        if (enabled === 'true' && user && profile && (profile.status === 'approved' || profile.role === 'master_admin') && !isUnlocked) {
           setTimeout(() => {
             authenticate();
           }, 300);
@@ -126,9 +126,16 @@ function AppWithTheme() {
       return false;
     };
 
+    const isMasterAdmin = profile?.role === 'master_admin';
+
     if (!user) {
       if (!inAuthGroup) {
         router.replace('/(auth)/login' as any);
+      }
+    } else if (isMasterAdmin) {
+      // Master admin bypasses all profile completion, approval, and local screen restriction redirects!
+      if (!inTabsGroup && segments[0] !== 'settings') {
+        router.replace('/(tabs)' as any);
       }
     } else if (!profile) {
       if (!isProfileCompletion) {
@@ -163,7 +170,7 @@ function AppWithTheme() {
     }
   }, [user, profile, loading, segments, isUnlocked]);
 
-  if (user && profile && profile.status === 'approved' && !isUnlocked) {
+  if (user && profile && (profile.status === 'approved' || profile.role === 'master_admin') && !isUnlocked) {
     return (
       <PaperProvider theme={theme}>
         <View style={[styles.lockContainer, { backgroundColor: theme.colors.background }]}>
