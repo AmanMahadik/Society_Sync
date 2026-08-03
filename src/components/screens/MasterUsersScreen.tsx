@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, FlatList, TextInput as RNTextInput } from 'react-native';
-import { Text, Card, Chip, useTheme, ActivityIndicator } from 'react-native-paper';
+import { StyleSheet, View, FlatList, TextInput as RNTextInput, Alert } from 'react-native';
+import { Text, Card, Button, useTheme, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 
@@ -11,6 +11,7 @@ export const MasterUsersScreen: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -31,6 +32,59 @@ export const MasterUsersScreen: React.FC = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const cycleRole = async (item: any) => {
+    const roles = ['admin', 'guard', 'owner', 'renter'];
+    const currentIndex = roles.indexOf(item.role);
+    const nextIndex = (currentIndex + 1) % roles.length;
+    const nextRole = roles[nextIndex];
+    
+    setActionId(item.id);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: nextRole })
+        .eq('id', item.id);
+      if (error) throw error;
+      
+      // Update local state instantly
+      setUsers(prev => prev.map(u => u.id === item.id ? { ...u, role: nextRole } : u));
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update user role.');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const deleteUser = async (item: any) => {
+    Alert.alert(
+      'Confirm Deletion',
+      `Are you sure you want to permanently delete user account '${item.full_name || item.email}'? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setActionId(item.id);
+            try {
+              const { error } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', item.id);
+              if (error) throw error;
+              
+              setUsers(prev => prev.filter(u => u.id !== item.id));
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'Failed to delete user account.');
+            } finally {
+              setActionId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const filtered = users.filter(u => 
     (u.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -58,7 +112,7 @@ export const MasterUsersScreen: React.FC = () => {
             borderColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
           }]}
         />
-        {loading && (
+        {loading && users.length === 0 && (
           <ActivityIndicator size="small" color="#EF4444" style={styles.loader} />
         )}
       </View>
@@ -88,37 +142,72 @@ export const MasterUsersScreen: React.FC = () => {
           return (
             <Card style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}>
               <Card.Content style={styles.cardContent}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 15, color: theme.colors.onSurface }}>
-                      {item.full_name || 'N/A'}
-                    </Text>
-                    <Chip 
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 15, color: theme.colors.onSurface }}>
+                    {item.full_name || 'N/A'}
+                  </Text>
+                  
+                  {/* HIGH-CONTRAST VISIBLE VERIFICATION BADGE */}
+                  <View 
+                    style={{ 
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      backgroundColor: isVerified ? 'rgba(56, 142, 60, 0.18)' : 'rgba(211, 47, 47, 0.18)',
+                      borderWidth: 0.5,
+                      borderColor: isVerified ? '#388E3C' : '#D32F2F',
+                    }}
+                  >
+                    <Text 
                       style={{ 
-                        height: 20, 
-                        justifyContent: 'center', 
-                        backgroundColor: isVerified ? 'rgba(56, 142, 60, 0.15)' : 'rgba(211, 47, 47, 0.15)' 
-                      }} 
-                      textStyle={{ 
-                        color: isVerified ? '#388E3C' : '#D32F2F', 
-                        fontSize: 8, 
+                        color: isVerified ? '#4CAF50' : '#FF5252', 
+                        fontSize: 9, 
                         fontWeight: 'bold' 
                       }}
                     >
                       {isVerified ? '✓ Verified' : '✗ Unverified'}
-                    </Chip>
+                    </Text>
                   </View>
-                  
-                  <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 6 }}>
-                    Email: <Text style={{ color: theme.colors.onSurfaceVariant }}>{item.email}</Text>
-                  </Text>
-                  <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 2 }}>
-                    Role: <Text style={{ color: '#EF4444', textTransform: 'uppercase', fontSize: 10, fontWeight: 'bold' }}>{item.role}</Text>
-                    {item.wing && item.flat_number ? ` • Unit: ${item.wing}-${item.flat_number}` : ''}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 2 }}>
-                    Society: <Text style={{ color: theme.colors.onSurfaceVariant }}>{item.societies?.name || 'Unlinked / No Society'}</Text>
-                  </Text>
+                </View>
+                
+                <Text style={{ fontSize: 11, color: theme.colors.outline }}>
+                  Email: <Text style={{ color: theme.colors.onSurfaceVariant }}>{item.email}</Text>
+                </Text>
+                <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 2 }}>
+                  Role: <Text style={{ color: '#EF4444', textTransform: 'uppercase', fontSize: 10, fontWeight: 'bold' }}>{item.role}</Text>
+                  {item.wing && item.flat_number ? ` • Unit: ${item.wing}-${item.flat_number}` : ''}
+                </Text>
+                <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 2, marginBottom: 14 }}>
+                  Society: <Text style={{ color: theme.colors.onSurfaceVariant }}>{item.societies?.name || 'Unlinked / No Society'}</Text>
+                </Text>
+
+                {/* USER ACTION BUTTONS */}
+                <View style={{ flexDirection: 'row', gap: 6, borderTopWidth: 0.5, borderTopColor: theme.dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', paddingTop: 10 }}>
+                  <Button
+                    mode="outlined"
+                    textColor={theme.colors.onSurface}
+                    style={{ flex: 1, borderRadius: 8, height: 32, justifyContent: 'center', borderColor: 'rgba(255,255,255,0.12)' }}
+                    labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
+                    onPress={() => cycleRole(item)}
+                    disabled={actionId === item.id}
+                    compact
+                    icon="swap-horizontal"
+                  >
+                    Cycle Role
+                  </Button>
+
+                  <Button
+                    mode="outlined"
+                    textColor="#FF5252"
+                    style={{ flex: 1, borderRadius: 8, height: 32, justifyContent: 'center', borderColor: 'rgba(211,47,47,0.25)' }}
+                    labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
+                    onPress={() => deleteUser(item)}
+                    disabled={actionId === item.id}
+                    compact
+                    icon="trash-can-outline"
+                  >
+                    Delete Account
+                  </Button>
                 </View>
               </Card.Content>
             </Card>

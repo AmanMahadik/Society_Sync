@@ -310,6 +310,8 @@ export const ProfileScreen: React.FC = () => {
   const getContrastColor = (role?: string) => {
     const isDark = theme.dark;
     switch (role) {
+      case 'master_admin':
+        return isDark ? '#EF4444' : '#DC2626';
       case 'admin':
         return isDark ? '#FFD700' : '#B45309'; // Gold / Dark Gold
       case 'owner':
@@ -325,6 +327,8 @@ export const ProfileScreen: React.FC = () => {
 
   const getRoleBadge = (role?: string) => {
     switch (role) {
+      case 'master_admin':
+        return { icon: 'shield-crown', color: '#EF4444', text: 'Master Admin (Global)' };
       case 'admin':
         return { icon: 'shield-crown', color: '#FFD700', text: 'Society Admin (Secretary)' };
       case 'owner':
@@ -434,7 +438,7 @@ export const ProfileScreen: React.FC = () => {
                   <Avatar.Text 
                     size={70} 
                     label={initials} 
-                    style={{ backgroundColor: '#00D4AA', marginBottom: 8 }}
+                    style={{ backgroundColor: profile?.role === 'master_admin' ? '#EF4444' : '#00D4AA', marginBottom: 8 }}
                     color="#09090b"
                   />
                 );
@@ -448,7 +452,7 @@ export const ProfileScreen: React.FC = () => {
                 </Text>
               ) : null}
               <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-                Wing {profile?.wing || '?'}-{profile?.flat_number || '?'} • {profile?.society_name || 'My Society'}
+                {profile?.role === 'master_admin' ? 'Global Superuser • System Headquarters' : `Wing ${profile?.wing || '?'}-${profile?.flat_number || '?'} • ${profile?.society_name || 'My Society'}`}
               </Text>
               
               {(() => {
@@ -495,8 +499,8 @@ export const ProfileScreen: React.FC = () => {
             ) : null}
             <View style={[styles.detailsRow, { alignItems: 'flex-start' }]}>
               <Text variant="bodyMedium" style={{ color: theme.colors.outline, marginRight: 8 }}>Ledger Roster Status:</Text>
-              <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: '#00D4AA', flex: 1, textAlign: 'right' }}>
-                APPROVED COUNCIL MEMBER
+              <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: profile?.role === 'master_admin' ? '#EF4444' : '#00D4AA', flex: 1, textAlign: 'right' }}>
+                {profile?.role === 'master_admin' ? 'GLOBAL ACCESS GRANTED' : 'APPROVED COUNCIL MEMBER'}
               </Text>
             </View>
           </Card.Content>
@@ -504,9 +508,9 @@ export const ProfileScreen: React.FC = () => {
 
         {/* 1.5. YOUR SOCIETY INFO CARD */}
         {profile?.role === 'master_admin' ? (
-          <Card style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#00D4AA', backgroundColor: theme.colors.elevation.level1 }}>
+          <Card style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#EF4444', backgroundColor: theme.colors.elevation.level1 }}>
             <Card.Content>
-              <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#00D4AA', marginBottom: 6 }}>🛡️ Master Administrator Access</Text>
+              <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#EF4444', marginBottom: 6 }}>🛡️ Master Administrator Access</Text>
               <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
                 You have global system-wide administrative privileges. You are not bound to any individual society registry.
               </Text>

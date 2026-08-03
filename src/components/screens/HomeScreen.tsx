@@ -86,20 +86,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
         .select('*')
         .order('created_at', { ascending: false });
       setPendingRequests(requests || []);
-
-      const { data: socs } = await supabase
-        .from('societies')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setAllSocieties(socs || []);
-
-      const { data: usrs } = await supabase
-        .from('profiles')
-        .select('*, societies(name)')
-        .order('created_at', { ascending: false });
-      setAllUsers(usrs || []);
     } catch (e) {
-      console.warn('Failed to fetch master admin data:', e);
+      console.warn('Failed to fetch master admin requests:', e);
     } finally {
       setMasterLoading(false);
     }
@@ -119,41 +107,58 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     
     setAuthorizing2FA(true);
     try {
-      let session = null;
-      try {
-        const { data: refreshData } = await supabase.auth.refreshSession();
-        session = refreshData.session;
-      } catch (err) {
-        console.warn('Failed to refresh session, trying getSession:', err);
-      }
-      
-      if (!session) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        session = sessionData.session;
-      }
-
-      if (!session) {
+      if (!user) {
         throw new Error('You must be logged in to approve requests.');
       }
       
-      const portalUrl = process.env.EXPO_PUBLIC_PORTAL_URL || 'https://society-sync-portal.vercel.app';
-      const res = await fetch(`${portalUrl}/api/auth/approve-2fa`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ code: faCode.trim() })
-      });
+      const { data: prof, error: fetchErr } = await supabase
+        .from('profiles')
+        .select('bio')
+        .eq('id', user.id)
+        .single();
+        
+      if (fetchErr || !prof) {
+        throw new Error('Failed to retrieve user profile.');
+      }
       
-      const resJson = await res.json();
-      if (!res.ok) {
-        throw new Error(resJson.error || 'Failed to approve portal login.');
+      let bioObj: any = {};
+      if (prof.bio) {
+        try {
+          bioObj = JSON.parse(prof.bio);
+        } catch (e) {
+          bioObj = {};
+        }
+      }
+      
+      const cleanInputCode = faCode.trim().replace(/\s/g, '');
+      const cleanStoredCode = (bioObj.two_factor_code || '').toString().replace(/\s/g, '');
+      
+      if (!cleanStoredCode || cleanInputCode !== cleanStoredCode) {
+        throw new Error('Invalid verification code. Please check the code and try again.');
+      }
+      
+      if (bioObj.two_factor_expires_at && Date.now() > bioObj.two_factor_expires_at) {
+        throw new Error('Verification code has expired. Please request a new one.');
+      }
+      
+      const updatedBio = {
+        ...bioObj,
+        two_factor_approved: true,
+      };
+      
+      const { error: updateErr } = await supabase
+        .from('profiles')
+        .update({ bio: JSON.stringify(updatedBio) })
+        .eq('id', user.id);
+        
+      if (updateErr) {
+        throw updateErr;
       }
       
       Vibration.vibrate(100);
       Alert.alert('Success', 'Portal login session successfully authorized!');
       setFaCode('');
+      setActive2FARequest(false); // Hide the card instantly
     } catch (e: any) {
       Alert.alert('Authorization Failed', e.message || 'Check the code and try again.');
     } finally {
