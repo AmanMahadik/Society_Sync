@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated, Share, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated, Share, Alert, Linking } from 'react-native';
 import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput, Dialog, ActivityIndicator } from 'react-native-paper';
+import { WebView } from 'react-native-webview';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../lib/auth-context';
@@ -38,6 +39,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   
   // Real-time 2FA Request polling states
   const [active2FARequest, setActive2FARequest] = useState<boolean>(false);
+
+  // Master Admin Dashboard states
+  const [broadcastText, setBroadcastText] = useState('');
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [stats, setStats] = useState({
+    totalSocieties: 0,
+    pendingRequests: 0,
+    activeSocieties: 0,
+    globalUsers: 0
+  });
 
   const checkActive2FARequest = async () => {
     if (!user) return;
@@ -81,13 +92,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     if (profile?.role !== 'master_admin') return;
     setMasterLoading(true);
     try {
+      // 1. Fetch pending requests (exclude approved)
       const { data: requests } = await supabase
         .from('society_requests')
         .select('*')
+        .neq('status', 'approved')
         .order('created_at', { ascending: false });
       setPendingRequests(requests || []);
+
+      // 2. Fetch societies for map & stats
+      const { data: socs } = await supabase
+        .from('societies')
+        .select('id, name, lat, lng, status, society_code, city');
+      const activeSocs = socs ? socs.filter(s => s.status === 'active') : [];
+      setAllSocieties(socs || []);
+
+      // 3. Fetch global users count
+      const { count: usersCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      setStats({
+        totalSocieties: socs?.length || 0,
+        pendingRequests: requests?.length || 0,
+        activeSocieties: activeSocs.length,
+        globalUsers: usersCount || 0
+      });
     } catch (e) {
-      console.warn('Failed to fetch master admin requests:', e);
+      console.warn('Failed to fetch master admin data:', e);
     } finally {
       setMasterLoading(false);
     }
@@ -243,6 +275,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
         }
       ]
     );
+  };
+
+  const handleBroadcast = async () => {
+    if (!broadcastText.trim()) {
+      Alert.alert('Empty Message', 'Please enter a broadcast message to dispatch.');
+      return;
+    }
+    
+    setSendingBroadcast(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('role', 'admin')
+        .eq('status', 'approved');
+        
+      if (error) throw error;
+      
+      const emails = data ? data.map(p => p.email).filter(Boolean) : [];
+      if (emails.length === 0) {
+        Alert.alert('No Admins', 'No active housing complex administrators found in the registry.');
+        return;
+      }
+      
+      const bccList = emails.join(',');
+      const subject = encodeURIComponent('SocietySync: System Alert & Policy Dispatch');
+      const body = encodeURIComponent(broadcastText.trim());
+      
+      Linking.openURL(`mailto:?bcc=${bccList}&subject=${subject}&body=${body}`);
+      setBroadcastText('');
+      Alert.alert('Broadcast Ready', 'Your system broadcast has been formatted. Sending email to all housing complex admins.');
+    } catch (err: any) {
+      Alert.alert('Dispatch Failed', err.message || 'Unable to load administrators directory.');
+    } finally {
+      setSendingBroadcast(false);
+    }
   };
 
   const [activeEvents, setActiveEvents] = useState<any[]>([]);
@@ -1442,71 +1510,282 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     );
   };
 
+  const renderLeafletMap = () => {
+    const markers = allSocieties
+      .filter(s => s.lat && s.lng)
+      .map(s => ({
+        name: s.name,
+        code: s.society_code,
+        city: s.city,
+        lat: parseFloat(s.lat),
+        lng: parseFloat(s.lng)
+      }));
+
+    const centerLat = 18.6759;
+    const centerLng = 73.8005;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          html, body, #map {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+          }
+          .leaflet-popup-content-wrapper {
+            background: #1e1e1e;
+            color: #fff;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+          }
+          .leaflet-popup-tip {
+            background: #1e1e1e;
+          }
+          .custom-popup h3 {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            color: #ef4444;
+            font-family: sans-serif;
+          }
+          .custom-popup p {
+            margin: 0;
+            font-size: 10px;
+            color: #aaa;
+            font-family: sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          const map = L.map('map', { zoomControl: false }).setView([${centerLat}, ${centerLng}], 11);
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20
+          }).addTo(map);
+
+          const markersData = ${JSON.stringify(markers)};
+          markersData.forEach(m => {
+            const marker = L.marker([m.lat, m.lng]).addTo(map);
+            marker.bindPopup(\`
+              <div class="custom-popup">
+                <h3>\${m.name}</h3>
+                <p>Code: \${m.code}</p>
+                <p>City: \${m.city}</p>
+              </div>
+            \`);
+          });
+        </script>
+      </body>
+      </html>
+    `;
+
+    return (
+      <Card style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: theme.colors.elevation.level1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+        <Card.Content style={{ padding: 12 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#EF4444', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+            🟢 Operational Map — Active Societies
+          </Text>
+          <View style={{ height: 220, borderRadius: 12, overflow: 'hidden' }}>
+            <WebView 
+              originWhitelist={['*']}
+              source={{ html: htmlContent }}
+              style={{ flex: 1, backgroundColor: '#121212' }}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+            />
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
+
   const renderMasterAdminContent = () => {
     return (
       <View style={{ gap: 16 }}>
         {/* 1. 2FA PORTAL AUTHORIZATION ACTION CARD */}
         {renderTwoFactorCard()}
 
-        <View style={{ marginVertical: 4 }}>
-          <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: theme.dark ? '#A1A1AA' : '#4B5563', textTransform: 'uppercase', marginBottom: 12, paddingHorizontal: 4 }}>
-            Pending Society Requests ({pendingRequests.length})
-          </Text>
+        {/* 2. STATS ROW (2x2 Grid) */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {/* Card 1: Total Societies */}
+          <Card style={{ flex: 1, minWidth: '45%', borderRadius: 16, backgroundColor: theme.colors.elevation.level1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' }}>
+            <Card.Content style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <IconButton icon="office-building" size={24} iconColor="#EF4444" style={{ margin: 0, backgroundColor: 'rgba(239, 68, 68, 0.12)' }} />
+              <View>
+                <Text style={{ fontSize: 9, fontWeight: 'bold', color: theme.colors.outline, letterSpacing: 0.5, textTransform: 'uppercase' }}>Total Societies</Text>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.onSurface, marginTop: 2 }}>{stats.totalSocieties}</Text>
+              </View>
+            </Card.Content>
+          </Card>
 
-          {masterLoading ? (
-            <ActivityIndicator size="small" color="#EF4444" style={{ marginVertical: 20 }} />
-          ) : pendingRequests.length === 0 ? (
-            <Card style={{ borderRadius: 16, backgroundColor: theme.colors.elevation.level1 }}>
-              <Card.Content style={{ alignItems: 'center', padding: 24 }}>
-                <IconButton icon="clipboard-check-outline" size={32} iconColor={theme.colors.outline} />
-                <Text style={{ color: theme.colors.outline, fontSize: 12 }}>No pending society registration requests.</Text>
-              </Card.Content>
-            </Card>
-          ) : (
-            <View style={{ gap: 10 }}>
-              {pendingRequests.map((req) => (
-                <Card key={req.id} style={{ borderRadius: 16, borderLeftWidth: 3, borderLeftColor: theme.colors.error, backgroundColor: theme.colors.elevation.level1 }}>
-                  <Card.Content style={{ padding: 14 }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 15, color: theme.colors.onSurface }}>{req.society_name}</Text>
+          {/* Card 2: Pending Requests */}
+          <Card style={{ flex: 1, minWidth: '45%', borderRadius: 16, backgroundColor: theme.colors.elevation.level1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' }}>
+            <Card.Content style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <IconButton icon="clipboard-alert" size={24} iconColor="#EAB308" style={{ margin: 0, backgroundColor: 'rgba(234, 179, 8, 0.12)' }} />
+              <View>
+                <Text style={{ fontSize: 9, fontWeight: 'bold', color: theme.colors.outline, letterSpacing: 0.5, textTransform: 'uppercase' }}>Pending Requests</Text>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#EAB308', marginTop: 2 }}>{stats.pendingRequests}</Text>
+              </View>
+            </Card.Content>
+          </Card>
+
+          {/* Card 3: Active Societies */}
+          <Card style={{ flex: 1, minWidth: '45%', borderRadius: 16, backgroundColor: theme.colors.elevation.level1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' }}>
+            <Card.Content style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <IconButton icon="office-building-marker" size={24} iconColor="#22C55E" style={{ margin: 0, backgroundColor: 'rgba(34, 197, 94, 0.12)' }} />
+              <View>
+                <Text style={{ fontSize: 9, fontWeight: 'bold', color: theme.colors.outline, letterSpacing: 0.5, textTransform: 'uppercase' }}>Active Societies</Text>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#22C55E', marginTop: 2 }}>{stats.activeSocieties}</Text>
+              </View>
+            </Card.Content>
+          </Card>
+
+          {/* Card 4: Global App Users */}
+          <Card style={{ flex: 1, minWidth: '45%', borderRadius: 16, backgroundColor: theme.colors.elevation.level1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' }}>
+            <Card.Content style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <IconButton icon="account-multiple" size={24} iconColor="#3B82F6" style={{ margin: 0, backgroundColor: 'rgba(59, 130, 246, 0.12)' }} />
+              <View>
+                <Text style={{ fontSize: 9, fontWeight: 'bold', color: theme.colors.outline, letterSpacing: 0.5, textTransform: 'uppercase' }}>Global Users</Text>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#3B82F6', marginTop: 2 }}>{stats.globalUsers}</Text>
+              </View>
+            </Card.Content>
+          </Card>
+        </View>
+
+        {/* 3. OPERATIONAL MAP */}
+        {renderLeafletMap()}
+
+        {/* 4. VIP PRIORITY REQUESTS CARD */}
+        <Card style={{ borderRadius: 20, backgroundColor: theme.colors.elevation.level1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+          <Card.Content style={{ padding: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#EF4444', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                📢 VIP Priority Requests
+              </Text>
+              <View style={{ backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: 'bold' }}>{pendingRequests.length}</Text>
+              </View>
+            </View>
+
+            {masterLoading ? (
+              <ActivityIndicator size="small" color="#EF4444" style={{ marginVertical: 20 }} />
+            ) : pendingRequests.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <IconButton icon="database-check" size={32} iconColor={theme.colors.outline} />
+                <Text style={{ color: theme.colors.outline, fontSize: 12 }}>No priority requests pending database triggers.</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {pendingRequests.map((req) => (
+                  <View 
+                    key={req.id} 
+                    style={{ 
+                      padding: 12, 
+                      borderRadius: 12, 
+                      backgroundColor: theme.dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                      borderLeftWidth: 3, 
+                      borderLeftColor: '#EF4444' 
+                    }}
+                  >
+                    <Text style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>{req.society_name}</Text>
                     <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 4 }}>
-                      Code: {req.society_code} • {req.city}, {req.state}
+                      Location: {req.city}, {req.state} • Code: {req.society_code}
                     </Text>
                     <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 2 }}>
-                      Admin: {req.admin_email}
+                      Admin Email: {req.admin_email}
                     </Text>
-                    <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 4 }}>
-                      Date Requested: {new Date(req.created_at).toLocaleDateString()}
-                    </Text>
-                    
-                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-                      <Button 
-                        mode="outlined" 
-                        textColor={theme.colors.error} 
-                        style={{ borderRadius: 8, height: 32, justifyContent: 'center', borderColor: theme.colors.error }}
-                        labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                      <TouchableOpacity
                         onPress={() => handleReviewSociety(req.id, false)}
-                        compact
+                        style={{
+                          paddingHorizontal: 12,
+                          height: 30,
+                          borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: '#EF4444',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
                       >
-                        Reject
-                      </Button>
-                      <Button 
-                        mode="contained" 
-                        buttonColor={theme.colors.error}
-                        textColor="#fff"
-                        style={{ borderRadius: 8, height: 32, justifyContent: 'center' }}
-                        labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#EF4444' }}>Reject</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
                         onPress={() => handleReviewSociety(req.id, true)}
-                        compact
+                        style={{
+                          paddingHorizontal: 12,
+                          height: 30,
+                          borderRadius: 6,
+                          backgroundColor: '#EF4444',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
                       >
-                        Approve
-                      </Button>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#fff' }}>Approve</Text>
+                      </TouchableOpacity>
                     </View>
-                  </Card.Content>
-                </Card>
-              ))}
-            </View>
-          )}
-        </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </Card.Content>
+        </Card>
+
+        {/* 5. SYSTEM BROADCAST ANNOUNCEMENT */}
+        <Card style={{ borderRadius: 20, backgroundColor: theme.colors.elevation.level1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+          <Card.Content style={{ padding: 14 }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#EF4444', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+              ✉️ System Broadcast Announcement
+            </Text>
+            <Text style={{ fontSize: 11, color: theme.colors.outline, marginBottom: 12 }}>
+              Compose a notification dispatch that will be formatted and emailed directly to all active housing complex administrators.
+            </Text>
+
+            <TextInput
+              mode="outlined"
+              placeholder="Enter important alert message or policy update here..."
+              placeholderTextColor={theme.colors.outline}
+              value={broadcastText}
+              onChangeText={setBroadcastText}
+              multiline
+              numberOfLines={4}
+              outlineColor="rgba(255,255,255,0.12)"
+              activeOutlineColor="#EF4444"
+              style={{ backgroundColor: 'transparent', fontSize: 13, color: theme.colors.onSurface, marginBottom: 12 }}
+            />
+
+            <TouchableOpacity
+              onPress={handleBroadcast}
+              disabled={sendingBroadcast || !broadcastText.trim()}
+              style={{
+                height: 40,
+                borderRadius: 8,
+                backgroundColor: broadcastText.trim() ? '#EF4444' : 'rgba(255,255,255,0.08)',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              {sendingBroadcast ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#fff' }}>
+                  📢 Dispatch Broadcast
+                </Text>
+              )}
+            </TouchableOpacity>
+          </Card.Content>
+        </Card>
       </View>
     );
   };

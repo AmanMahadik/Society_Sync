@@ -315,7 +315,7 @@ export default function TabLayout() {
         options={{
           tabBarLabel:
             profile?.role === 'master_admin'
-              ? 'Requests'
+              ? 'Home'
               : profile?.role === 'admin'
               ? 'Admin Dash'
               : profile?.role === 'guard'
