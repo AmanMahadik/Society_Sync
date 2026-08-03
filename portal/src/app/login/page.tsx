@@ -14,24 +14,6 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleGoogleLogin = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      const redirectUrl = `${window.location.origin}/dashboard`;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-        },
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to authenticate with Google.');
-      setLoading(false);
-    }
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
@@ -199,38 +181,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="flex items-center my-5">
-          <div className="flex-1 border-t border-zinc-800/80"></div>
-          <span className="px-3 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">OR</span>
-          <div className="flex-1 border-t border-zinc-800/80"></div>
-        </div>
 
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full py-3.5 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
-        >
-          <svg className="h-5 w-5 mr-1" viewBox="0 0 24 24">
-            <path
-              fill="#EA4335"
-              d="M5.266,9.765 C5.133,10.366 5.06,10.99 5.06,11.629 C5.06,12.267 5.133,12.891 5.266,13.493 L1.24,16.586 C0.449,15.106 0,13.419 0,11.629 C0,9.838 0.449,8.151 1.24,6.671 L5.266,9.765 Z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M16.041,18.013 C14.951,18.816 13.566,19.297 12.029,19.297 C9.013,19.297 6.467,17.294 5.728,14.619 L1.702,17.713 C3.385,21.054 6.849,23.357 10.914,23.357 C13.979,23.357 16.691,22.358 18.743,20.656 L14.717,17.562 C14.675,17.596 16.041,18.013 16.041,18.013 Z"
-            />
-            <path
-              fill="#4285F4"
-              d="M23.52,11.834 C23.52,11.027 23.448,10.219 23.303,9.434 L12.029,9.434 L12.029,13.988 L18.49,13.988 C18.213,15.485 17.369,16.791 16.083,17.654 L20.109,20.747 C22.468,18.572 23.82,15.367 23.52,11.834 Z"
-            />
-            <path
-              fill="#34A853"
-              d="M12.029,4.56 C13.684,4.56 15.176,5.131 16.347,6.242 L19.829,2.761 C17.729,0.794 14.996,-0.203 12.029,-0.203 C6.849,-0.203 3.385,2.101 1.702,5.443 L5.728,8.536 C6.467,5.861 9.013,3.858 12.029,4.56 Z"
-            />
-          </svg>
-          Sign in with Google
-        </button>
 
         <div className="mt-8 border-t border-zinc-800 pt-6 text-center text-xs text-zinc-500 flex flex-col gap-3.5">
           <div>

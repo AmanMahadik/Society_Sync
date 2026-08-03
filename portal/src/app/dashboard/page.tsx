@@ -653,21 +653,7 @@ export default function SocietyAdminDashboard() {
         </div>
       )}
           
-      {/* Language Toggle Switcher */}
-      <div className="flex items-center bg-zinc-800/10 dark:bg-zinc-100/5 rounded-lg p-1 border border-border">
-        <button 
-          onClick={() => setLanguage('english')}
-          className={`px-2 py-1 rounded text-[10px] font-extrabold uppercase transition-all cursor-pointer ${language === 'english' ? 'bg-[#1D9E75] text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          EN
-        </button>
-        <button 
-          onClick={() => setLanguage('marathi')}
-          className={`px-2 py-1 rounded text-[10px] font-extrabold uppercase transition-all cursor-pointer ${language === 'marathi' ? 'bg-[#1D9E75] text-white shadow-sm' : 'text-[#888] hover:text-foreground'}`}
-        >
-          मराठी
-        </button>
-      </div>
+
 
       {/* Circular Admin Avatar Button */}
       <div className="relative">

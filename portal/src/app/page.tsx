@@ -171,21 +171,7 @@ export default function LandingPage() {
             <Link href="/master/login" className="hover:text-[#1D9E75] transition-colors">{t('masterPortal')}</Link>
           </nav>
           <div className="flex items-center gap-3">
-            {/* Language Toggle Switcher */}
-            <div className="flex items-center bg-zinc-800/40 rounded-lg p-0.5 border border-[#1c2224] mr-1">
-              <button 
-                onClick={() => setLanguage('english')}
-                className={`px-2 py-0.5 rounded-[4px] text-[9px] font-extrabold uppercase transition-all cursor-pointer ${language === 'english' ? 'bg-[#1D9E75] text-[#0b0e10] shadow-sm' : 'text-[#8a8f91] hover:text-white'}`}
-              >
-                EN
-              </button>
-              <button 
-                onClick={() => setLanguage('marathi')}
-                className={`px-2 py-0.5 rounded-[4px] text-[9px] font-extrabold uppercase transition-all cursor-pointer ${language === 'marathi' ? 'bg-[#1D9E75] text-[#0b0e10] shadow-sm' : 'text-[#8a8f91] hover:text-white'}`}
-              >
-                मराठी
-              </button>
-            </div>
+
             <Link href="/login" className="text-xs font-bold px-3.5 py-2 rounded border border-[#1c2224] hover:bg-[#1c2224] transition-all text-[#f2f2f0]">
               {t('login')}
             </Link>
