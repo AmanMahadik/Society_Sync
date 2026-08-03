@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView, Vibration, Platform, Image, TouchableOpacity, Animated, Share, Alert } from 'react-native';
-import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput, Dialog } from 'react-native-paper';
+import { Text, Button, Card, Portal, Modal, IconButton, Avatar, useTheme, Chip, TextInput, Dialog, ActivityIndicator } from 'react-native-paper';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../lib/auth-context';
@@ -1618,7 +1618,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
               <Avatar.Text 
                 size={42} 
                 label={profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS'} 
-                style={{ backgroundColor: '#00D4AA' }}
+                style={{ backgroundColor: theme.colors.primary }}
                 color="#0F0F0F"
               />
             )}

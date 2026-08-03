@@ -15,8 +15,23 @@ import { Button } from 'react-native-paper';
 import { supabase } from '@/lib/supabase';
 
 function AppWithTheme() {
-  const { theme } = useThemeContext();
+  const { theme: baseTheme } = useThemeContext();
   const { user, profile, loading } = useAuth();
+  
+  const theme = React.useMemo(() => {
+    if (profile?.role === 'master_admin') {
+      return {
+        ...baseTheme,
+        colors: {
+          ...baseTheme.colors,
+          primary: '#EF4444',          // Crimson/Red for Master Admin
+          primaryContainer: '#351515', // Dark red container
+        }
+      };
+    }
+    return baseTheme;
+  }, [baseTheme, profile]);
+
   const router = useRouter();
   const segments = useSegments();
 
