@@ -1335,6 +1335,49 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     }
   };
 
+  const renderTwoFactorCard = () => {
+    return (
+      <Card style={{ borderRadius: 20, elevation: 4, backgroundColor: theme.colors.elevation.level1 }}>
+        <Card.Content style={{ padding: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <IconButton icon="shield-key" iconColor={theme.colors.error} style={{ margin: 0, padding: 0 }} size={24} />
+            <View>
+              <Text style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>Portal 2FA Authorization</Text>
+              <Text style={{ fontSize: 10, color: theme.colors.outline }}>Approve active web portal login requests</Text>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <TextInput
+              mode="outlined"
+              dense
+              placeholder="6-digit code"
+              maxLength={6}
+              keyboardType="number-pad"
+              value={faCode}
+              onChangeText={(t) => setFaCode(t.replace(/[^0-9]/g, ''))}
+              style={{ flex: 1, height: 40, backgroundColor: theme.colors.background, fontSize: 13 }}
+              outlineColor={theme.colors.outline}
+              activeOutlineColor={theme.colors.error}
+            />
+            <Button
+              mode="contained"
+              buttonColor={theme.colors.error}
+              textColor="#fff"
+              onPress={handleApprove2FA}
+              loading={authorizing2FA}
+              disabled={authorizing2FA || faCode.length !== 6}
+              style={{ borderRadius: 8, height: 40, justifyContent: 'center' }}
+              labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+            >
+              Authorize
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
+
   const renderMasterAdminContent = () => {
     const filteredSocieties = allSocieties.filter(soc => 
       soc.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -1351,44 +1394,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     return (
       <View style={{ gap: 16 }}>
         {/* 1. 2FA PORTAL AUTHORIZATION ACTION CARD */}
-        <Card style={{ borderRadius: 20, elevation: 4, backgroundColor: theme.colors.elevation.level1 }}>
-          <Card.Content style={{ padding: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <IconButton icon="shield-key" iconColor={theme.colors.error} style={{ margin: 0, padding: 0 }} size={24} />
-              <View>
-                <Text style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>Portal 2FA Authorization</Text>
-                <Text style={{ fontSize: 10, color: theme.colors.outline }}>Approve active web portal login requests</Text>
-              </View>
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-              <TextInput
-                mode="outlined"
-                dense
-                placeholder="6-digit code"
-                maxLength={6}
-                keyboardType="number-pad"
-                value={faCode}
-                onChangeText={(t) => setFaCode(t.replace(/[^0-9]/g, ''))}
-                style={{ flex: 1, height: 40, backgroundColor: theme.colors.background, fontSize: 13 }}
-                outlineColor={theme.colors.outline}
-                activeOutlineColor={theme.colors.error}
-              />
-              <Button
-                mode="contained"
-                buttonColor={theme.colors.error}
-                textColor="#fff"
-                onPress={handleApprove2FA}
-                loading={authorizing2FA}
-                disabled={authorizing2FA || faCode.length !== 6}
-                style={{ borderRadius: 8, height: 40, justifyContent: 'center' }}
-                labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
-              >
-                Authorize
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
+        {renderTwoFactorCard()}
 
         {/* 2. NAVIGATION TABS */}
         <View style={{ flexDirection: 'row', backgroundColor: theme.colors.elevation.level1, borderRadius: 12, padding: 4, gap: 4 }}>
@@ -1715,6 +1721,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
           renderMasterAdminContent()
         ) : (
           <>
+            {profile?.role === 'admin' && (
+              <View style={{ marginBottom: 8 }}>
+                {renderTwoFactorCard()}
+              </View>
+            )}
             {/* ACTIVE FESTIVAL EVENTS PROGRAM CARDS */}
         {activeEvents.map((event) => (
           <Card 
