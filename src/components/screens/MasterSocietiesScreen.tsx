@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, FlatList, TextInput as RNTextInput, Linking, Alert } from 'react-native';
-import { Text, Card, Button, useTheme, ActivityIndicator, IconButton } from 'react-native-paper';
+import { StyleSheet, View, FlatList, TextInput as RNTextInput, Linking, Alert, TouchableOpacity } from 'react-native';
+import { Text, Card, useTheme, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 
@@ -43,7 +43,6 @@ export const MasterSocietiesScreen: React.FC = () => {
         .eq('id', item.id);
       if (error) throw error;
       
-      // Update local state instantly
       setSocieties(prev => prev.map(s => s.id === item.id ? { ...s, status: nextStatus } : s));
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update status.');
@@ -186,44 +185,38 @@ export const MasterSocietiesScreen: React.FC = () => {
                 Location: {item.city}, {item.state}
               </Text>
 
-              {/* ACTION BUTTONS */}
+              {/* STYLED CUSTOM TOUCHABLE ACTION BUTTONS */}
               <View style={{ flexDirection: 'row', gap: 6, borderTopWidth: 0.5, borderTopColor: theme.dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', paddingTop: 10 }}>
-                <Button
-                  mode="outlined"
-                  textColor={item.status === 'active' ? theme.colors.onSurface : '#4CAF50'}
-                  style={{ flex: 1.2, borderRadius: 8, height: 32, justifyContent: 'center', borderColor: item.status === 'active' ? 'rgba(255,255,255,0.12)' : '#388E3C' }}
-                  labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
+                <TouchableOpacity
                   onPress={() => toggleStatus(item)}
                   disabled={actionId === item.id}
-                  compact
+                  style={[styles.actionBtn, {
+                    borderColor: item.status === 'active' ? 'rgba(255,255,255,0.12)' : '#388E3C',
+                  }]}
                 >
-                  {item.status === 'active' ? 'Suspend' : 'Activate'}
-                </Button>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: item.status === 'active' ? theme.colors.onSurface : '#4CAF50' }}>
+                    {item.status === 'active' ? 'Suspend' : 'Activate'}
+                  </Text>
+                </TouchableOpacity>
                 
-                <Button
-                  mode="outlined"
-                  textColor={theme.colors.onSurface}
-                  style={{ flex: 1.2, borderRadius: 8, height: 32, justifyContent: 'center', borderColor: 'rgba(255,255,255,0.12)' }}
-                  labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
+                <TouchableOpacity
                   onPress={() => handleEmailAdmin(item.id)}
-                  compact
-                  icon="email-outline"
+                  style={[styles.actionBtn, { borderColor: 'rgba(255,255,255,0.12)' }]}
                 >
-                  Email
-                </Button>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                    ✉ Email
+                  </Text>
+                </TouchableOpacity>
 
-                <Button
-                  mode="outlined"
-                  textColor="#FF5252"
-                  style={{ flex: 0.8, borderRadius: 8, height: 32, justifyContent: 'center', borderColor: 'rgba(211,47,47,0.25)' }}
-                  labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
+                <TouchableOpacity
                   onPress={() => deleteSociety(item)}
                   disabled={actionId === item.id}
-                  compact
-                  icon="trash-can-outline"
+                  style={[styles.actionBtn, { borderColor: 'rgba(211,47,47,0.25)' }]}
                 >
-                  Delete
-                </Button>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FF5252' }}>
+                    🗑 Delete
+                  </Text>
+                </TouchableOpacity>
               </View>
             </Card.Content>
           </Card>
@@ -273,5 +266,14 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 14,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 });

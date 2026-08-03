@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, FlatList, TextInput as RNTextInput, Alert } from 'react-native';
-import { Text, Card, Button, useTheme, ActivityIndicator } from 'react-native-paper';
+import { StyleSheet, View, FlatList, TextInput as RNTextInput, Alert, TouchableOpacity } from 'react-native';
+import { Text, Card, useTheme, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 
@@ -47,7 +47,6 @@ export const MasterUsersScreen: React.FC = () => {
         .eq('id', item.id);
       if (error) throw error;
       
-      // Update local state instantly
       setUsers(prev => prev.map(u => u.id === item.id ? { ...u, role: nextRole } : u));
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update user role.');
@@ -181,33 +180,27 @@ export const MasterUsersScreen: React.FC = () => {
                   Society: <Text style={{ color: theme.colors.onSurfaceVariant }}>{item.societies?.name || 'Unlinked / No Society'}</Text>
                 </Text>
 
-                {/* USER ACTION BUTTONS */}
+                {/* USER STYLED CUSTOM TOUCHABLE ACTION BUTTONS */}
                 <View style={{ flexDirection: 'row', gap: 6, borderTopWidth: 0.5, borderTopColor: theme.dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', paddingTop: 10 }}>
-                  <Button
-                    mode="outlined"
-                    textColor={theme.colors.onSurface}
-                    style={{ flex: 1, borderRadius: 8, height: 32, justifyContent: 'center', borderColor: 'rgba(255,255,255,0.12)' }}
-                    labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
+                  <TouchableOpacity
                     onPress={() => cycleRole(item)}
                     disabled={actionId === item.id}
-                    compact
-                    icon="swap-horizontal"
+                    style={[styles.actionBtn, { borderColor: 'rgba(255,255,255,0.12)' }]}
                   >
-                    Cycle Role
-                  </Button>
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                      🔄 Cycle Role
+                    </Text>
+                  </TouchableOpacity>
 
-                  <Button
-                    mode="outlined"
-                    textColor="#FF5252"
-                    style={{ flex: 1, borderRadius: 8, height: 32, justifyContent: 'center', borderColor: 'rgba(211,47,47,0.25)' }}
-                    labelStyle={{ fontSize: 9.5, fontWeight: 'bold' }}
+                  <TouchableOpacity
                     onPress={() => deleteUser(item)}
                     disabled={actionId === item.id}
-                    compact
-                    icon="trash-can-outline"
+                    style={[styles.actionBtn, { borderColor: 'rgba(211,47,47,0.25)' }]}
                   >
-                    Delete Account
-                  </Button>
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FF5252' }}>
+                      🗑 Delete Account
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </Card.Content>
             </Card>
@@ -258,5 +251,14 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 14,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 });

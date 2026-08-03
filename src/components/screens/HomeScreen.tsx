@@ -1196,6 +1196,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const loadAllData = async () => {
+    if (profile?.role === 'master_admin') {
+      await fetchMasterData();
+      return;
+    }
+
     if (refreshProfile) {
       try {
         await refreshProfile();
