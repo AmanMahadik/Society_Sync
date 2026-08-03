@@ -126,8 +126,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     }
   };
 
-  const handleGoogleLogin = () => {
-    showError('Google Sign-In is coming soon!');
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { error: googleError } = await signInWithGoogle();
+      if (googleError) {
+        showError(googleError.message || googleError);
+      }
+    } catch (e: any) {
+      showError(e.message || 'An unexpected error occurred during Google Sign-In.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetPassword = async () => {
