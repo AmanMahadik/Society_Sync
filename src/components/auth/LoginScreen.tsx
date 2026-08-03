@@ -133,6 +133,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
       const { error: googleError } = await signInWithGoogle();
       if (googleError) {
         showError(googleError.message || googleError);
+      } else {
+        try {
+          await AsyncStorage.setItem('just_authenticated_biometrics', Date.now().toString());
+        } catch (e) {
+          console.warn('Failed to save biometrics bypass flag:', e);
+        }
       }
     } catch (e: any) {
       showError(e.message || 'An unexpected error occurred during Google Sign-In.');
