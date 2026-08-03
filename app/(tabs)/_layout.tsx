@@ -20,13 +20,13 @@ import Animated, {
 const AnimatedIcon = Animated.createAnimatedComponent(MaterialCommunityIcons) as any;
 
 // Brand colors mapping for active accent
-const getTabActiveColor = (routeName: string) => {
+const getTabActiveColor = (routeName: string, role?: string) => {
   switch (routeName) {
-    case 'index': return '#00d4aa'; // Teal
+    case 'index': return role === 'master_admin' ? '#ef4444' : '#00d4aa'; // Red for master admin, teal otherwise
     case 'chat': return '#3b82f6';  // Blue
-    case 'finances': return '#ffd700'; // Yellow
-    case 'parking': return '#f57c00'; // Orange
-    case 'profile': return '#a855f7'; // Purple
+    case 'finances': return role === 'master_admin' ? '#ef4444' : '#ffd700'; // Red for master admin, yellow otherwise
+    case 'parking': return role === 'master_admin' ? '#ef4444' : '#f57c00'; // Red for master admin, orange otherwise
+    case 'profile': return role === 'master_admin' ? '#ef4444' : '#a855f7'; // Red for master admin, purple otherwise
     default: return '#00d4aa';
   }
 };
@@ -38,8 +38,8 @@ const getTabIconName = (routeName: string, role?: string) => {
     return 'home-city';
   }
   if (routeName === 'chat') return 'calendar-sync';
-  if (routeName === 'finances') return 'wallet';
-  if (routeName === 'parking') return 'car-connected';
+  if (routeName === 'finances') return role === 'master_admin' ? 'account-multiple' : 'wallet';
+  if (routeName === 'parking') return role === 'master_admin' ? 'office-building' : 'car-connected';
   if (routeName === 'profile') return 'account-circle';
   return 'home';
 };
@@ -161,11 +161,15 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const visibleRoutes = state.routes.filter((route) => {
     const { options } = descriptors[route.key];
     
-    // Explicitly filter out Chat and Finances for Guards and Master Admins
     const isGuard = profile?.role === 'guard';
     const isMaster = profile?.role === 'master_admin';
-    if (isGuard || isMaster) {
+    if (isGuard) {
       if (route.name === 'chat' || route.name === 'finances') {
+        return false;
+      }
+    }
+    if (isMaster) {
+      if (route.name === 'chat') {
         return false;
       }
     }
@@ -188,7 +192,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     }
   }, [activeVisibleIndex]);
 
-  const activeColors = visibleRoutes.map((route) => getTabActiveColor(route.name));
+  const activeColors = visibleRoutes.map((route) => getTabActiveColor(route.name, profile?.role));
   const inputValues = visibleRoutes.map((_, i) => i);
 
   // Shared active pill indicator with organic morphing/stretching behavior
@@ -259,7 +263,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             : route.name;
 
         const isFocused = activeVisibleIndex === index;
-        const activeColor = getTabActiveColor(route.name);
+        const activeColor = getTabActiveColor(route.name, profile?.role);
         const inactiveColor = '#8A8A8A';
         const iconName = getTabIconName(route.name, profile?.role);
 
@@ -310,7 +314,9 @@ export default function TabLayout() {
         name="index"
         options={{
           tabBarLabel:
-            profile?.role === 'admin' || profile?.role === 'master_admin'
+            profile?.role === 'master_admin'
+              ? 'Requests'
+              : profile?.role === 'admin'
               ? 'Admin Dash'
               : profile?.role === 'guard'
               ? 'Guard Panel'
@@ -327,14 +333,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="finances"
         options={{
-          tabBarLabel: 'Finances',
-          href: isGuard || isMaster ? null : '/(tabs)/finances',
+          tabBarLabel: profile?.role === 'master_admin' ? 'Users' : 'Finances',
+          href: isGuard ? null : '/(tabs)/finances',
         }}
       />
       <Tabs.Screen
         name="parking"
         options={{
-          tabBarLabel: 'Parking',
+          tabBarLabel: profile?.role === 'master_admin' ? 'Societies' : 'Parking',
         }}
       />
       <Tabs.Screen

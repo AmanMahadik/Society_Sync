@@ -1421,216 +1421,70 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const renderMasterAdminContent = () => {
-    const filteredSocieties = allSocieties.filter(soc => 
-      soc.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      soc.society_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      soc.city.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const filteredUsers = allUsers.filter(usr => 
-      (usr.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (usr.email || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (usr.societies?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     return (
       <View style={{ gap: 16 }}>
         {/* 1. 2FA PORTAL AUTHORIZATION ACTION CARD */}
         {renderTwoFactorCard()}
 
-        {/* 2. NAVIGATION TABS */}
-        <View style={{ flexDirection: 'row', backgroundColor: theme.colors.elevation.level1, borderRadius: 12, padding: 4, gap: 4 }}>
-          <TouchableOpacity 
-            onPress={() => { setActiveTab('requests'); setSearchQuery(''); }}
-            style={{ 
-              flex: 1, 
-              paddingVertical: 10, 
-              alignItems: 'center', 
-              borderRadius: 8, 
-              backgroundColor: activeTab === 'requests' ? theme.colors.error : 'transparent' 
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: activeTab === 'requests' ? '#fff' : theme.colors.outline }}>
-              Requests ({pendingRequests.length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => { setActiveTab('societies'); setSearchQuery(''); }}
-            style={{ 
-              flex: 1, 
-              paddingVertical: 10, 
-              alignItems: 'center', 
-              borderRadius: 8, 
-              backgroundColor: activeTab === 'societies' ? theme.colors.error : 'transparent' 
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: activeTab === 'societies' ? '#fff' : theme.colors.outline }}>
-              Societies ({allSocieties.length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => { setActiveTab('users'); setSearchQuery(''); }}
-            style={{ 
-              flex: 1, 
-              paddingVertical: 10, 
-              alignItems: 'center', 
-              borderRadius: 8, 
-              backgroundColor: activeTab === 'users' ? theme.colors.error : 'transparent' 
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: activeTab === 'users' ? '#fff' : theme.colors.outline }}>
-              Users ({allUsers.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* SEARCH BAR (For Societies and Users tabs) */}
-        {activeTab !== 'requests' && (
-          <TextInput
-            mode="outlined"
-            dense
-            placeholder={`Search ${activeTab === 'societies' ? 'societies by name, code...' : 'users by name, email...'}`}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            left={<TextInput.Icon icon="magnify" size={16} />}
-            style={{ height: 38, backgroundColor: theme.colors.elevation.level1 }}
-            outlineColor="transparent"
-            activeOutlineColor={theme.colors.error}
-          />
-        )}
-
-        {/* TAB CONTENTS */}
-        {masterLoading ? (
-          <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
-            Retrieving master controller database...
+        <View style={{ marginVertical: 4 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: theme.dark ? '#A1A1AA' : '#4B5563', textTransform: 'uppercase', marginBottom: 12, paddingHorizontal: 4 }}>
+            Pending Society Requests ({pendingRequests.length})
           </Text>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {activeTab === 'requests' && (
-              pendingRequests.length === 0 ? (
-                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
-                  No pending society registration requests.
-                </Text>
-              ) : (
-                pendingRequests.map((req) => (
-                  <Card key={req.id} style={{ borderRadius: 16, borderLeftWidth: 3, borderLeftColor: theme.colors.error, backgroundColor: theme.colors.elevation.level1 }}>
-                    <Card.Content style={{ padding: 12 }}>
-                      <Text style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>{req.society_name}</Text>
-                      <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
-                        Code: {req.society_code} • {req.city}, {req.state}
-                      </Text>
-                      <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
-                        Admin: {req.admin_email}
-                      </Text>
-                      <Text style={{ fontSize: 9, color: theme.colors.outline, marginTop: 4 }}>
-                        Date: {new Date(req.created_at).toLocaleDateString()}
-                      </Text>
-                      
-                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-                        <Button 
-                          mode="outlined" 
-                          textColor={theme.colors.error} 
-                          style={{ borderRadius: 8, height: 32, justifyContent: 'center', borderColor: theme.colors.error }}
-                          labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
-                          onPress={() => handleReviewSociety(req.id, false)}
-                          compact
-                        >
-                          Reject
-                        </Button>
-                        <Button 
-                          mode="contained" 
-                          buttonColor={theme.colors.error}
-                          textColor="#fff"
-                          style={{ borderRadius: 8, height: 32, justifyContent: 'center' }}
-                          labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
-                          onPress={() => handleReviewSociety(req.id, true)}
-                          compact
-                        >
-                          Approve
-                        </Button>
-                      </View>
-                    </Card.Content>
-                  </Card>
-                ))
-              )
-            )}
 
-            {activeTab === 'societies' && (
-              filteredSocieties.length === 0 ? (
-                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
-                  No registered societies found matching search.
-                </Text>
-              ) : (
-                filteredSocieties.map((soc) => (
-                  <Card key={soc.id} style={{ borderRadius: 16, backgroundColor: theme.colors.elevation.level1 }}>
-                    <Card.Content style={{ padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View style={{ flex: 1, paddingRight: 8 }}>
-                        <Text style={{ fontWeight: 'bold', fontSize: 13, color: theme.colors.onSurface }}>{soc.name}</Text>
-                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
-                          Code: {soc.society_code} • {soc.city}, {soc.state}
-                        </Text>
-                      </View>
-                      <Chip style={{ height: 20, justifyContent: 'center', backgroundColor: 'rgba(56, 142, 60, 0.15)' }} textStyle={{ color: '#388E3C', fontSize: 8, fontWeight: 'bold', textTransform: 'uppercase' }}>
-                        {soc.status}
-                      </Chip>
-                    </Card.Content>
-                  </Card>
-                ))
-              )
-            )}
-
-            {activeTab === 'users' && (
-              filteredUsers.length === 0 ? (
-                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline, fontSize: 11 }}>
-                  No users found matching search.
-                </Text>
-              ) : (
-                filteredUsers.map((usr) => {
-                  let isVerified = false;
-                  if (usr.bio) {
-                    try {
-                      const parsed = JSON.parse(usr.bio);
-                      isVerified = !!(parsed && parsed.aadhaarNo);
-                    } catch {}
-                  }
-
-                  return (
-                    <Card key={usr.id} style={{ borderRadius: 16, backgroundColor: theme.colors.elevation.level1 }}>
-                      <Card.Content style={{ padding: 12 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={{ fontWeight: 'bold', fontSize: 13, color: theme.colors.onSurface }}>{usr.full_name || 'N/A'}</Text>
-                          <Chip 
-                            style={{ 
-                              height: 20, 
-                              justifyContent: 'center', 
-                              backgroundColor: isVerified ? 'rgba(56, 142, 60, 0.15)' : 'rgba(211, 47, 47, 0.15)' 
-                            }} 
-                            textStyle={{ 
-                              color: isVerified ? '#388E3C' : '#D32F2F', 
-                              fontSize: 8, 
-                              fontWeight: 'bold' 
-                            }}
-                          >
-                            {isVerified ? '✓ Verified' : '✗ Unverified'}
-                          </Chip>
-                        </View>
-                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
-                          Email: {usr.email}
-                        </Text>
-                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
-                          Role: {usr.role} • Unit: {usr.wing && usr.flat_number ? `${usr.wing}-${usr.flat_number}` : 'N/A'}
-                        </Text>
-                        <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 2 }}>
-                          Society: {usr.societies?.name || 'Unlinked / No Society'}
-                        </Text>
-                      </Card.Content>
-                    </Card>
-                  );
-                })
-              )
-            )}
-          </View>
-        )}
+          {masterLoading ? (
+            <ActivityIndicator size="small" color="#EF4444" style={{ marginVertical: 20 }} />
+          ) : pendingRequests.length === 0 ? (
+            <Card style={{ borderRadius: 16, backgroundColor: theme.colors.elevation.level1 }}>
+              <Card.Content style={{ alignItems: 'center', padding: 24 }}>
+                <IconButton icon="clipboard-check-outline" size={32} iconColor={theme.colors.outline} />
+                <Text style={{ color: theme.colors.outline, fontSize: 12 }}>No pending society registration requests.</Text>
+              </Card.Content>
+            </Card>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {pendingRequests.map((req) => (
+                <Card key={req.id} style={{ borderRadius: 16, borderLeftWidth: 3, borderLeftColor: theme.colors.error, backgroundColor: theme.colors.elevation.level1 }}>
+                  <Card.Content style={{ padding: 14 }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 15, color: theme.colors.onSurface }}>{req.society_name}</Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 4 }}>
+                      Code: {req.society_code} • {req.city}, {req.state}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.outline, marginTop: 2 }}>
+                      Admin: {req.admin_email}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: theme.colors.outline, marginTop: 4 }}>
+                      Date Requested: {new Date(req.created_at).toLocaleDateString()}
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+                      <Button 
+                        mode="outlined" 
+                        textColor={theme.colors.error} 
+                        style={{ borderRadius: 8, height: 32, justifyContent: 'center', borderColor: theme.colors.error }}
+                        labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
+                        onPress={() => handleReviewSociety(req.id, false)}
+                        compact
+                      >
+                        Reject
+                      </Button>
+                      <Button 
+                        mode="contained" 
+                        buttonColor={theme.colors.error}
+                        textColor="#fff"
+                        style={{ borderRadius: 8, height: 32, justifyContent: 'center' }}
+                        labelStyle={{ fontSize: 10, fontWeight: 'bold' }}
+                        onPress={() => handleReviewSociety(req.id, true)}
+                        compact
+                      >
+                        Approve
+                      </Button>
+                    </View>
+                  </Card.Content>
+                </Card>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
     );
   };
