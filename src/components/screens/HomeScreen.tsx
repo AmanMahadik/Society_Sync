@@ -35,6 +35,47 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   const [faCode, setFaCode] = useState('');
   const [authorizing2FA, setAuthorizing2FA] = useState(false);
   const [activeTab, setActiveTab] = useState<'requests' | 'societies' | 'users'>('requests');
+  
+  // Real-time 2FA Request polling states
+  const [active2FARequest, setActive2FARequest] = useState<boolean>(false);
+
+  const checkActive2FARequest = async () => {
+    if (!user) return;
+    try {
+      const { data: prof, error } = await supabase
+        .from('profiles')
+        .select('bio')
+        .eq('id', user.id)
+        .single();
+        
+      if (prof && prof.bio) {
+        try {
+          const bioObj = JSON.parse(prof.bio);
+          if (
+            bioObj.two_factor_enabled === true &&
+            bioObj.two_factor_code &&
+            bioObj.two_factor_expires_at &&
+            bioObj.two_factor_expires_at > Date.now() &&
+            bioObj.two_factor_approved === false
+          ) {
+            setActive2FARequest(true);
+            return;
+          }
+        } catch (err) {}
+      }
+      setActive2FARequest(false);
+    } catch (e) {
+      console.warn('Failed to check active 2FA request:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (user && (profile?.role === 'admin' || profile?.role === 'master_admin')) {
+      checkActive2FARequest();
+      const interval = setInterval(checkActive2FARequest, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [user, profile]);
 
   const fetchMasterData = async () => {
     if (profile?.role !== 'master_admin') return;
@@ -1336,8 +1377,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
   };
 
   const renderTwoFactorCard = () => {
+    if (!active2FARequest) return null;
     return (
-      <Card style={{ borderRadius: 20, elevation: 4, backgroundColor: theme.colors.elevation.level1 }}>
+      <Card style={{ borderRadius: 20, elevation: 4, backgroundColor: theme.colors.elevation.level1, marginBottom: 12 }}>
         <Card.Content style={{ padding: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <IconButton icon="shield-key" iconColor={theme.colors.error} style={{ margin: 0, padding: 0 }} size={24} />
