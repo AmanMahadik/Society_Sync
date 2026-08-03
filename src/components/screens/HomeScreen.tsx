@@ -119,7 +119,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ jumpTo }) => {
     
     setAuthorizing2FA(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let session = null;
+      try {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData.session;
+      } catch (err) {
+        console.warn('Failed to refresh session, trying getSession:', err);
+      }
+      
+      if (!session) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        session = sessionData.session;
+      }
+
       if (!session) {
         throw new Error('You must be logged in to approve requests.');
       }
