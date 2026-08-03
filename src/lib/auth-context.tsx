@@ -271,6 +271,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (Platform.OS !== 'web' && data?.url) {
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
         
+        try {
+          WebBrowser.dismissBrowser();
+        } catch (err) {
+          console.warn('Error dismissing browser:', err);
+        }
+        
         if (result.type === 'success' && result.url) {
           const urlString = result.url;
           const params: { [key: string]: string } = {};
