@@ -1,0 +1,27 @@
+# EAS Build Ignore File
+# Exclude portal and web folders
+portal/
+dist/
+web-build/
+docs/
+BuildAppandWebsite/
+
+# Exclude documents and pdfs
+*.pdf
+*.html
+*.md
+SOCIETYSYNC_IMPLEMENTATION_PLAN.pdf
+
+# Dependencies and caches
+node_modules/
+.expo/
+.next/
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Git
+.git/
+.github/
+.vscode/
+.claude/
