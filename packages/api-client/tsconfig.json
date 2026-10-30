@@ -1,0 +1,22 @@
+{
+  "extends": "../typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "paths": {
+      "@societysync/types": [
+        "../types/src"
+      ],
+      "@societysync/config": [
+        "../config/src"
+      ]
+    },
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "rootDir": ".."
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

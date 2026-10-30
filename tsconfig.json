@@ -1,32 +1,14 @@
 {
-  "extends": "expo/tsconfig.base",
+  "extends": "./packages/typescript-config/base.json",
   "compilerOptions": {
-    "strict": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./assets/*"
-      ]
+      "@societysync/types": ["packages/types/src"],
+      "@societysync/utils": ["packages/utils/src"],
+      "@societysync/config": ["packages/config/src"],
+      "@societysync/api-client": ["packages/api-client/src"],
+      "@societysync/ui": ["packages/ui/src"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "src/app/explore.tsx",
-    "src/components/animated-icon.tsx",
-    "src/components/animated-icon.web.tsx",
-    "src/components/app-tabs.tsx",
-    "src/components/app-tabs.web.tsx",
-    "src/components/ui/collapsible.tsx",
-    "src/components/web-badge.tsx",
-    "src/components/hint-row.tsx",
-    "src/hooks/use-theme.ts"
-  ]
+  "exclude": ["node_modules", "dist", ".next"]
 }

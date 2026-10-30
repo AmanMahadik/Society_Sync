@@ -1,0 +1,720 @@
+'use client';
+
+import React, { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { supabase } from '../../../../lib/supabase';
+import { Shield, ArrowLeft, CheckCircle2, AlertCircle, FileText, Ban, CheckSquare, Square, XCircle, Map, MapPin } from 'lucide-react';
+
+interface SocietyRequest {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  admin_name: string;
+  admin_email: string;
+  admin_phone: string;
+  admin_password?: string;
+  total_units: number;
+  document_url?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
+  created_at: string;
+  lat?: number;
+  lng?: number;
+}
+
+const STATE_CODES: { [key: string]: string } = {
+  'Andhra Pradesh': 'AP', 'Arunachal Pradesh': 'AR', 'Assam': 'AS', 'Bihar': 'BR', 'Chhattisgarh': 'CG', 'Goa': 'GA', 'Gujarat': 'GJ', 
+  'Haryana': 'HR', 'Himachal Pradesh': 'HP', 'Jharkhand': 'JH', 'Karnataka': 'KA', 'Kerala': 'KL', 'Madhya Pradesh': 'MP', 
+  'Maharashtra': 'MH', 'Manipur': 'MN', 'Meghalaya': 'ML', 'Mizoram': 'MZ', 'Nagaland': 'NL', 'Odisha': 'OD', 'Punjab': 'PB', 
+  'Rajasthan': 'RJ', 'Sikkim': 'SK', 'Tamil Nadu': 'TN', 'Telangana': 'TG', 'Tripura': 'TR', 'Uttar Pradesh': 'UP', 
+  'Uttarakhand': 'UK', 'West Bengal': 'WB', 'Andaman and Nicobar Islands': 'AN', 'Chandigarh': 'CH', 
+  'Dadra and Nagar Haveli and Daman and Diu': 'DN', 'Delhi': 'DL', 'Jammu and Kashmir': 'JK', 
+  'Ladakh': 'LA', 'Lakshadweep': 'LD', 'Puducherry': 'PY'
+};
+
+export default function ReviewRequestPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [request, setRequest] = useState<SocietyRequest | null>(null);
+  
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('Invalid documents');
+  const [customRejectText, setCustomRejectText] = useState('');
+
+  // 4-point verification checklist
+  const [checklist, setChecklist] = useState({
+    nameMatches: false,
+    validLocation: false,
+    authenticDoc: false,
+    validAdmin: false
+  });
+
+  const toggleChecklist = (key: keyof typeof checklist) => {
+    setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const fetchRequest = async () => {
+    if (!params?.id) return;
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('society_requests')
+        .select('*')
+        .eq('id', parseInt(params.id))
+        .single();
+      
+      if (error) throw error;
+      setRequest(data);
+    } catch (e) {
+      console.error('Error fetching request details:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const [customVIPCode, setCustomVIPCode] = useState('');
+
+  useEffect(() => {
+    fetchRequest();
+  }, [params?.id]);
+
+  // Load Leaflet resources dynamically on client side
+  useEffect(() => {
+    if (request && typeof window !== 'undefined') {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      if (!(window as any).L) {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.async = true;
+        script.onload = () => {
+          setMapLoaded(true);
+        };
+        document.body.appendChild(script);
+      } else {
+        setMapLoaded(true);
+      }
+    }
+  }, [request]);
+
+  // Initialize and update Leaflet Map
+  useEffect(() => {
+    if (mapLoaded && request && typeof window !== 'undefined' && (window as any).L) {
+      const L = (window as any).L;
+      const initialLat = request.lat || 19.0760;
+      const initialLng = request.lng || 72.8777;
+
+      // Make sure the container is ready
+      const container = document.getElementById('leaflet-map-review');
+      if (!container) return;
+
+      if (!mapRef.current) {
+        const map = L.map('leaflet-map-review').setView([initialLat, initialLng], 15);
+        mapRef.current = map;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const defaultIcon = L.icon({
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        });
+
+        const marker = L.marker([initialLat, initialLng], { 
+          icon: defaultIcon
+        }).addTo(map);
+        markerRef.current = marker;
+
+        marker.bindPopup(`<b>${request.name}</b><br/>${request.address}`).openPopup();
+      } else {
+        if (markerRef.current) {
+          markerRef.current.setLatLng([initialLat, initialLng]);
+          mapRef.current.setView([initialLat, initialLng], 15);
+          markerRef.current.getPopup().setContent(`<b>${request.name}</b><br/>${request.address}`).openOn(mapRef.current);
+        }
+      }
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [mapLoaded, request]);
+
+  const generateUniqueSocietyCode = async (stateName: string, cityName: string) => {
+    const stateCode = STATE_CODES[stateName] || 'SS';
+    
+    // 1. Fetch RTO code from LookupForge API
+    let rtoPart = '';
+    const apiUrl = process.env.NEXT_PUBLIC_LOOKUPFORGE_API_URL || 'https://lkkey.onrender.com';
+    const apiKey = process.env.NEXT_PUBLIC_LOOKUPFORGE_API_KEY || 'lk_key_753e5e9e371a_8959bbb885f70c000ce06ca067d6c631';
+
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/rto-codes/lookup?city=${encodeURIComponent(cityName)}`, {
+        headers: {
+          'x-api-key': apiKey
+        }
+      });
+      const apiData = await response.json();
+      if (apiData.success && apiData.results && apiData.results.length > 0) {
+        const rtoRaw = apiData.results[0].data.rto_code || apiData.results[0].data['rto-code'] || '';
+        const matchNum = rtoRaw.match(/\d+/);
+        if (matchNum) {
+          rtoPart = matchNum[0].padStart(2, '0');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch RTO code from LookupForge API:', err);
+      throw new Error(`Failed to contact RTO database: ${(err as Error).message}`);
+    }
+
+    if (!rtoPart) {
+      throw new Error(`RTO code could not be resolved for city "${cityName}". Please verify that this city is registered in your RTO database list.`);
+    }
+
+    const prefix = `SS-${stateCode}-${rtoPart}-`;
+
+    // 2. Fetch existing societies with this prefix to determine the next serial sequence
+    const { data: existing, error: queryError } = await supabase
+      .from('societies')
+      .select('society_code')
+      .like('society_code', `${prefix}%`);
+
+    if (queryError) {
+      throw new Error(`Database error while searching existing societies: ${queryError.message}`);
+    }
+
+    let maxIndex = -1;
+
+    if (existing && existing.length > 0) {
+      existing.forEach(soc => {
+        const codeStr = soc.society_code;
+        if (codeStr.startsWith(prefix)) {
+          const suffix = codeStr.substring(prefix.length); // e.g. "AA-0001"
+          const parts = suffix.split('-');
+          if (parts.length === 2) {
+            const series = parts[0].toUpperCase();
+            const serialStr = parts[1];
+            if (series.length === 2) {
+              const c1 = series.charCodeAt(0) - 65;
+              const c2 = series.charCodeAt(1) - 65;
+              if (c1 >= 0 && c1 <= 25 && c2 >= 0 && c2 <= 25) {
+                const serialNum = parseInt(serialStr, 10);
+                if (!isNaN(serialNum) && serialNum >= 1 && serialNum <= 9999) {
+                  const seriesVal = (c1 * 26) + c2;
+                  const index = (seriesVal * 9999) + (serialNum - 1);
+                  if (index > maxIndex) {
+                    maxIndex = index;
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    const nextIndex = maxIndex + 1;
+    const serialNum = (nextIndex % 9999) + 1;
+    const seriesVal = Math.floor(nextIndex / 9999);
+    
+    const char1 = String.fromCharCode(65 + Math.floor(seriesVal / 26));
+    const char2 = String.fromCharCode(65 + (seriesVal % 26));
+    
+    const seriesStr = `${char1}${char2}`;
+    const serialStr = serialNum.toString().padStart(4, '0');
+    
+    return `${prefix}${seriesStr}-${serialStr}`;
+  };
+
+  const handleApprove = async () => {
+    if (!request) return;
+
+    // Check if checklist is fully checked
+    const isReady = checklist.nameMatches && checklist.validLocation && checklist.authenticDoc && checklist.validAdmin;
+    if (!isReady) {
+      const confirmForce = window.confirm('Your verification checklist is incomplete. Are you sure you want to approve this society?');
+      if (!confirmForce) return;
+    }
+
+    setSubmitting(true);
+    try {
+      // 1. Generate or assign Custom VIP Society Code
+      let code = '';
+      if (customVIPCode.trim()) {
+        code = customVIPCode.trim().toUpperCase();
+        if (!code.startsWith('SS-')) {
+          alert('Custom VIP code must start with "SS-" (e.g. SS-MH-12-VIP-0001)');
+          setSubmitting(false);
+          return;
+        }
+        // Verify code is unique
+        const { data: existingCodes, error: checkErr } = await supabase
+          .from('societies')
+          .select('id')
+          .eq('society_code', code);
+        if (checkErr) throw checkErr;
+        if (existingCodes && existingCodes.length > 0) {
+          alert(`The society code "${code}" is already in use. Please enter a different unique VIP code.`);
+          setSubmitting(false);
+          return;
+        }
+      } else {
+        code = await generateUniqueSocietyCode(request.state, request.city);
+      }
+      const adminPassword = request.admin_password || 'Admin@123';
+
+      // 2. Call Transactional Database RPC function
+      const { data: adminUserId, error: rpcError } = await supabase.rpc('approve_society_request', {
+        req_id: request.id,
+        gen_code: code,
+        gen_password: adminPassword
+      });
+
+      if (rpcError) throw rpcError;
+
+      // 3. Trigger approval email notification via API
+      try {
+        console.log('Sending approval notification email to', request.admin_email);
+        const emailResponse = await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: request.admin_email,
+            adminName: request.admin_name,
+            societyName: request.name,
+            status: 'approved',
+            societyCode: code
+          })
+        });
+        
+        if (!emailResponse.ok) {
+          console.warn('API email response not OK:', emailResponse.status);
+        } else {
+          const emailData = await emailResponse.json();
+          if (emailData.warning) {
+            console.info('Email service warning:', emailData.warning);
+          } else {
+            console.log('Approval notification email sent successfully!');
+          }
+        }
+      } catch (emailErr) {
+        console.error('Failed to trigger email API:', emailErr);
+      }
+
+      alert('Society has been approved successfully! Proceeding to view credentials.');
+      
+      // Redirect directly to credentials retrieval page
+      router.push(`/master/credentials/${request.id}`);
+
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Error occurred while executing approval.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!request) return;
+    setSubmitting(true);
+    try {
+      const finalReason = rejectReason === 'Other' ? customRejectText : rejectReason;
+      
+      const { error } = await supabase
+        .from('society_requests')
+        .update({
+          status: 'rejected',
+          rejection_reason: finalReason
+        })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      // Trigger rejection email notification via API
+      try {
+        console.log('Sending rejection notification email to', request.admin_email);
+        await fetch('/api/approve-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adminEmail: request.admin_email,
+            adminName: request.admin_name,
+            societyName: request.name,
+            status: 'rejected',
+            rejectionReason: finalReason
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to trigger rejection email API:', emailErr);
+      }
+
+      alert('Society registration request has been rejected.');
+      setShowRejectModal(false);
+      fetchRequest();
+    } catch (err) {
+      console.error(err);
+      alert('Error saving rejection status.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex items-center justify-center p-6">
+        <p className="text-zinc-500 text-sm">Loading verification files...</p>
+      </div>
+    );
+  }
+
+  if (!request) {
+    return (
+      <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col items-center justify-center p-6 gap-4">
+        <p className="text-red-500">Registry request file not found.</p>
+        <Link href="/master/dashboard" className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded text-xs font-bold">
+          Return to Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  // Parse serialized JSON documents (certificate and Aadhaar)
+  let isAadhaarJson = false;
+  let certUrl = "";
+  let aadhaarUrl = "";
+  let aadhaarNo = "";
+  try {
+    if (request.document_url && request.document_url.startsWith('{')) {
+      const parsed = JSON.parse(request.document_url);
+      certUrl = parsed.certUrl;
+      aadhaarUrl = parsed.aadhaarUrl;
+      aadhaarNo = parsed.aadhaarNo;
+      isAadhaarJson = true;
+    }
+  } catch (e) {
+    console.error('Failed to parse document_url JSON', e);
+  }
+
+  return (
+    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col selection:bg-[#00d4aa] selection:text-[#09090b]">
+      {/* NAVBAR */}
+      <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link href="/master/dashboard" className="text-zinc-400 hover:text-white transition-all">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <span className="font-extrabold text-base tracking-tight">Review Verification File</span>
+        </div>
+        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+          request.status === 'approved' ? 'bg-[#00d4aa]/15 text-[#00d4aa] border border-[#00d4aa]/30' :
+          (request.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20')
+        }`}>
+          {request.status}
+        </span>
+      </header>
+
+      {/* BODY CONTROLLER */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT COLUMN */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* PROFILE CARD */}
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
+            <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-2">Society Profile</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="block text-xs text-zinc-500 uppercase font-semibold">Society Name</span>
+                <span className="font-bold text-white mt-0.5 block">{request.name}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-zinc-500 uppercase font-semibold">Residential Address</span>
+                <span className="text-zinc-300 mt-0.5 block">{request.address}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-zinc-500 uppercase font-semibold">City / State</span>
+                <span className="text-zinc-300 mt-0.5 block">{request.city}, {request.state} — {request.pincode}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-zinc-500 uppercase font-semibold">Total Residential Units</span>
+                <span className="text-zinc-300 mt-0.5 block">{request.total_units} Units</span>
+              </div>
+            </div>
+          </div>
+
+          {/* MAP CARD */}
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+              <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-[#00d4aa]" />
+                Society Location Map
+              </h3>
+              {request.lat && request.lng ? (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${request.lat},${request.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#00d4aa] hover:underline"
+                >
+                  Open in Google Maps
+                </a>
+              ) : null}
+            </div>
+            
+            <div className="h-64 bg-zinc-950 rounded-lg border border-zinc-800 overflow-hidden relative">
+              {request.lat && request.lng ? (
+                <div id="leaflet-map-review" className="w-full h-full relative" style={{ zIndex: 1, filter: 'invert(90%) hue-rotate(185deg) brightness(85%) contrast(110%)' }} />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-2">
+                  <Map className="h-8 w-8 text-zinc-600" />
+                  <p className="text-xs text-zinc-500">No coordinates available.</p>
+                </div>
+              )}
+            </div>
+            
+            {request.lat && request.lng && (
+              <div className="text-[11px] text-zinc-500 flex justify-between">
+                <span>Latitude: {request.lat}</span>
+                <span>Longitude: {request.lng}</span>
+              </div>
+            )}
+          </div>
+
+          {/* ADMIN CARD */}
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
+            <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-2">Admin Profile</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="block text-xs text-zinc-500 uppercase font-semibold">Admin Full Name</span>
+                <span className="font-bold text-white mt-0.5 block">{request.admin_name}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-zinc-500 uppercase font-semibold">Official Email</span>
+                <span className="text-zinc-300 mt-0.5 block">{request.admin_email}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-zinc-500 uppercase font-semibold">Mobile Phone</span>
+                <span className="text-zinc-300 mt-0.5 block">{request.admin_phone}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* DOCUMENTS */}
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
+            <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-2">Housing & Identity Documents</h3>
+            {request.document_url ? (
+              isAadhaarJson ? (
+                <div className="space-y-3">
+                  <a 
+                    href={certUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg hover:border-zinc-700 flex items-center justify-between text-sm hover:bg-zinc-900/40 transition-all text-[#00d4aa] font-bold"
+                  >
+                    <span>View Registration Certificate Certificate</span>
+                  </a>
+                  
+                  <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-400">Aadhaar Card Verification</span>
+                      <a 
+                        href={aadhaarUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[#00d4aa] hover:underline font-bold"
+                      >
+                        View Aadhaar Image
+                      </a>
+                    </div>
+                    <div className="border-t border-zinc-800 pt-2 flex justify-between items-center text-xs">
+                      <span className="text-zinc-500 uppercase font-semibold">Aadhaar Number</span>
+                      <span className="text-zinc-200 font-mono font-bold">{aadhaarNo}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <a 
+                  href={request.document_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg hover:border-zinc-700 flex items-center justify-between text-sm hover:bg-zinc-900/40 transition-all text-[#00d4aa] font-bold"
+                >
+                  <span>View Registration Certificate PDF / Image</span>
+                </a>
+              )
+            ) : (
+              <p className="text-sm text-red-400">No documents uploaded.</p>
+            )}
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="space-y-6">
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-6 sticky top-24">
+            <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-2">Verification Audit</h3>
+            
+            {/* CHECKLIST */}
+            <div className="space-y-4">
+              <button onClick={() => toggleChecklist('nameMatches')} className="w-full flex items-start gap-3 text-left group">
+                {checklist.nameMatches ? <CheckSquare className="h-5 w-5 text-[#00d4aa] shrink-0 mt-0.5" /> : <Square className="h-5 w-5 text-zinc-700 group-hover:text-zinc-500 shrink-0 mt-0.5" />}
+                <div>
+                  <h4 className="text-xs font-bold text-white">Name Verification</h4>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Society name matches registration documentation.</p>
+                </div>
+              </button>
+
+              <button onClick={() => toggleChecklist('validLocation')} className="w-full flex items-start gap-3 text-left group">
+                {checklist.validLocation ? <CheckSquare className="h-5 w-5 text-[#00d4aa] shrink-0 mt-0.5" /> : <Square className="h-5 w-5 text-zinc-700 group-hover:text-zinc-500 shrink-0 mt-0.5" />}
+                <div>
+                  <h4 className="text-xs font-bold text-white">Address Validity</h4>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Pincode and city correspond to physical location boundaries.</p>
+                </div>
+              </button>
+
+              <button onClick={() => toggleChecklist('authenticDoc')} className="w-full flex items-start gap-3 text-left group">
+                {checklist.authenticDoc ? <CheckSquare className="h-5 w-5 text-[#00d4aa] shrink-0 mt-0.5" /> : <Square className="h-5 w-5 text-zinc-700 group-hover:text-zinc-500 shrink-0 mt-0.5" />}
+                <div>
+                  <h4 className="text-xs font-bold text-white">Certificate Authenticity</h4>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Housing certificate looks authentic and un-tampered.</p>
+                </div>
+              </button>
+
+              <button onClick={() => toggleChecklist('validAdmin')} className="w-full flex items-start gap-3 text-left group">
+                {checklist.validAdmin ? <CheckSquare className="h-5 w-5 text-[#00d4aa] shrink-0 mt-0.5" /> : <Square className="h-5 w-5 text-zinc-700 group-hover:text-zinc-500 shrink-0 mt-0.5" />}
+                <div>
+                  <h4 className="text-xs font-bold text-white">Admin Details</h4>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Secretary details verified.</p>
+                </div>
+              </button>
+            </div>
+
+            {/* VIP CUSTOM CODE OVERRIDE */}
+            {request.status === 'pending' && (
+              <div className="flex flex-col gap-2 pt-4 border-t border-zinc-800">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">VIP Code Override (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. SS-MH-12-VIP-0001"
+                  value={customVIPCode}
+                  onChange={(e) => setCustomVIPCode(e.target.value.toUpperCase())}
+                  className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#00d4aa]"
+                />
+              </div>
+            )}
+
+            {/* ACTION TRIGGERS */}
+            {request.status === 'pending' && (
+              <div className="flex flex-col gap-3 pt-4 border-t border-zinc-800">
+                <button
+                  onClick={handleApprove}
+                  disabled={submitting}
+                  className="w-full py-3 bg-[#00d4aa] hover:bg-[#00b390] text-zinc-950 font-bold rounded-lg text-sm transition-all flex items-center justify-center gap-1.5 glow-hover"
+                >
+                  {submitting ? 'Processing Approval...' : 'APPROVE REGISTRATION'}
+                </button>
+                <button
+                  onClick={() => setShowRejectModal(true)}
+                  disabled={submitting}
+                  className="w-full py-3 bg-[#ff3b30]/10 border border-[#ff3b30]/20 hover:border-[#ff3b30] text-[#ff3b30] font-bold rounded-lg text-sm transition-all"
+                >
+                  REJECT REGISTRATION
+                </button>
+              </div>
+            )}
+
+            {/* REJECTION CARD */}
+            {request.status === 'rejected' && (
+              <div className="p-4 bg-[#351515] border border-red-500/30 rounded-lg">
+                <h4 className="text-xs font-bold text-red-500">REJECTION REASON</h4>
+                <p className="text-xs text-red-300 mt-1">{request.rejection_reason || 'No reason specified.'}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+      </main>
+
+      {/* REJECTION MODAL */}
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 bg-[#09090b]/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-sm w-full space-y-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-1.5"><XCircle className="h-5 w-5 text-red-500" /> Reject Request</h3>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-zinc-400 uppercase">Reason for Rejection</label>
+              <select 
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-sm text-white focus:outline-none"
+              >
+                <option value="Invalid documents">Invalid documents</option>
+                <option value="Duplicate registration">Duplicate registration</option>
+                <option value="Incomplete information">Incomplete information</option>
+                <option value="Other">Other (provide text)</option>
+              </select>
+            </div>
+
+            {rejectReason === 'Other' && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase">Specify Reason</label>
+                <textarea
+                  value={customRejectText}
+                  onChange={(e) => setCustomRejectText(e.target.value)}
+                  placeholder="Enter rejection details..."
+                  className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-sm text-white focus:outline-none h-20"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button 
+                onClick={() => setShowRejectModal(false)}
+                className="px-4 py-2 border border-zinc-800 rounded text-xs font-bold hover:bg-zinc-800 text-zinc-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleRejectSubmit}
+                disabled={submitting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

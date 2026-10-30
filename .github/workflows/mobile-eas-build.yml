@@ -1,0 +1,31 @@
+name: Mobile Build (Expo EAS)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+
+jobs:
+  build-mobile:
+    name: EAS Build Trigger
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Build Android Preview APK
+        working-directory: apps/mobile
+        run: |
+          echo "Triggering EAS automated build for Android Preview Channel"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

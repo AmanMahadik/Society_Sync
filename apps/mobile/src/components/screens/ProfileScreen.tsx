@@ -1,0 +1,1412 @@
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, ScrollView, Image, Linking, Alert, Clipboard, TouchableOpacity, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView } from 'react-native-webview';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { supabase } from '../../lib/supabase';
+import { Text, Card, Button, Avatar, useTheme, List, Divider, Switch, Snackbar, IconButton, Chip, TextInput, Portal, Dialog } from 'react-native-paper';
+import { useAuth } from '../../lib/auth-context';
+import { dataManager, Profile, UserRole, SocietySettings, Complaint, parseAdminContact } from '../../lib/data-manager';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+export const ProfileScreen: React.FC = () => {
+  const { profile, signOut, user } = useAuth();
+  const theme = useTheme();
+  const router = useRouter();
+  const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Society Settings State (Admin only)
+  const [settings, setSettings] = useState<SocietySettings | null>(null);
+  const [mRate, setMRate] = useState('3.50');
+  const [lFee, setLFee] = useState('2.00');
+  const [pCount, setPCount] = useState('10');
+  const [aContact, setAContact] = useState('');
+  const [editingSettings, setEditingSettings] = useState(false);
+
+  // Snackbar Toast
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  // Biometric & Account Deletion States
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Society Details States
+  const [societyModalVisible, setSocietyModalVisible] = useState(false);
+  const [societyDetails, setSocietyDetails] = useState<any | null>(null);
+  const [loadingSociety, setLoadingSociety] = useState(false);
+
+  const handleOpenSocietyModal = async () => {
+    if (!profile?.society_id) return;
+    setSocietyModalVisible(true);
+    setLoadingSociety(true);
+    try {
+      const { data, error } = await supabase
+        .from('societies')
+        .select('*')
+        .eq('id', profile.society_id)
+        .single();
+      if (!error && data) {
+        setSocietyDetails(data);
+      }
+    } catch (e) {
+      console.warn('Error fetching society details:', e);
+    } finally {
+      setLoadingSociety(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadBiometrics = async () => {
+      const val = await AsyncStorage.getItem('biometrics_enabled');
+      setBiometricsEnabled(val === 'true');
+    };
+    loadBiometrics();
+  }, []);
+
+  const isTogglingBiometricsRef = React.useRef(false);
+
+  const handleToggleBiometrics = async (newValue: boolean) => {
+    if (isTogglingBiometricsRef.current) return;
+    isTogglingBiometricsRef.current = true;
+    try {
+      if (newValue) {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        if (!hasHardware || !isEnrolled) {
+          Alert.alert('Not Supported', 'Your device does not support biometrics or has no enrolled prints/faces.');
+          return;
+        }
+
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to enable biometric app lock',
+          disableDeviceFallback: false,
+        });
+        if (result.success) {
+          await AsyncStorage.setItem('biometrics_enabled', 'true');
+          if (user?.email) {
+            await AsyncStorage.setItem('saved_email', user.email);
+          }
+          setBiometricsEnabled(true);
+          showToast('Biometric app lock enabled!');
+        }
+      } else {
+        await AsyncStorage.setItem('biometrics_enabled', 'false');
+        setBiometricsEnabled(false);
+        showToast('Biometric app lock disabled.');
+      }
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      isTogglingBiometricsRef.current = false;
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    try {
+      setDeletingAccount(true);
+      const { error } = await supabase.rpc('delete_own_user');
+      if (error) throw error;
+      
+      await AsyncStorage.removeItem('biometrics_enabled');
+      await signOut();
+      showToast('Account deleted successfully.');
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Error', e.message || 'An error occurred while deleting your account.');
+    } finally {
+      setDeletingAccount(false);
+      setDeleteDialogVisible(false);
+    }
+  };
+
+  const showToast = (msg: string) => {
+    setSnackbarMessage(msg);
+    setSnackbarVisible(true);
+  };
+
+  const loadAllData = async () => {
+    try {
+      const users = await dataManager.getAllProfiles();
+      setAllProfiles(users);
+
+      const activeComplaints = await dataManager.getComplaints();
+      setComplaints(activeComplaints);
+
+      const socSettings = await dataManager.getSocietySettings();
+      setSettings(socSettings);
+      if (socSettings) {
+        setMRate(String(socSettings.maintenance_rate_per_sqft));
+        setLFee(String(socSettings.late_fee_percentage));
+        setPCount(String(socSettings.parking_slot_count));
+        const parsed = parseAdminContact(socSettings.admin_contact);
+        setAContact(parsed.contact);
+      }
+
+      // Fetch user's society details
+      if (profile?.society_id) {
+        setLoadingSociety(true);
+        const { data, error } = await supabase
+          .from('societies')
+          .select('*')
+          .eq('id', profile.society_id)
+          .single();
+        if (!error && data) {
+          setSocietyDetails(data);
+        }
+        setLoadingSociety(false);
+      }
+    } catch (e) {
+      console.error('Error fetching profiles data', e);
+      setLoadingSociety(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllData();
+  }, [profile]);
+
+  const handleApprove = async (userId: string, name: string) => {
+    setLoading(true);
+    try {
+      await dataManager.updateProfileApproval(userId, true);
+      showToast(`Resident '${name}' approved successfully!`);
+      loadAllData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async (userId: string, name: string) => {
+    setLoading(true);
+    try {
+      await dataManager.updateProfileApproval(userId, false);
+      showToast(`Resident '${name}' request rejected.`);
+      loadAllData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangeRole = async (userId: string, currentRole: UserRole) => {
+    let newRole: UserRole = 'renter';
+    if (currentRole === 'renter') newRole = 'owner';
+    else if (currentRole === 'owner') newRole = 'admin';
+    else if (currentRole === 'admin') newRole = 'guard';
+    else newRole = 'renter';
+
+    try {
+      await dataManager.updateProfileRole(userId, newRole);
+      showToast(`Role updated to ${newRole.toUpperCase()}`);
+      loadAllData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setLoading(true);
+    try {
+      const parsed = parseAdminContact(settings?.admin_contact);
+      const newContactJson = JSON.stringify({
+        contact: aContact,
+        sos_active: parsed.sos_active
+      });
+
+      await dataManager.updateSocietySettings({
+        society_name: settings?.society_name || 'SocietySync Co-Op Housing',
+        address: settings?.address || 'Ganesh Nagar, Pune, Maharashtra',
+        maintenance_rate_per_sqft: Number(mRate),
+        late_fee_percentage: Number(lFee),
+        parking_slot_count: Number(pCount),
+        admin_contact: newContactJson
+      });
+      setEditingSettings(false);
+      showToast('Society settings updated successfully!');
+      loadAllData();
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to save settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Permission List Matrix
+  const getRolePermissions = () => {
+    switch (profile?.role) {
+      case 'admin':
+        return [
+          '✅ Full control over resident approvals & society roster',
+          '✅ Acknowledge and resolve water & power SOS alerts',
+          '✅ Create events and manage ledger receipts & bills',
+          '✅ Full authority to approve visitor parking requests',
+          '✅ Configure society-wide settings (maintenance rates & late fees)'
+        ];
+      case 'owner':
+        return [
+          '✅ Full transparency to view ledger balances & vendor bills',
+          '✅ Raise utility SOS alerts and book visitor parking slots',
+          '✅ Active debates, thread creation, and poll voting in chat room',
+          '❌ Cannot modify financial entries or approve residents'
+        ];
+      case 'guard':
+        return [
+          '✅ Instant loud notifications & vibrations on utility crises',
+          '✅ Acknowledge SOS alerts directly to stop alarm desk',
+          '✅ Read-only Gate Entry Checklist of approved visitor vehicles',
+          '❌ No access to financial ledger or council chat room'
+        ];
+      case 'renter':
+      default:
+        return [
+          '✅ Raise utility SOS alerts and book visitor parking slots',
+          '✅ View own flat dues ledger (transparency on owner payments)',
+          '✅ Read-Only access to official debates to stay updated',
+          '❌ Cannot post in chat room or view other residents dues'
+        ];
+    }
+  };
+
+  // Analytics helper variables
+  const getComplaintTypeCounts = () => {
+    const counts = { water: 0, power: 0, security: 0, other: 0 };
+    complaints.forEach(c => {
+      if (c.type === 'water_low' || c.type === 'motor_off') counts.water++;
+      else if (c.type === 'electricity') counts.power++;
+      else if (c.type === 'security') counts.security++;
+      else counts.other++;
+    });
+    return counts;
+  };
+
+  const getComplaintStatusCounts = () => {
+    const counts = { pending: 0, acknowledged: 0, resolved: 0 };
+    complaints.forEach(c => {
+      if (c.status === 'pending') counts.pending++;
+      else if (c.status === 'acknowledged') counts.acknowledged++;
+      else if (c.status === 'resolved') counts.resolved++;
+    });
+    return counts;
+  };
+
+  const pendingUsers = allProfiles.filter(p => p.status === 'pending');
+  const approvedUsers = allProfiles.filter(p => p.status === 'approved');
+  const complaintTypeData = getComplaintTypeCounts();
+  const complaintStatusData = getComplaintStatusCounts();
+
+  const getContrastColor = (role?: string) => {
+    const isDark = theme.dark;
+    switch (role) {
+      case 'master_admin':
+        return isDark ? '#EF4444' : '#DC2626';
+      case 'admin':
+        return isDark ? '#FFD700' : '#B45309'; // Gold / Dark Gold
+      case 'owner':
+        return isDark ? '#00D4AA' : '#047857'; // Emerald / Dark Emerald
+      case 'renter':
+        return isDark ? '#3B82F6' : '#1D4ED8'; // Blue / Dark Blue
+      case 'guard':
+        return isDark ? '#06B6D4' : '#0E7490'; // Cyan / Dark Cyan
+      default:
+        return isDark ? '#888888' : '#555555';
+    }
+  };
+
+  const getRoleBadge = (role?: string) => {
+    switch (role) {
+      case 'master_admin':
+        return { icon: 'shield-crown', color: '#EF4444', text: 'Master Admin (Global)' };
+      case 'admin':
+        return { icon: 'shield-crown', color: '#FFD700', text: 'Society Admin (Secretary)' };
+      case 'owner':
+        return { icon: 'home-lock', color: '#00D4AA', text: 'Property Owner' };
+      case 'renter':
+        return { icon: 'home-account', color: '#3B82F6', text: 'Tenant / Resident' };
+      case 'guard':
+        return { icon: 'shield-account', color: '#06B6D4', text: 'Security Guard' };
+      default:
+        return { icon: 'account-circle', color: '#888888', text: 'Resident' };
+    }
+  };
+
+  const handleContactUs = async () => {
+    const email = 'societysync5@gmail.com';
+    const subject = encodeURIComponent('SocietySync Support Request');
+    const body = encodeURIComponent(`Namaste Support Team,\n\nI am facing the following issue in my flat:\nFlat: Wing ${profile?.wing || ''}-${profile?.flat_number || ''}\nName: ${profile?.full_name || ''}\nPhone: ${profile?.phone || ''}\n\n[Describe your issue here]\n`);
+    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+    
+    try {
+      const supported = await Linking.canOpenURL(mailtoUrl);
+      if (supported) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        showToast('Please email us at: ' + email);
+      }
+    } catch (error) {
+      Linking.openURL(mailtoUrl).catch(() => {
+        showToast('Please email us at: ' + email);
+      });
+    }
+  };
+
+  const handleContactAdmin = async () => {
+    const parsed = parseAdminContact(settings?.admin_contact);
+    if (parsed.contact) {
+      const telUrl = `tel:${parsed.contact}`;
+      try {
+        await Linking.openURL(telUrl);
+      } catch (e) {
+        showToast('Dialing failed. Contact Admin: ' + parsed.contact);
+      }
+    } else {
+      showToast('Admin contact number not configured. Contacting support...');
+      handleContactUs();
+    }
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.04 : 0.02,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <View style={[styles.container, { backgroundColor: 'transparent', paddingTop: insets.top }]}>
+        <View style={styles.screenHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+            <Image 
+              source={require('../../../assets/images/logo.png')} 
+              style={[styles.screenHeaderLogo, { borderColor: '#00D4AA' }]} 
+              resizeMode="contain"
+            />
+            <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+              SocietySync Profile
+            </Text>
+          </View>
+          <IconButton 
+            icon="cog" 
+            iconColor={theme.colors.onSurface} 
+            size={24} 
+            onPress={() => router.push('/settings' as any)} 
+            style={{ margin: 0 }}
+          />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {/* 1. RESIDENT CARD */}
+          <Card style={[styles.profileCard, { 
+            borderRadius: 20, 
+            borderWidth: theme.dark ? 1 : 0, 
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            backgroundColor: theme.colors.elevation.level1
+          }]}>
+            <Card.Content style={styles.profileContent}>
+              {(() => {
+                const cleanedName = profile?.full_name?.replace(/\s*\(Aadhaar Verified:.*?\)/i, '').replace(/\s*\(Aadhaar Verified\)/i, '') || '';
+                const initials = cleanedName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'RS';
+                return profile?.google_picture_url ? (
+                  <Avatar.Image 
+                    size={70} 
+                    source={{ uri: profile.google_picture_url }} 
+                    style={{ marginBottom: 8 }}
+                  />
+                ) : (
+                  <Avatar.Text 
+                    size={70} 
+                    label={initials} 
+                    style={{ backgroundColor: profile?.role === 'master_admin' ? '#EF4444' : '#00D4AA', marginBottom: 8 }}
+                    color="#09090b"
+                  />
+                );
+              })()}
+              <Text variant="headlineSmall" style={[styles.profileName, { color: theme.colors.onSurface }]}>
+                {profile?.full_name?.replace(/\s*\(Aadhaar Verified:.*?\)/i, '').replace(/\s*\(Aadhaar Verified\)/i, '')}
+              </Text>
+              {profile?.bio && !profile.bio.startsWith('{') ? (
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline, fontStyle: 'italic', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 16 }}>
+                  {`"${profile.bio}"`}
+                </Text>
+              ) : null}
+              <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                {profile?.role === 'master_admin' ? 'Global Superuser • System Headquarters' : `Wing ${profile?.wing || '?'}-${profile?.flat_number || '?'} • ${profile?.society_name || 'My Society'}`}
+              </Text>
+              
+              {(() => {
+                const badge = getRoleBadge(profile?.role);
+                const contrastColor = getContrastColor(profile?.role) === '#06B6D4' ? '#00D4AA' : getContrastColor(profile?.role);
+                return (
+                  <View 
+                    style={{ 
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: contrastColor + '15', 
+                      borderColor: contrastColor + '30', 
+                      borderWidth: 1,
+                      borderRadius: 16,
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      marginTop: 8,
+                    }}
+                  >
+                    <IconButton 
+                      icon={badge.icon} 
+                      iconColor={contrastColor} 
+                      size={14} 
+                      style={{ margin: 0, padding: 0, width: 16, height: 16 }} 
+                    />
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: contrastColor, textTransform: 'uppercase', marginLeft: 4 }}>
+                      {badge.text}
+                    </Text>
+                  </View>
+                );
+              })()}
+
+              <Divider style={styles.divider} />
+
+              <View style={styles.detailsRow}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Phone Number:</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{profile?.phone || 'N/A'}</Text>
+              </View>
+            {profile?.vehicle_number ? (
+              <View style={styles.detailsRow}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Vehicle Number:</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontWeight: '500' }}>{profile.vehicle_number}</Text>
+              </View>
+            ) : null}
+            <View style={[styles.detailsRow, { alignItems: 'flex-start' }]}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, marginRight: 8 }}>Ledger Roster Status:</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: profile?.role === 'master_admin' ? '#EF4444' : '#00D4AA', flex: 1, textAlign: 'right' }}>
+                {profile?.role === 'master_admin' ? 'GLOBAL ACCESS GRANTED' : 'APPROVED COUNCIL MEMBER'}
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* 1.5. YOUR SOCIETY INFO CARD */}
+        {profile?.role === 'master_admin' ? (
+          <Card style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#EF4444', backgroundColor: theme.colors.elevation.level1 }}>
+            <Card.Content>
+              <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#EF4444', marginBottom: 6 }}>🛡️ Master Administrator Access</Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                You have global system-wide administrative privileges. You are not bound to any individual society registry.
+              </Text>
+            </Card.Content>
+          </Card>
+        ) : societyDetails ? (
+          <Card style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#06B6D4', backgroundColor: theme.colors.elevation.level1 }}>
+            <Card.Content>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>🏢 Your Society</Text>
+                <View style={{ backgroundColor: '#06B6D4' + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                  <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 13, fontWeight: 'bold', color: '#06B6D4' }}>
+                    {profile?.society_code || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+              
+              <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface, marginBottom: 4 }}>
+                {societyDetails.name}
+              </Text>
+              
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, marginBottom: 12 }}>
+                {societyDetails.address_line1}
+                {societyDetails.address_line2 ? `, ${societyDetails.address_line2}` : ''}
+                {`\n${societyDetails.city}, ${societyDetails.state} — ${societyDetails.pincode}`}
+              </Text>
+
+              {/* WebView Map Embed */}
+              <View style={{ height: 180, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.outlineVariant, marginBottom: 16 }}>
+                <WebView
+                  source={{ 
+                    html: `
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                        <style>
+                          html, body, #map {
+                            height: 100%;
+                            margin: 0;
+                            padding: 0;
+                            background-color: #09090b;
+                          }
+                          .leaflet-tile {
+                            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div id="map"></div>
+                        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                        <script>
+                          var lat = ${parseFloat(societyDetails.lat) || 19.0760};
+                          var lng = ${parseFloat(societyDetails.lng) || 72.8777};
+                          var map = L.map('map', {
+                            zoomControl: false,
+                            attributionControl: false
+                          }).setView([lat, lng], 15);
+                          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                          
+                          var myIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: "<div style='background-color:#06B6D4; width:12px; height:12px; border-radius:50%; border:2px solid #onSurface; box-shadow: 0 0 4px rgba(0,0,0,0.5);'></div>",
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6]
+                          });
+                          
+                          L.marker([lat, lng], {icon: myIcon}).addTo(map);
+                        </script>
+                      </body>
+                      </html>
+                    `
+                  }}
+                  style={{ flex: 1 }}
+                  scrollEnabled={false}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Button 
+                  mode="outlined" 
+                  icon="map-marker-outline" 
+                  textColor="#06B6D4"
+                  style={{ flex: 1, borderColor: '#06B6D4', borderRadius: 8 }}
+                  onPress={() => {
+                    if (societyDetails.lat && societyDetails.lng) {
+                      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${societyDetails.lat},${societyDetails.lng}`);
+                    } else {
+                      showToast('Coordinates not configured.');
+                    }
+                  }}
+                >
+                  Open in Maps
+                </Button>
+                <Button 
+                  mode="contained" 
+                  icon="content-copy" 
+                  buttonColor="#06B6D4"
+                  textColor="#0F0F0F"
+                  style={{ flex: 1, borderRadius: 8 }}
+                  onPress={() => {
+                    if (profile?.society_code) {
+                      Clipboard.setString(profile.society_code);
+                      showToast('Society code copied!');
+                    }
+                  }}
+                >
+                  Copy Code
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        ) : (
+          <Card 
+            style={{ marginHorizontal: 0, marginVertical: 8, borderRadius: 16 }}
+            onPress={handleOpenSocietyModal}
+          >
+            <Card.Content>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>🏢 Your Society</Text>
+                  <Text variant="bodyLarge" style={{ fontWeight: 'bold', color: theme.colors.primary, marginTop: 4 }}>
+                    {profile?.society_name || 'SocietySync housing'}
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 4 }}>
+                    Tap to view address & map pin
+                  </Text>
+                </View>
+                {profile?.society_code ? (
+                  <TouchableOpacity 
+                    onPress={() => {
+                      Clipboard.setString(profile.society_code || '');
+                      setSnackbarMessage('Society Code copied!');
+                      setSnackbarVisible(true);
+                    }}
+                    style={{ 
+                      backgroundColor: theme.colors.elevation.level3, 
+                      paddingHorizontal: 10, 
+                      paddingVertical: 6, 
+                      borderRadius: 8,
+                      borderColor: theme.colors.outlineVariant,
+                      borderWidth: 1
+                    }}
+                  >
+                    <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 13, fontWeight: 'bold', color: theme.colors.outline }}>
+                      {profile.society_code}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
+        {/* 2. ROLE PERMISSIONS MATRIX */}
+        <Card style={styles.permissionsCard}>
+          <Card.Content>
+            <Text variant="titleMedium" style={[styles.permissionsTitle, { color: '#06B6D4' }]}>🔑 Role Authorization Matrix</Text>
+            <View style={{ gap: 6, marginTop: 8 }}>
+              {getRolePermissions().map((perm, idx) => (
+                <Text key={idx} variant="bodySmall" style={{ lineHeight: 18, color: theme.colors.onSurface }}>
+                  {perm}
+                </Text>
+              ))}
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* ==================== SUPER ADMIN CONTROL PANEL ==================== */}
+        {profile?.role === 'admin' && (
+          <View style={{ marginTop: 12 }}>
+            <Text variant="titleMedium" style={styles.consoleTitle}>
+              🛡️ Super Admin Control Panel
+            </Text>
+
+            {/* A. Resident Approvals Gate */}
+            <Card style={styles.adminSectionCard}>
+              <Card.Content>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold', color: theme.colors.error, marginBottom: 8 }}>
+                  ⏳ Pending Approvals Queue ({pendingUsers.length})
+                </Text>
+                {pendingUsers.length === 0 ? (
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, paddingVertical: 4 }}>
+                    No pending resident registrations. Roster is up to date!
+                  </Text>
+                ) : (
+                  pendingUsers.map((u) => (
+                    <View key={u.id} style={styles.userRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text variant="titleMedium" style={{ fontWeight: 'bold', fontSize: 14 }}>{u.full_name}</Text>
+                        <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                          Flat {u.wing}-{u.flat_number} • Role: {u.role.toUpperCase()}
+                        </Text>
+                        <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                          Ph: {u.phone || 'N/A'}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <IconButton 
+                          icon="close-circle" 
+                          iconColor={theme.colors.error} 
+                          size={24}
+                          onPress={() => handleReject(u.id, u.full_name)}
+                          style={{ margin: 0 }}
+                        />
+                        <Button 
+                          mode="contained" 
+                          onPress={() => handleApprove(u.id, u.full_name)}
+                          style={{ borderRadius: 6 }}
+                          buttonColor="#388E3C"
+                          textColor="#FFF"
+                          labelStyle={{ fontSize: 10 }}
+                          compact
+                          loading={loading}
+                        >
+                          Approve
+                        </Button>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </Card.Content>
+            </Card>
+
+            {/* B. Society Settings Editor */}
+            <Card style={[styles.adminSectionCard, { marginTop: 16 }]}>
+              <Card.Content>
+                <View style={styles.settingsHeaderRow}>
+                  <Text variant="titleSmall" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
+                    ⚙️ Society Settings
+                  </Text>
+                  <Button 
+                    mode="text" 
+                    icon={editingSettings ? "check" : "pencil"}
+                    onPress={() => {
+                      if (editingSettings) handleSaveSettings();
+                      else setEditingSettings(true);
+                    }}
+                    labelStyle={{ fontSize: 11 }}
+                    compact
+                  >
+                    {editingSettings ? "Save Settings" : "Edit"}
+                  </Button>
+                </View>
+
+                <View style={{ gap: 10, marginTop: 8 }}>
+                  {editingSettings ? (
+                    <View style={{ gap: 8 }}>
+                      <TextInput
+                        label="Base Maintenance Rate per Sqft (₹)"
+                        value={mRate}
+                        onChangeText={setMRate}
+                        keyboardType="numeric"
+                        mode="outlined"
+                        dense
+                      />
+                      <TextInput
+                        label="Late Fee Penalty Percentage (%)"
+                        value={lFee}
+                        onChangeText={setLFee}
+                        keyboardType="numeric"
+                        mode="outlined"
+                        dense
+                      />
+                      <TextInput
+                        label="Total Visitor Parking Slots"
+                        value={pCount}
+                        onChangeText={setPCount}
+                        keyboardType="numeric"
+                        mode="outlined"
+                        dense
+                      />
+                      <TextInput
+                        label="Secretary Contact Number"
+                        value={aContact}
+                        onChangeText={setAContact}
+                        mode="outlined"
+                        dense
+                      />
+                    </View>
+                  ) : (
+                    <View style={{ gap: 6 }}>
+                      <Text variant="bodyMedium">Maintenance Rate: <Text style={{ fontWeight: 'bold' }}>₹{mRate}/sqft</Text></Text>
+                      <Text variant="bodyMedium">Late Fee Penalty: <Text style={{ fontWeight: 'bold' }}>{lFee}% overdue</Text></Text>
+                      <Text variant="bodyMedium">Allocated Visitor Slots: <Text style={{ fontWeight: 'bold' }}>{pCount} slots (V1-V{pCount})</Text></Text>
+                      <Text variant="bodyMedium">Admin Contact: <Text style={{ fontWeight: 'bold' }}>{aContact || 'Not set'}</Text></Text>
+                    </View>
+                  )}
+                </View>
+              </Card.Content>
+            </Card>
+
+            {/* C. Interactive Complaint Analytics (Flex bar charts!) */}
+            <Card style={[styles.adminSectionCard, { marginTop: 16 }]}>
+              <Card.Content>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold', color: theme.colors.primary, marginBottom: 12 }}>
+                  📊 Real-time Complaint Analytics
+                </Text>
+
+                <Text variant="labelMedium" style={{ fontWeight: 'bold', marginBottom: 8 }}>By Status:</Text>
+                <View style={styles.chartContainer}>
+                  {[
+                    { label: 'Pending', count: complaintStatusData.pending, color: theme.colors.error },
+                    { label: 'Acknow.', count: complaintStatusData.acknowledged, color: '#F57C00' },
+                    { label: 'Resolved', count: complaintStatusData.resolved, color: '#388E3C' },
+                  ].map((bar, idx) => {
+                    const maxCount = Math.max(complaints.length, 1);
+                    const percent = bar.count / maxCount;
+                    return (
+                      <View key={idx} style={styles.chartBarRow}>
+                        <Text variant="bodySmall" style={styles.chartBarLabel}>{bar.label}</Text>
+                        <View style={styles.chartBarTrack}>
+                          <View 
+                            style={[
+                              styles.chartBarFill, 
+                              { width: `${Math.max(percent * 100, 5)}%`, backgroundColor: bar.color }
+                            ]} 
+                          />
+                        </View>
+                        <Text variant="bodySmall" style={styles.chartBarVal}>{bar.count}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                <Divider style={{ marginVertical: 12 }} />
+
+                <Text variant="labelMedium" style={{ fontWeight: 'bold', marginBottom: 8 }}>By Emergency Category:</Text>
+                <View style={styles.chartContainer}>
+                  {[
+                    { label: 'Water Issues', count: complaintTypeData.water, color: '#2196F3' },
+                    { label: 'Power Cuts', count: complaintTypeData.power, color: '#FFEB3B' },
+                    { label: 'Security Threats', count: complaintTypeData.security, color: theme.colors.error },
+                    { label: 'Other Crises', count: complaintTypeData.other, color: '#9E9E9E' },
+                  ].map((bar, idx) => {
+                    const maxCount = Math.max(complaints.length, 1);
+                    const percent = bar.count / maxCount;
+                    return (
+                      <View key={idx} style={styles.chartBarRow}>
+                        <Text variant="bodySmall" style={[styles.chartBarLabel, { fontSize: 10.5 }]}>{bar.label}</Text>
+                        <View style={styles.chartBarTrack}>
+                          <View 
+                            style={[
+                              styles.chartBarFill, 
+                              { width: `${Math.max(percent * 100, 5)}%`, backgroundColor: bar.color }
+                            ]} 
+                          />
+                        </View>
+                        <Text variant="bodySmall" style={styles.chartBarVal}>{bar.count}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </Card.Content>
+            </Card>
+
+            {/* D. Society Council Roster */}
+            <Card style={[styles.adminSectionCard, { marginTop: 16 }]}>
+              <Card.Content>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8 }}>
+                  👥 Approved Resident Roster ({approvedUsers.length})
+                </Text>
+                {approvedUsers.map((u) => (
+                  <View key={u.id} style={styles.userRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="titleMedium" style={{ fontWeight: 'bold', fontSize: 14 }}>
+                        {u.full_name} {u.id === user?.id && '(You)'}
+                      </Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                        Flat {u.wing}-{u.flat_number} • Ph: {u.phone || 'N/A'}
+                      </Text>
+                      <View style={styles.rosterTags}>
+                        {(() => {
+                          const badge = getRoleBadge(u.role);
+                          const contrastColor = getContrastColor(u.role);
+                          return (
+                            <View 
+                              style={{ 
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: contrastColor + '15', 
+                                borderColor: contrastColor, 
+                                borderWidth: 0.5,
+                                borderRadius: 4,
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                alignSelf: 'flex-start',
+                              }}
+                            >
+                              <Text style={{ fontSize: 9, fontWeight: 'bold', color: contrastColor, textTransform: 'uppercase' }}>
+                                {badge.text.split(' ')[0]}
+                              </Text>
+                            </View>
+                          );
+                        })()}
+                      </View>
+                    </View>
+                    
+                    {u.id !== user?.id && (
+                      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                        <Button 
+                          mode="outlined" 
+                          onPress={() => handleChangeRole(u.id, u.role)}
+                          labelStyle={{ fontSize: 9 }}
+                          style={{ borderRadius: 6 }}
+                          compact
+                        >
+                          Cycle Role
+                        </Button>
+                        <IconButton 
+                          icon="account-off" 
+                          iconColor={theme.colors.error}
+                          size={20}
+                          style={{ margin: 0 }}
+                          onPress={() => handleReject(u.id, u.full_name)}
+                        />
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </Card.Content>
+            </Card>
+          </View>
+        )}
+
+
+
+        {/* 3. APP NAVIGATION MENU */}
+        <Card style={styles.menuCard}>
+          <Card.Content style={{ padding: 0 }}>
+            <List.Item
+              title="Edit Profile"
+              description="Update your name, vehicle, wing, flat, and avatar"
+              left={props => <List.Icon {...props} icon="account-edit-outline" color="#00D4AA" />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => router.push('/edit-profile' as any)}
+            />
+            <Divider />
+            <List.Item
+              title="Biometric App Lock"
+              description="Protect app access using FaceID / Fingerprint"
+              left={props => <List.Icon {...props} icon="fingerprint" color="#8B5CF6" />}
+              right={props => (
+                <Switch
+                  value={biometricsEnabled}
+                  onValueChange={handleToggleBiometrics}
+                  color="#00D4AA"
+                />
+              )}
+            />
+            <Divider />
+            <List.Item
+              title="About Us"
+              description="Learn more about SocietySync features & tech stack"
+              left={props => <List.Icon {...props} icon="information-outline" color="#3B82F6" />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => router.push('/about' as any)}
+            />
+          </Card.Content>
+        </Card>
+
+        {/* 3.5. HELP & SUPPORT */}
+        <Card style={styles.menuCard}>
+          <Card.Content style={{ padding: 0 }}>
+            <Text variant="titleMedium" style={[styles.menuTitle, { color: theme.colors.primary }]}>
+              Help & Support
+            </Text>
+            <List.Item
+              title="Help Center"
+              description="Find guides and tutorials on using the app"
+              left={props => <List.Icon {...props} icon="help-circle-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://society-sync-info.vercel.app/')}
+            />
+            <Divider />
+            <List.Item
+              title="FAQ"
+              description="Frequently Asked Questions by residents"
+              left={props => <List.Icon {...props} icon="chat-question-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://society-sync-info.vercel.app/')}
+            />
+            <Divider />
+            <List.Item
+              title="Contact Admin"
+              description="Reach out to your society secretary or committee"
+              left={props => <List.Icon {...props} icon="account-supervisor-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={handleContactAdmin}
+            />
+            <Divider />
+            <List.Item
+              title="Report Bug"
+              description="Report issues or submit app feedback"
+              left={props => <List.Icon {...props} icon="bug-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={handleContactUs}
+            />
+            <Divider />
+            <List.Item
+              title="Privacy Policy"
+              description="Review our data protection and storage policies"
+              left={props => <List.Icon {...props} icon="shield-lock-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://society-sync-info.vercel.app/')}
+            />
+            <Divider />
+            <List.Item
+              title="Terms & Conditions"
+              description="Read user agreements and usage conditions"
+              left={props => <List.Icon {...props} icon="file-document-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={() => handleOpenExternalLink('https://society-sync-info.vercel.app/')}
+            />
+            <Divider />
+            <List.Item
+              title="Rate App"
+              description="Give us a 5-star rating on the App Store"
+              left={props => <List.Icon {...props} icon="star-outline" color={theme.colors.primary} />}
+              right={props => <List.Icon {...props} icon="chevron-right" color={theme.colors.outline} />}
+              onPress={handleRateApp}
+            />
+          </Card.Content>
+        </Card>
+
+        {/* 3.8. DANGER ZONE */}
+        <Card style={[styles.menuCard, { borderColor: theme.colors.error, borderWidth: 1, marginTop: 16 }]}>
+          <Card.Content style={{ padding: 0 }}>
+            <Text variant="titleMedium" style={[styles.menuTitle, { color: theme.colors.error }]}>
+              Danger Zone
+            </Text>
+            <List.Item
+              title="Delete Account"
+              titleStyle={{ color: theme.colors.error }}
+              description="Permanently delete your profile, flat, and auth login data"
+              left={props => <List.Icon {...props} icon="account-remove-outline" color={theme.colors.error} />}
+              onPress={() => setDeleteDialogVisible(true)}
+            />
+          </Card.Content>
+        </Card>
+
+        {/* 4. LOG OUT BUTTON */}
+        <Button 
+          mode="contained" 
+          buttonColor={theme.colors.error}
+          textColor={theme.colors.onError}
+          icon="logout"
+          onPress={() => setLogoutDialogVisible(true)}
+          style={styles.logoutButton}
+        >
+          Sign Out of SocietySync
+        </Button>
+      </ScrollView>
+
+      {/* Logout Confirmation Dialog */}
+      <Portal>
+        <Dialog 
+          visible={logoutDialogVisible} 
+          onDismiss={() => setLogoutDialogVisible(false)}
+          style={{ backgroundColor: theme.colors.elevation.level3 }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold' }}>Confirm Logout</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">Are you sure you want to logout of SocietySync?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setLogoutDialogVisible(false)} textColor={theme.colors.outline}>Cancel</Button>
+            <Button 
+              onPress={async () => {
+                setLogoutDialogVisible(false);
+                await signOut();
+              }} 
+              textColor={theme.colors.primary}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Logout
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Portal>
+        <Dialog 
+          visible={deleteDialogVisible} 
+          onDismiss={() => !deletingAccount && setDeleteDialogVisible(false)}
+          style={{ backgroundColor: theme.colors.elevation.level3 }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold', color: theme.colors.error }}>Delete Account?</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              Are you absolutely sure you want to permanently delete your account? This action is irreversible and will erase all profile data, flat associations, and log you out immediately.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button 
+              onPress={() => setDeleteDialogVisible(false)} 
+              textColor={theme.colors.outline}
+              disabled={deletingAccount}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onPress={handleDeleteAccount} 
+              loading={deletingAccount}
+              disabled={deletingAccount}
+              textColor={theme.colors.error}
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              Delete Account
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Society Details & Map Modal */}
+      <Portal>
+        <Dialog
+          visible={societyModalVisible}
+          onDismiss={() => setSocietyModalVisible(false)}
+          style={{ backgroundColor: theme.colors.elevation.level3, maxHeight: '85%' }}
+        >
+          <Dialog.Title style={{ fontWeight: 'bold' }}>🏢 Society Details</Dialog.Title>
+          <Dialog.Content style={{ paddingHorizontal: 16 }}>
+            {loadingSociety ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.outline, textAlign: 'center', marginVertical: 20 }}>
+                Fetching location coordinates...
+              </Text>
+            ) : societyDetails ? (
+              <ScrollView contentContainerStyle={{ gap: 12 }}>
+                <View>
+                  <Text variant="labelMedium" style={{ color: theme.colors.outline, textTransform: 'uppercase' }}>Society Name</Text>
+                  <Text variant="bodyLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                    {societyDetails.name}
+                  </Text>
+                </View>
+                
+                <View>
+                  <Text variant="labelMedium" style={{ color: theme.colors.outline, textTransform: 'uppercase' }}>Address</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                    {societyDetails.address_line1}
+                    {societyDetails.address_line2 ? `\n${societyDetails.address_line2}` : ''}
+                    {`\n${societyDetails.city}, ${societyDetails.state} — ${societyDetails.pincode}`}
+                  </Text>
+                </View>
+
+                {/* WebView Map */}
+                <View style={{ height: 220, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.outlineVariant, marginTop: 8 }}>
+                  <WebView
+                    source={{ 
+                      html: `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <meta charset="utf-8" />
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                          <style>
+                            html, body, #map {
+                              height: 100%;
+                              margin: 0;
+                              padding: 0;
+                              background-color: #09090b;
+                            }
+                            .leaflet-tile {
+                              filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+                            }
+                          </style>
+                        </head>
+                        <body>
+                          <div id="map"></div>
+                          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                          <script>
+                            var lat = ${parseFloat(societyDetails.lat) || 19.0760};
+                            var lng = ${parseFloat(societyDetails.lng) || 72.8777};
+                            var map = L.map('map', {
+                              zoomControl: false,
+                              attributionControl: false
+                            }).setView([lat, lng], 15);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                            
+                            var myIcon = L.divIcon({
+                              className: 'custom-div-icon',
+                              html: "<div style='background-color:#06B6D4; width:12px; height:12px; border-radius:50%; border:2px solid #onSurface; box-shadow: 0 0 4px rgba(0,0,0,0.5);'></div>",
+                              iconSize: [12, 12],
+                              iconAnchor: [6, 6]
+                            });
+                            
+                            L.marker([lat, lng], {icon: myIcon}).addTo(map);
+                          </script>
+                        </body>
+                        </html>
+                      `
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </ScrollView>
+            ) : (
+              <Text variant="bodyMedium" style={{ color: theme.colors.error, textAlign: 'center', marginVertical: 20 }}>
+                Failed to load society details.
+              </Text>
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setSocietyModalVisible(false)} textColor={theme.colors.primary} labelStyle={{ fontWeight: 'bold' }}>
+              Close
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Snackbar Toast */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{ marginBottom: 60 }}
+      >
+        {snackbarMessage}
+      </Snackbar>
+      </View>
+    </View>
+  );
+};
+
+// Helper links open function
+const handleOpenExternalLink = async (url: string) => {
+  try {
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert('Link Error', 'Cannot open link: ' + url);
+    }
+  } catch (e) {
+    Alert.alert('Link Error', 'An error occurred opening the link.');
+  }
+};
+
+const handleRateApp = () => {
+  Alert.alert(
+    'Rate App',
+    'Thank you for using SocietySync! Would you like to rate us 5 stars on the App Store?',
+    [
+      { text: 'Later', style: 'cancel' },
+      { text: 'Rate Now', onPress: () => {} }
+    ]
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  screenHeaderLogo: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  screenHeaderTitle: {
+    fontWeight: 'bold',
+  },
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 130,
+  },
+  profileCard: {
+    borderRadius: 20,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  profileContent: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  profileName: {
+    fontWeight: 'bold',
+  },
+  roleChip: {
+    marginTop: 8,
+    borderRadius: 8,
+  },
+  divider: {
+    width: '100%',
+    marginVertical: 12,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  permissionsCard: {
+    borderRadius: 16,
+    elevation: 1,
+    marginBottom: 16,
+  },
+  permissionsTitle: {
+    fontWeight: 'bold',
+  },
+  consoleTitle: {
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  adminSectionCard: {
+    borderRadius: 16,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  userRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#EEE',
+    paddingVertical: 10,
+  },
+  rosterTags: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 4,
+  },
+  settingsCard: {
+    borderRadius: 12,
+    elevation: 1,
+    marginBottom: 16,
+  },
+  settingSwitchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logoutButton: {
+    marginTop: 8,
+    borderRadius: 10,
+    paddingVertical: 6,
+  },
+  settingsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  chartContainer: {
+    gap: 8,
+    marginTop: 8,
+  },
+  chartBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chartBarLabel: {
+    width: 85,
+    fontSize: 11,
+  },
+  chartBarTrack: {
+    flex: 1,
+    height: 12,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  chartBarFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+  chartBarVal: {
+    width: 20,
+    textAlign: 'right',
+    fontWeight: 'bold',
+    fontSize: 11,
+  },
+  menuCard: {
+    borderRadius: 16,
+    elevation: 1,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  menuTitle: {
+    fontWeight: 'bold',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+});

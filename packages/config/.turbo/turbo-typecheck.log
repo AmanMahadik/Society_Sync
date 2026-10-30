@@ -1,0 +1,24 @@
+
+> @societysync/config@1.0.0 typecheck C:\Society_Sync\packages\config
+> tsc --noEmit
+
+node:internal/modules/cjs/loader:1503
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Society_Sync\node_modules\typescript\bin\tsc'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+    at Module._load (node:internal/modules/cjs/loader:1285:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.17.0
+ ELIFECYCLE  Command failed with exit code 1.
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?

@@ -1,0 +1,1536 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, ScrollView, Image, Alert, Linking, BackHandler } from 'react-native';
+import { Text, Card, Button, TextInput, SegmentedButtons, IconButton, Portal, Modal, useTheme, Chip, Snackbar, Avatar, List, Divider } from 'react-native-paper';
+import { useAuth } from '../../lib/auth-context';
+import { dataManager, Event, Transaction, MaintenanceDue } from '../../lib/data-manager';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase, uriToArrayBuffer } from '../../lib/supabase';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { getReportTemplate } from '../../lib/report-template';
+import { useNavigation, useRouter } from 'expo-router';
+
+export const FinancesScreen: React.FC = () => {
+  const { profile, user, refreshProfile } = useAuth();
+  const theme = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const [activeTab, setActiveTab] = useState('ledger'); // 'ledger' or 'dues'
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [maintenanceDues, setMaintenanceDues] = useState<MaintenanceDue[]>([]);
+
+  const navigation = useNavigation();
+
+  // Reset selected event when screen blurs (navigating away from tab)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setSelectedEvent(null);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Refresh profile on screen focus to check society status dynamically
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      refreshProfile();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Handle hardware back press on Android to close event details
+  useEffect(() => {
+    const backAction = () => {
+      if (selectedEvent) {
+        setSelectedEvent(null);
+        return true; // prevent default
+      }
+      return false; // propagate
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [selectedEvent]);
+
+  // Modals visibility
+  const [eventModalVisible, setEventModalVisible] = useState(false);
+  const [txModalVisible, setTxModalVisible] = useState(false);
+  const [duesModalVisible, setDuesModalVisible] = useState(false);
+
+  // New Event Form states
+  const [eventName, setEventName] = useState('');
+  const [eventDesc, setEventDesc] = useState('');
+  const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // New Transaction Form states
+  const [txTitle, setTxTitle] = useState('');
+  const [txAmount, setTxAmount] = useState('');
+  const [txType, setTxType] = useState<'income' | 'expense'>('income');
+  const [txCategory, setTxCategory] = useState('Chandaa');
+  const [txBillUrl, setTxBillUrl] = useState('');
+  const [txDesc, setTxDesc] = useState('');
+
+  // New Dues Form states
+  const [dueFlat, setDueFlat] = useState('');
+  const [dueWing, setDueWing] = useState('');
+  const [dueAmount, setDueAmount] = useState('3500');
+  const [dueMonth, setDueMonth] = useState('2026-06-01');
+
+  const [submitting, setSubmitting] = useState(false);
+
+  // Synchronize ref with selectedEvent state to prevent async stale closures
+  const selectedEventRef = useRef(selectedEvent);
+  useEffect(() => {
+    selectedEventRef.current = selectedEvent;
+  }, [selectedEvent]);
+
+  // Snackbar Toast
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  const showToast = (msg: string) => {
+    setSnackbarMessage(msg);
+    setSnackbarVisible(true);
+  };
+
+  const loadAllData = async () => {
+    if (profile?.society_status === 'suspended') return;
+    try {
+      const eventList = await dataManager.getEvents();
+      setEvents(eventList);
+
+      // Check current value of selectedEventRef instead of stale closure selectedEvent
+      const currentSelectedEvent = selectedEventRef.current;
+      if (currentSelectedEvent) {
+        const refreshedEvent = eventList.find(e => e.id === currentSelectedEvent.id);
+        if (refreshedEvent) setSelectedEvent(refreshedEvent);
+        const txList = await dataManager.getTransactions(currentSelectedEvent.id);
+        setTransactions(txList);
+      }
+
+      const dues = await dataManager.getMaintenanceDues(profile?.role, profile?.wing, profile?.flat_number);
+      setMaintenanceDues(dues);
+    } catch (e) {
+      console.error('Error fetching financial data', e);
+    }
+  };
+
+  useEffect(() => {
+    loadAllData();
+    const interval = setInterval(loadAllData, 4000); // Polling for live updates
+    return () => clearInterval(interval);
+  }, [selectedEvent]);
+
+  const handleCreateEvent = async () => {
+    if (!eventName || !user) {
+      showToast('Please enter an event name.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await dataManager.createEvent(eventName, eventDesc, eventDate, user.id);
+      setEventModalVisible(false);
+      setEventName('');
+      setEventDesc('');
+      showToast(`Event '${eventName}' created!`);
+      loadAllData();
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to create event.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
+
+  const handleSelectReceipt = () => {
+    Alert.alert(
+      'Upload Receipt',
+      'Select a receipt image from camera or gallery',
+      [
+        { text: 'Camera', onPress: () => handlePickImage(true) },
+        { text: 'Gallery', onPress: () => handlePickImage(false) },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handlePickImage = async (useCamera: boolean) => {
+    try {
+      let permissionResult;
+      if (useCamera) {
+        permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      } else {
+        permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      }
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Denied', 'Permission is required to access camera or gallery.');
+        return;
+      }
+
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: (ImagePicker as any).MediaType?.IMAGE || 'images',
+        allowsEditing: true,
+        quality: 0.8,
+      };
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const pickedUri = result.assets[0].uri;
+        await uploadReceipt(pickedUri);
+      }
+    } catch (e) {
+      console.error('Image picking error', e);
+      Alert.alert('Error', 'Failed to select image.');
+    }
+  };
+
+  const uploadReceipt = async (localUri: string) => {
+    if (!user) return;
+    setUploadingReceipt(true);
+    try {
+      const arrayBuffer = await uriToArrayBuffer(localUri);
+      
+      const fileExt = localUri.split('.').pop() || 'jpg';
+      const fileName = `receipt_${Date.now()}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+
+      // Upload to public 'bills' bucket
+      const { error: uploadError } = await supabase.storage
+        .from('bills')
+        .upload(filePath, arrayBuffer, {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        // Fallback to 'avatars' bucket if 'bills' bucket is not created
+        const { error: fallbackError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, arrayBuffer, {
+            contentType: `image/${fileExt}`,
+            upsert: true,
+          });
+
+        if (fallbackError) {
+          throw uploadError;
+        } else {
+          // Get Public URL from 'avatars'
+          const { data } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          setTxBillUrl(data.publicUrl);
+          Alert.alert('Success', 'Receipt image uploaded successfully.');
+        }
+      } else {
+        // Get Public URL from 'bills'
+        const { data } = supabase.storage
+          .from('bills')
+          .getPublicUrl(filePath);
+        setTxBillUrl(data.publicUrl);
+        Alert.alert('Success', 'Receipt image uploaded successfully.');
+      }
+    } catch (e: any) {
+      console.error('Receipt upload error', e);
+      Alert.alert('Upload Failed', 'Could not upload receipt image. Please ensure your internet is working.');
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
+  const handleAddTransaction = async () => {
+    if (!selectedEvent || !txTitle || !txAmount || !user) {
+      showToast('Please fill in title and amount.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await dataManager.addTransaction({
+        event_id: selectedEvent.id,
+        type: txType,
+        category: txCategory,
+        amount: Number(txAmount),
+        description: txTitle + (txDesc ? ` - ${txDesc}` : ''),
+        bill_image_url: txBillUrl || null,
+        recorded_by: user.id
+      });
+      setTxModalVisible(false);
+      setTxTitle('');
+      setTxAmount('');
+      setTxBillUrl('');
+      setTxDesc('');
+      showToast('Transaction recorded successfully!');
+      // Refresh transactions list
+      const txList = await dataManager.getTransactions(selectedEvent.id);
+      setTransactions(txList);
+      loadAllData();
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to record transaction.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditTransactionClick = (tx: Transaction) => {
+    setEditingTxId(tx.id);
+    setTxType(tx.type);
+    setTxCategory(tx.category);
+    setTxAmount(String(tx.amount));
+    
+    // Parse description back into title and description
+    const parts = (tx.description || '').split(' - ');
+    setTxTitle(parts[0]);
+    setTxDesc(parts.slice(1).join(' - '));
+    
+    setTxBillUrl(tx.bill_image_url || '');
+    setTxModalVisible(true);
+  };
+
+  const handleDeleteTransactionClick = (txId: string) => {
+    if (!selectedEvent) return;
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to permanently delete this transaction?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dataManager.deleteTransaction(txId, selectedEvent.id);
+              showToast('Transaction deleted successfully.');
+              // Refresh transactions list
+              const txList = await dataManager.getTransactions(selectedEvent.id);
+              setTransactions(txList);
+              loadAllData();
+            } catch (err) {
+              console.error(err);
+              showToast('Failed to delete transaction.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteEventClick = () => {
+    if (!selectedEvent) return;
+    Alert.alert(
+      'Confirm Delete Event',
+      `Are you sure you want to permanently delete the event "${selectedEvent.name}"? This will delete all its transactions, receipts, and ledger details permanently. This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dataManager.deleteEvent(selectedEvent.id);
+              showToast('Event deleted successfully.');
+              setSelectedEvent(null);
+              loadAllData();
+            } catch (err) {
+              console.error(err);
+              showToast('Failed to delete event.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleUpdateTransaction = async () => {
+    if (!selectedEvent || !editingTxId || !txTitle || !txAmount || !user) {
+      showToast('Please fill in title and amount.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await dataManager.updateTransaction(
+        editingTxId,
+        {
+          type: txType,
+          category: txCategory,
+          amount: Number(txAmount),
+          description: txTitle + (txDesc ? ` - ${txDesc}` : ''),
+          bill_image_url: txBillUrl || null,
+        },
+        selectedEvent.id
+      );
+      setTxModalVisible(false);
+      setEditingTxId(null);
+      setTxTitle('');
+      setTxAmount('');
+      setTxBillUrl('');
+      setTxDesc('');
+      showToast('Transaction updated successfully!');
+      // Refresh transactions list
+      const txList = await dataManager.getTransactions(selectedEvent.id);
+      setTransactions(txList);
+      loadAllData();
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to update transaction.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleNewTransactionClick = () => {
+    setEditingTxId(null);
+    setTxTitle('');
+    setTxAmount('');
+    setTxBillUrl('');
+    setTxDesc('');
+    setTxModalVisible(true);
+  };
+
+  const handleAddDues = async () => {
+    if (!dueFlat || !dueWing || !dueAmount) {
+      showToast('Please fill flat, wing, and amount.');
+      return;
+    }
+    try {
+      // Calculate due date (default: 10th of next month)
+      const dateParts = dueMonth.split('-');
+      const year = Number(dateParts[0]);
+      const month = Number(dateParts[1]);
+      const dueDateStr = `${year}-${String(month).padStart(2, '0')}-10`;
+
+      await dataManager.addMaintenanceDue({
+        flat_number: dueFlat,
+        wing: dueWing.toUpperCase(),
+        amount: Number(dueAmount),
+        paid_amount: 0,
+        status: 'pending',
+        month: dueMonth,
+        due_date: dueDateStr
+      });
+      setDuesModalVisible(false);
+      setDueFlat('');
+      setDueWing('');
+      showToast(`Dues set for Flat ${dueWing.toUpperCase()}-${dueFlat}`);
+      loadAllData();
+    } catch (e) {
+      showToast('Dues record already exists for this flat & month!');
+    }
+  };
+
+  const handleMarkPaid = async (dueId: string, wing: string, flat: string) => {
+    await dataManager.markDuesPaid(dueId);
+    showToast(`Dues cleared for Flat ${wing}-${flat}`);
+    loadAllData();
+  };
+
+  const handleSendReminder = (wing: string, flat: string, amount: number) => {
+    showToast(`🔔 Auto-reminder notification pushed to Resident of ${wing}-${flat} for ₹${amount.toLocaleString()}`);
+  };
+
+  const handleExportPDF = async () => {
+    if (!selectedEvent) return;
+    try {
+      showToast(`📄 Generating '${selectedEvent.name}' financial report...`);
+      
+      // 1. Get transactions for the event
+      const txList = await dataManager.getTransactions(selectedEvent.id);
+      
+      // 2. Extract payment mode from category/description
+      const getPaymentMode = (t: Transaction) => {
+        const text = `${t.category} ${t.description || ''}`.toLowerCase();
+        if (text.includes('upi')) return 'UPI';
+        if (text.includes('cash')) return 'Cash';
+        if (text.includes('bank') || text.includes('transfer') || text.includes('neft') || text.includes('rtgs')) return 'Bank Transfer';
+        if (text.includes('cheque')) return 'Cheque';
+        return 'UPI'; // Default
+      };
+
+      // 3. Format transactions into HTML table rows matching the user's template column format
+      const incomeRows = txList
+        .filter(t => t.type === 'income')
+        .map(t => {
+          const dateStr = t.recorded_at ? new Date(t.recorded_at).toLocaleDateString([], { day: '2-digit', month: 'short' }) : '';
+          const receiptNo = `GH/2026/${100 + Number(t.id)}`;
+          const contributorName = t.description ? t.description.split(' - ')[0] : 'Resident Contribution';
+          const contributorSub = t.description && t.description.includes(' - ') ? t.description.split(' - ').slice(1).join(' - ') : 'Approved Society Member';
+          const mode = getPaymentMode(t);
+          const amountStr = Number(t.amount).toLocaleString('en-IN');
+          return `
+            <tr>
+              <td>${dateStr}</td>
+              <td>${receiptNo}</td>
+              <td><span class="item-name">${contributorName}</span><div class="item-sub">${contributorSub}</div></td>
+              <td>${mode}</td>
+              <td class="num">${amountStr}</td>
+            </tr>
+          `;
+        }).join('');
+
+      const expenseRows = txList
+        .filter(t => t.type === 'expense')
+        .map(t => {
+          const dateStr = t.recorded_at ? new Date(t.recorded_at).toLocaleDateString([], { day: '2-digit', month: 'short' }) : '';
+          const billNo = `BILL-${1000 + Number(t.id)}`;
+          const vendorName = t.description ? t.description.split(' - ')[0] : 'Vendor Expense';
+          const vendorSub = t.description && t.description.includes(' - ') ? t.description.split(' - ').slice(1).join(' - ') : 'Verified Festival Expense';
+          const category = t.category;
+          const amountStr = Number(t.amount).toLocaleString('en-IN');
+          return `
+            <tr>
+              <td>${dateStr}</td>
+              <td>${billNo}</td>
+              <td><span class="item-name">${vendorName}</span><div class="item-sub">${vendorSub}</div></td>
+              <td class="cat">${category}</td>
+              <td class="num">${amountStr}</td>
+            </tr>
+          `;
+        }).join('');
+
+      // Calculate totals
+      const totalIncome = txList.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+      const totalExpense = txList.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+      const balance = totalIncome - totalExpense;
+
+      // 4. Map transactions to the 6 premium chart categories from the template using keyword matching
+      const chartCategories = [
+        { key: 'decoration', label: 'Decoration &amp;<br/>Mandap', search: ['decor', 'mandap', 'pandal', 'stage', 'flower'] },
+        { key: 'idol', label: 'Idol &amp;<br/>Visarjan', search: ['idol', 'murti', 'visarjan', 'procession', 'truck'] },
+        { key: 'catering', label: 'Catering &amp;<br/>Prasad', search: ['catering', 'prasad', 'food', 'sweets', 'caterer', 'mahaprasad'] },
+        { key: 'sound', label: 'Sound &amp;<br/>Lighting', search: ['sound', 'light', 'pa system', 'mic', 'speaker', 'generator', 'electricity'] },
+        { key: 'priest', label: 'Priest &amp;<br/>Rituals', search: ['priest', 'ritual', 'pooja', 'pandit', 'samagri', 'puja'] },
+        { key: 'misc', label: 'Miscellaneous', search: [] }
+      ];
+
+      const categoryAmounts = chartCategories.map(cat => {
+        if (cat.key === 'misc') {
+          return txList
+            .filter(t => t.type === 'expense')
+            .filter(t => {
+              const categoryLower = t.category.toLowerCase();
+              const descLower = (t.description || '').toLowerCase();
+              const matchedOther = chartCategories
+                .filter(c => c.key !== 'misc')
+                .some(c => c.search.some(keyword => categoryLower.includes(keyword) || descLower.includes(keyword)));
+              return !matchedOther;
+            })
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+        } else {
+          return txList
+            .filter(t => t.type === 'expense')
+            .filter(t => {
+              const categoryLower = t.category.toLowerCase();
+              const descLower = (t.description || '').toLowerCase();
+              return cat.search.some(keyword => categoryLower.includes(keyword) || descLower.includes(keyword));
+            })
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+        }
+      });
+
+      const maxAmount = Math.max(...categoryAmounts, 1);
+      const chartColumns = chartCategories.map((cat, idx) => {
+        const amt = categoryAmounts[idx];
+        const heightPercent = Math.max(Math.round((amt / maxAmount) * 80), 5); // min 5% for visual bar
+        return `
+          <div class="chart-bar-col">
+            <div class="chart-amount">&#8377;${amt.toLocaleString('en-IN')}</div>
+            <div class="chart-bar exp" style="height:${heightPercent}%;"></div>
+          </div>
+        `;
+      }).join('');
+      
+      const chartLabels = chartCategories.map(cat => `
+        <div class="chart-label-col">${cat.label}</div>
+      `).join('');
+
+      // Generate Initials for the Seal Mark on the Cover Page (e.g. "Greenfield Heights" -> "GH")
+      const getInitials = (name: string) => {
+        return name
+          .split(' ')
+          .filter(word => word.length > 0)
+          .map(word => word[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 3);
+      };
+      const initials = getInitials(profile?.society_name || 'SocietySync');
+
+      // 5. Assemble full HTML using the premium multi-page design template
+      
+      // Calculate comparison percentages for the bottom chart
+      const maxComparison = Math.max(totalIncome, totalExpense, 1);
+      const incPercent = Math.max(Math.round((totalIncome / maxComparison) * 80), 5);
+      const expPercent = Math.max(Math.round((totalExpense / maxComparison) * 80), 5);
+      const balPercent = Math.max(Math.round((Math.max(balance, 0) / maxComparison) * 80), 5);
+
+      const incomeCount = txList.filter(t => t.type === 'income').length;
+      const expenseCount = txList.filter(t => t.type === 'expense').length;
+
+      const htmlContent = getReportTemplate(
+        profile,
+        selectedEvent,
+        initials,
+        totalIncome,
+        totalExpense,
+        balance,
+        incomeRows,
+        expenseRows,
+        incPercent,
+        expPercent,
+        balPercent,
+        chartColumns,
+        chartLabels,
+        incomeCount,
+        expenseCount
+      );
+
+      // 6. Generate PDF file
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      
+      // 7. Share PDF file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Download ${selectedEvent.name} Report`,
+          UTI: 'com.adobe.pdf'
+        });
+      } else {
+        Alert.alert('PDF Generated', `Report saved at: ${uri}`);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to export PDF report.');
+    }
+  };
+
+  const formatCurrency = (val: number) => {
+    return '₹' + val.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  };
+
+  const isCurrentUserFlat = (wing: string, flat: string) => {
+    return profile?.wing === wing && profile?.flat_number === flat;
+  };
+
+  if (profile?.society_status === 'suspended') {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+        <View style={styles.screenHeader}>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={[styles.screenHeaderLogo, { borderColor: '#FFD700' }]} 
+            resizeMode="contain"
+          />
+          <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+            SocietySync Finances
+          </Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <IconButton
+            icon="lock-alert"
+            size={72}
+            iconColor={theme.colors.error}
+            style={{ marginBottom: 16 }}
+          />
+          <Text variant="headlineSmall" style={{ fontWeight: 'bold', color: theme.colors.onSurface, textAlign: 'center', marginBottom: 12 }}>
+            Society Suspended
+          </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', lineHeight: 22, maxWidth: 300 }}>
+            The Finance features have been disabled because this society has been suspended by the Master Administrator. Please contact your society administration or SocietySync support for details.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Soft brand glow backdrop */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: [{ translateX: -150 }],
+          width: 300,
+          height: 300,
+          borderRadius: 150,
+          backgroundColor: '#00D4AA',
+          opacity: theme.dark ? 0.04 : 0.02,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <View style={[styles.container, { backgroundColor: 'transparent', paddingTop: insets.top }]}>
+        <View style={styles.screenHeader}>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={[styles.screenHeaderLogo, { borderColor: '#00D4AA' }]} 
+            resizeMode="contain"
+          />
+          <Text variant="titleLarge" style={[styles.screenHeaderTitle, { color: theme.colors.onSurface }]}>
+            SocietySync Finances
+          </Text>
+        </View>
+
+        <View style={styles.tabHeader}>
+          <SegmentedButtons
+            value={activeTab}
+            onValueChange={setActiveTab}
+            buttons={[
+              { value: 'ledger', label: 'Festival Ledger', icon: 'cash-register' },
+              { value: 'dues', label: 'Maintenance Dues', icon: 'clipboard-list' },
+            ]}
+            style={styles.segmentedButtons}
+          />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {/* ==================== TAB 1: FESTIVAL LEDGER ==================== */}
+          {activeTab === 'ledger' && !selectedEvent && (
+            <View>
+              {/* CHANDA Campaigns Quick Access Card */}
+              <Card 
+                style={{ backgroundColor: theme.colors.elevation.level1, borderColor: 'rgba(0, 212, 170, 0.25)', borderWidth: 1, borderRadius: 20, marginBottom: 16 }}
+                onPress={() => router.push('/chanda' as any)}
+              >
+                <Card.Content style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <IconButton icon="hand-coin" containerColor="rgba(0, 212, 170, 0.15)" iconColor="#00D4AA" size={24} style={{ margin: 0 }} />
+                    <View>
+                      <Text variant="titleMedium" style={{ fontWeight: 'bold', fontSize: 14, color: theme.colors.onSurface }}>Chanda Collection Desk</Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline, fontSize: 11 }}>Contribute to active community festival funds</Text>
+                    </View>
+                  </View>
+                  <IconButton icon="chevron-right" iconColor={theme.colors.onSurface} size={20} style={{ margin: 0 }} />
+                </Card.Content>
+              </Card>
+
+              <View style={styles.sectionHeaderRow}>
+                <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Festival Events & Ledgers</Text>
+                {(profile?.role === 'admin') && (
+                  <Button 
+                    mode="contained" 
+                    icon="plus" 
+                    onPress={() => setEventModalVisible(true)}
+                    style={[styles.actionButton, { borderRadius: 28 }]}
+                    buttonColor="#00D4AA"
+                    textColor="#09090b"
+                    labelStyle={{ fontWeight: 'bold' }}
+                  >
+                    New Event
+                  </Button>
+                )}
+              </View>
+
+              {events.map((event) => (
+                <Card 
+                  key={event.id} 
+                  style={[styles.eventCard, { 
+                    borderRadius: 20, 
+                    borderWidth: theme.dark ? 1 : 0, 
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    backgroundColor: theme.colors.elevation.level1
+                  }]}
+                  onPress={async () => {
+                    setSelectedEvent(event);
+                    const txList = await dataManager.getTransactions(event.id);
+                    setTransactions(txList);
+                  }}
+                >
+                <Card.Content>
+                  <View style={styles.eventHeaderRow}>
+                    <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#00D4AA' }}>
+                      {event.name}
+                    </Text>
+                    <View 
+                      style={{ 
+                        backgroundColor: theme.colors.secondaryContainer, 
+                        paddingHorizontal: 10, 
+                        paddingVertical: 2, 
+                        borderRadius: 12,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Text 
+                        style={{ 
+                          fontSize: 10, 
+                          fontWeight: 'bold', 
+                          color: theme.colors.onSecondaryContainer 
+                        }}
+                      >
+                        {event.event_date ? new Date(event.event_date).toLocaleDateString([], { year: 'numeric', month: 'short' }) : 'Ongoing'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text variant="bodySmall" style={{ color: theme.colors.outline, marginVertical: 4 }}>
+                    {event.description || 'No description provided.'}
+                  </Text>
+                  
+                  <Divider style={{ marginVertical: 8 }} />
+
+                  <View style={styles.eventStatsRow}>
+                    <View style={styles.statCol}>
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Total Chandaa</Text>
+                      <Text variant="titleMedium" style={{ color: '#00D4AA', fontWeight: 'bold' }}>
+                        {formatCurrency(event.total_income)}
+                      </Text>
+                    </View>
+                    <View style={styles.statCol}>
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Total Expense</Text>
+                      <Text variant="titleMedium" style={{ color: '#FF3B30', fontWeight: 'bold' }}>
+                        {formatCurrency(event.total_expense)}
+                      </Text>
+                    </View>
+                    <View style={styles.statCol}>
+                      <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Fund Balance</Text>
+                      <Text variant="titleMedium" style={{ color: '#FFD700', fontWeight: 'bold' }}>
+                        {formatCurrency(event.balance)}
+                      </Text>
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+            ))}
+          </View>
+        )}
+
+        {/* ==================== EVENT DETAILS VIEW ==================== */}
+        {activeTab === 'ledger' && selectedEvent && (
+          <View>
+            {/* Header with back button */}
+            <View style={styles.detailsHeader}>
+              <IconButton icon="arrow-left" size={24} onPress={() => setSelectedEvent(null)} />
+              <View style={{ flex: 1 }}>
+                <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>{selectedEvent.name}</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Event Details & Ledger Sheet</Text>
+              </View>
+              {profile?.role === 'admin' && (
+                <IconButton 
+                  icon="trash-can-outline" 
+                  iconColor="#FF3B30" 
+                  size={24} 
+                  onPress={handleDeleteEventClick} 
+                  style={{ margin: 0 }}
+                />
+              )}
+            </View>
+
+            {/* Financial Summary Card */}
+            <Card style={[styles.balanceCard, { backgroundColor: theme.colors.elevation.level2, borderColor: '#FFD700', borderWidth: 1.5 }]}>
+              <Card.Content style={styles.balanceContent}>
+                <IconButton icon="wallet-outline" iconColor="#FFD700" size={32} style={{ margin: 0 }} />
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurface, opacity: 0.8 }}>
+                  Event Net Fund Balance
+                </Text>
+                <Text variant="displaySmall" style={[styles.balanceText, { color: '#FFD700', fontWeight: 'bold' }]}>
+                  {formatCurrency(selectedEvent.balance)}
+                </Text>
+                <View style={styles.statsRowInline}>
+                  <Text style={{ color: '#00D4AA', fontSize: 13, fontWeight: 'bold' }}>
+                    Chandaa: <Text style={{ color: theme.colors.onSurface }}>{formatCurrency(selectedEvent.total_income)}</Text>
+                  </Text>
+                  <Text style={{ color: '#FF3B30', fontSize: 13, fontWeight: 'bold' }}>
+                    Expense: <Text style={{ color: theme.colors.onSurface }}>{formatCurrency(selectedEvent.total_expense)}</Text>
+                  </Text>
+                </View>
+              </Card.Content>
+            </Card>
+
+            {/* Transaction Controls */}
+            <View style={styles.sectionHeaderRow}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>Transactions Ledger</Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <IconButton 
+                  icon="file-pdf-box" 
+                  iconColor="#FF3B30" 
+                  mode="outlined" 
+                  size={20}
+                  style={{ margin: 0 }}
+                  onPress={handleExportPDF} 
+                />
+                {(profile?.role === 'admin') && (
+                  <Button 
+                    mode="contained" 
+                    icon="plus" 
+                    onPress={handleNewTransactionClick}
+                    style={styles.actionButton}
+                  >
+                    Add Bill
+                  </Button>
+                )}
+              </View>
+            </View>
+
+            {/* Transaction Items */}
+            {transactions.length === 0 ? (
+              <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.outline }}>
+                No transactions recorded for this event yet.
+              </Text>
+            ) : (
+              transactions.map((tx) => (
+                <Card key={tx.id} style={styles.txCard}>
+                  <Card.Content style={styles.txContent}>
+                    <View style={styles.txMainInfo}>
+                      <IconButton 
+                        icon={tx.type === 'income' ? 'cash-multiple' : 'chart-line'} 
+                        iconColor={tx.type === 'income' ? '#00D4AA' : '#FF3B30'}
+                        size={22}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text variant="titleMedium" style={styles.txTitleText}>{tx.description}</Text>
+                        <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                          Category: {tx.category} • By {tx.recorded_by_name || 'Admin'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.txFinanceInfo}>
+                      <Text 
+                        variant="titleMedium" 
+                        style={[
+                          styles.txAmountText, 
+                          { color: tx.type === 'income' ? '#00D4AA' : '#FF3B30' }
+                        ]}
+                      >
+                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.txDate}>
+                        {tx.recorded_at ? new Date(tx.recorded_at).toLocaleDateString([], { day: '2-digit', month: 'short' }) : ''}
+                      </Text>
+                    </View>
+                  </Card.Content>
+                  {(tx.bill_image_url || profile?.role === 'admin') && (
+                    <Card.Actions style={styles.txActions}>
+                      {tx.bill_image_url && (
+                        <Button 
+                          mode="text" 
+                          icon="receipt" 
+                          labelStyle={{ fontSize: 11 }}
+                          onPress={() => {
+                            if (tx.bill_image_url) {
+                              Linking.openURL(tx.bill_image_url).catch(() => showToast('Invalid bill URL'));
+                            }
+                          }}
+                        >
+                          View Bill Proof
+                        </Button>
+                      )}
+                      {(profile?.role === 'admin') && (
+                        <Button 
+                          mode="text" 
+                          icon="pencil" 
+                          labelStyle={{ fontSize: 11 }}
+                          onPress={() => handleEditTransactionClick(tx)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {(profile?.role === 'admin') && (
+                        <Button 
+                          mode="text" 
+                          icon="delete" 
+                          textColor={theme.colors.error}
+                          labelStyle={{ fontSize: 11 }}
+                          onPress={() => handleDeleteTransactionClick(tx.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </Card.Actions>
+                  )}
+                </Card>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* ==================== TAB 2: MAINTENANCE DUES ==================== */}
+        {activeTab === 'dues' && (
+          <View>
+            <Card style={styles.duesInfoCard}>
+              <Card.Content>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>📢 Maintenance Delinquent Leaderboard</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 4 }}>
+                  Sorted by highest pending dues. Flat Owner is responsible for payments. Renters can verify if their owner is pocketing dues payments. Includes a 2% late fee if overdue.
+                </Text>
+              </Card.Content>
+            </Card>
+
+            <View style={styles.sectionHeaderRow}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                {profile?.role === 'renter' ? 'Your Flat Maintenance Ledger' : 'Outstanding Dues'}
+              </Text>
+              {(profile?.role === 'admin') && (
+                <Button 
+                  mode="contained" 
+                  icon="plus" 
+                  onPress={() => setDuesModalVisible(true)}
+                  style={styles.actionButton}
+                >
+                  Create Dues
+                </Button>
+              )}
+            </View>
+
+            {maintenanceDues
+              .filter(due => profile?.role !== 'renter' || isCurrentUserFlat(due.wing, due.flat_number))
+              .map((due, index) => {
+                const isMyFlat = isCurrentUserFlat(due.wing, due.flat_number);
+                const outstanding = Number(due.amount) + Number(due.interest_charged) - Number(due.paid_amount);
+                
+                const getStatusColor = (status: string) => {
+                  switch (status) {
+                    case 'paid': return '#00D4AA'; // Green
+                    case 'overdue': return '#FF3B30'; // Red
+                    case 'pending': return '#FFD700'; // Gold
+                    default: return theme.colors.outline;
+                  }
+                };
+
+                const statusColor = getStatusColor(due.status);
+
+                return (
+                  <Card 
+                    key={due.id} 
+                    style={[
+                      styles.dueCard, 
+                      isMyFlat && { borderColor: '#00D4AA', borderWidth: 1.5 },
+                      due.status === 'paid' && { opacity: 0.75 }
+                    ]}
+                  >
+                    <Card.Content style={styles.dueContent}>
+                      <View style={styles.dueLeft}>
+                        {profile?.role !== 'renter' && due.status !== 'paid' && (
+                          <Avatar.Text 
+                            size={28} 
+                            label={`#${index + 1}`} 
+                            style={[
+                              styles.dueRank, 
+                              { backgroundColor: statusColor }
+                            ]}
+                            labelStyle={{ fontSize: 12, color: theme.colors.onPrimary, fontWeight: 'bold' }}
+                          />
+                        )}
+                        <View>
+                          <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                            Flat {due.wing}-{due.flat_number} {isMyFlat && '(Your Flat)'}
+                          </Text>
+                          <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+                            Due Date: {new Date(due.due_date).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </Text>
+                          {due.interest_charged > 0 && (
+                            <Text variant="bodySmall" style={{ color: '#FF3B30', fontWeight: 'bold' }}>
+                              ⚠️ Includes Late Fee (2%): {formatCurrency(due.interest_charged)}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+
+                      <View style={styles.dueRight}>
+                        <Text 
+                          variant="titleMedium" 
+                          style={[
+                            styles.dueAmount, 
+                            { color: statusColor }
+                          ]}
+                        >
+                          {formatCurrency(outstanding > 0 ? outstanding : Number(due.amount))}
+                        </Text>
+                        <Text 
+                          variant="bodySmall" 
+                          style={{ 
+                            fontWeight: 'bold', 
+                            color: statusColor,
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          {due.status}
+                        </Text>
+                      </View>
+                    </Card.Content>
+
+                    {/* Dues Actions */}
+                    {due.status !== 'paid' && (
+                      <Card.Actions style={styles.dueActions}>
+                        {(profile?.role === 'admin') && (
+                          <Button 
+                            mode="text" 
+                            icon="bell-ring" 
+                            onPress={() => handleSendReminder(due.wing, due.flat_number, outstanding)}
+                            labelStyle={{ fontSize: 11 }}
+                          >
+                            Send Reminder
+                          </Button>
+                        )}
+                        {(profile?.role === 'admin') && (
+                          <Button 
+                            mode="contained-tonal" 
+                            icon="cash" 
+                            onPress={() => handleMarkPaid(due.id, due.wing, due.flat_number)}
+                            labelStyle={{ fontSize: 11 }}
+                          >
+                            Clear Dues
+                          </Button>
+                        )}
+                        {false && (
+                          <Button 
+                            mode="text" 
+                            icon="bell" 
+                            onPress={() => handleSendReminder(due.wing, due.flat_number, outstanding)}
+                            labelStyle={{ fontSize: 11 }}
+                          >
+                            Send Alert
+                          </Button>
+                        )}
+                        {isMyFlat && (
+                          <Button 
+                            mode="contained" 
+                            icon="credit-card-outline" 
+                            onPress={() => showToast('Redirecting to secure gateway...')}
+                            labelStyle={{ fontSize: 11 }}
+                          >
+                            Pay Dues Online
+                          </Button>
+                        )}
+                      </Card.Actions>
+                    )}
+                  </Card>
+                );
+              })}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Snackbar Toast */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{ marginBottom: 60 }}
+      >
+        {snackbarMessage}
+      </Snackbar>
+
+      {/* CREATE EVENT MODAL */}
+      <Portal>
+        <Modal
+          visible={eventModalVisible}
+          onDismiss={() => setEventModalVisible(false)}
+          contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.elevation.level3 }]}
+        >
+          <Text variant="titleLarge" style={styles.modalTitle}>🎉 Create New Festival Event</Text>
+          <TextInput
+            label="Event Name"
+            placeholder="e.g. Ganesh Chaturthi 2026"
+            value={eventName}
+            onChangeText={setEventName}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Event Description"
+            placeholder="e.g. Chanda collections and stage vendor bills"
+            value={eventDesc}
+            onChangeText={setEventDesc}
+            mode="outlined"
+            multiline
+            numberOfLines={3}
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Start Date (YYYY-MM-DD)"
+            value={eventDate}
+            onChangeText={setEventDate}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+          <View style={styles.modalButtons}>
+            <Button mode="outlined" onPress={() => setEventModalVisible(false)} style={{ flex: 1 }}>
+              Cancel
+            </Button>
+            <Button 
+              mode="contained" 
+              onPress={handleCreateEvent} 
+              loading={submitting}
+              disabled={submitting}
+              style={{ flex: 1 }}
+            >
+              Create
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* ADD TRANSACTION MODAL */}
+      <Portal>
+        <Modal
+          visible={txModalVisible}
+          onDismiss={() => {
+            setTxModalVisible(false);
+            setEditingTxId(null);
+          }}
+          contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.elevation.level3 }]}
+        >
+          <Text variant="titleLarge" style={styles.modalTitle}>
+            {editingTxId ? '✏️ Edit Ledger Transaction' : '📝 Add Ledger Transaction'}
+          </Text>
+          <TextInput
+            label="Transaction Title"
+            placeholder="e.g. Stage Pandal Decoration"
+            value={txTitle}
+            onChangeText={setTxTitle}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Amount (₹)"
+            keyboardType="numeric"
+            value={txAmount}
+            onChangeText={setTxAmount}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+
+          <Text variant="labelMedium" style={{ marginBottom: 6 }}>Transaction Type</Text>
+          <SegmentedButtons
+            value={txType}
+            onValueChange={(val) => setTxType(val as 'income' | 'expense')}
+            buttons={[
+              { value: 'income', label: 'Chandaa/Receipt (+)', icon: 'plus' },
+              { value: 'expense', label: 'Vendor Bill (-)', icon: 'minus' },
+            ]}
+            style={styles.modalSegment}
+          />
+
+          <TextInput
+            label="Category"
+            placeholder="Chandaa, Pandal, Sound System, Food, VIP..."
+            value={txCategory}
+            onChangeText={setTxCategory}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Brief Description (Optional)"
+            value={txDesc}
+            onChangeText={setTxDesc}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Digital Bill Image URL (Optional)"
+            placeholder="e.g. https://invoice-host.com/invoice.jpg"
+            value={txBillUrl}
+            onChangeText={setTxBillUrl}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+
+          <View style={{ marginBottom: 16, alignItems: 'center' }}>
+            <Button
+              mode="contained-tonal"
+              icon="camera"
+              onPress={handleSelectReceipt}
+              loading={uploadingReceipt}
+              disabled={uploadingReceipt}
+              style={{ width: '100%' }}
+            >
+              {uploadingReceipt ? 'Uploading Receipt...' : 'Scan / Upload Receipt Image'}
+            </Button>
+            {txBillUrl ? (
+              <Text variant="bodySmall" style={{ color: '#00D4AA', marginTop: 4, textAlign: 'center', fontWeight: 'bold' }}>
+                ✓ Receipt Image attached successfully
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.modalButtons}>
+            <Button 
+              mode="outlined" 
+              onPress={() => {
+                setTxModalVisible(false);
+                setEditingTxId(null);
+              }} 
+              style={{ flex: 1 }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              mode="contained" 
+              onPress={editingTxId ? handleUpdateTransaction : handleAddTransaction} 
+              loading={submitting}
+              disabled={submitting}
+              style={{ flex: 1 }}
+            >
+              {editingTxId ? 'Update Bill' : 'Save Bill'}
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* CREATE DUES MODAL */}
+      <Portal>
+        <Modal
+          visible={duesModalVisible}
+          onDismiss={() => setDuesModalVisible(false)}
+          contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.elevation.level3 }]}
+        >
+          <Text variant="titleLarge" style={styles.modalTitle}>📋 Set New Maintenance Dues</Text>
+          
+          <View style={styles.modalRow}>
+            <TextInput
+              label="Wing"
+              placeholder="e.g. B"
+              value={dueWing}
+              onChangeText={setDueWing}
+              mode="outlined"
+              style={[styles.modalInput, { flex: 1 }]}
+              autoCapitalize="characters"
+            />
+            <TextInput
+              label="Flat Number"
+              placeholder="e.g. 302"
+              value={dueFlat}
+              onChangeText={setDueFlat}
+              mode="outlined"
+              keyboardType="numeric"
+              style={[styles.modalInput, { flex: 1 }]}
+            />
+          </View>
+
+          <TextInput
+            label="Base Amount (₹)"
+            value={dueAmount}
+            onChangeText={setDueAmount}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+
+          <TextInput
+            label="Billing Month (YYYY-MM-DD)"
+            value={dueMonth}
+            onChangeText={setDueMonth}
+            mode="outlined"
+            style={styles.modalInput}
+          />
+
+          <View style={styles.modalButtons}>
+            <Button mode="outlined" onPress={() => setDuesModalVisible(false)} style={{ flex: 1 }}>
+              Cancel
+            </Button>
+            <Button mode="contained" onPress={handleAddDues} style={{ flex: 1 }}>
+              Record Dues
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  screenHeaderLogo: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  screenHeaderTitle: {
+    fontWeight: 'bold',
+  },
+  tabHeader: {
+    padding: 12,
+    alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#DDD',
+  },
+  segmentedButtons: {
+    width: '100%',
+  },
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 130,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontWeight: 'bold',
+  },
+  actionButton: {
+    borderRadius: 8,
+  },
+  eventCard: {
+    marginBottom: 16,
+    borderRadius: 16,
+    elevation: 2,
+  },
+  eventHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  eventStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  statCol: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E0E0E0',
+    marginBottom: 16,
+  },
+  balanceCard: {
+    borderRadius: 16,
+    marginBottom: 20,
+    elevation: 3,
+  },
+  balanceContent: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  balanceText: {
+    marginTop: 8,
+  },
+  statsRowInline: {
+    flexDirection: 'row',
+    gap: 24,
+    marginTop: 12,
+  },
+  txCard: {
+    marginBottom: 12,
+    borderRadius: 12,
+    elevation: 1.5,
+  },
+  txContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  txMainInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 4,
+  },
+  txTitleText: {
+    fontWeight: 'bold',
+  },
+  txFinanceInfo: {
+    alignItems: 'flex-end',
+    minWidth: 95,
+  },
+  txAmountText: {
+    fontWeight: 'bold',
+  },
+  txDate: {
+    color: '#888',
+    fontSize: 10,
+  },
+  txActions: {
+    justifyContent: 'flex-start',
+    borderTopWidth: 0.5,
+    borderTopColor: '#EEE',
+    paddingVertical: 0,
+  },
+  duesInfoCard: {
+    marginBottom: 20,
+    borderRadius: 12,
+    elevation: 1,
+  },
+  dueCard: {
+    marginBottom: 12,
+    borderRadius: 12,
+    elevation: 1.5,
+  },
+  dueContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  dueLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  dueRank: {
+    borderRadius: 6,
+  },
+  dueRight: {
+    alignItems: 'flex-end',
+    minWidth: 80,
+  },
+  dueAmount: {
+    fontWeight: 'bold',
+  },
+  dueActions: {
+    justifyContent: 'flex-end',
+    borderTopWidth: 0.5,
+    borderTopColor: '#EEE',
+  },
+  modalContainer: {
+    padding: 20,
+    margin: 20,
+    borderRadius: 16,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalInput: {
+    marginBottom: 12,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalSegment: {
+    marginBottom: 12,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+});
